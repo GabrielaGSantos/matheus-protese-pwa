@@ -1,0 +1,681 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import type { Case, CalendarEvent, Profile, CalendarEventType } from '../types';
+import { 
+  CheckCircle2, Plus, Trash2, ShieldAlert, Info,
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon
+} from 'lucide-react';
+
+interface AgendaScreenProps {
+  onSelectCase?: (caseId: string) => void;
+}
+
+export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
+  const [cases, setCases] = useState<Case[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [dentists, setDentists] = useState<Profile[]>([]);
+  
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'capacity' | 'blocks'>('deliveries');
+  const [loading, setLoading] = useState(true);
+
+  // Calendar states
+  const [calendarView, setCalendarView] = useState<'monthly' | 'weekly'>('monthly');
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+
+  const [blockTitle, setBlockTitle] = useState('');
+  const [blockType, setBlockType] = useState<CalendarEventType>('indisponibilidade');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [blockNotes, setBlockNotes] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const c = await api.cases.list('admin', 'admin-1');
+      const ev = await api.calendar.list();
+      const p = await api.profiles.list();
+      setCases(c);
+      setEvents(ev);
+      setDentists(p);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calendar utilities
+  const getDaysInMonthGrid = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    // First day of the month
+    const firstDayOfMonth = new Date(year, month, 1);
+    const startDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday, 6 is Saturday
+    
+    // Start date of the grid (go back to Sunday)
+    const gridStart = new Date(firstDayOfMonth);
+    gridStart.setDate(gridStart.getDate() - startDayOfWeek);
+    
+    const days: Date[] = [];
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(gridStart));
+      gridStart.setDate(gridStart.getDate() + 1);
+    }
+    return days;
+  };
+
+  const getDaysInWeekGrid = (date: Date) => {
+    const currentDay = date.getDay(); // 0-6
+    const gridStart = new Date(date);
+    gridStart.setDate(gridStart.getDate() - currentDay); // go back to Sunday
+    
+    const days: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      days.push(new Date(gridStart));
+      gridStart.setDate(gridStart.getDate() + 1);
+    }
+    return days;
+  };
+
+  const getCasesForDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    return cases.filter(c => {
+      const deliveryDate = c.final_delivery_date || c.requested_delivery_date;
+      return deliveryDate === dateStr;
+    });
+  };
+
+  const getEventsForDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    return events.filter(ev => {
+      return ev.start_date <= dateStr && ev.end_date >= dateStr;
+    });
+  };
+
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const handlePrev = () => {
+    const nextDate = new Date(currentDate);
+    if (calendarView === 'monthly') {
+      nextDate.setMonth(nextDate.getMonth() - 1);
+    } else {
+      nextDate.setDate(nextDate.getDate() - 7);
+    }
+    setCurrentDate(nextDate);
+  };
+
+  const handleNext = () => {
+    const nextDate = new Date(currentDate);
+    if (calendarView === 'monthly') {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    } else {
+      nextDate.setDate(nextDate.getDate() + 7);
+    }
+    setCurrentDate(nextDate);
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const handleCreateBlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!blockTitle || !startDate || !endDate) return;
+
+    try {
+      await api.calendar.save({
+        id: '',
+        title: blockTitle,
+        type: blockType,
+        start_date: startDate,
+        end_date: endDate,
+        notes: blockNotes,
+        created_at: new Date().toISOString()
+      });
+      setBlockTitle('');
+      setStartDate('');
+      setEndDate('');
+      setBlockNotes('');
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteBlock = async (id: string) => {
+    if (!window.confirm('Excluir este bloqueio de agenda?')) return;
+    try {
+      await api.calendar.delete(id);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Capacity calculations
+  const activeCases = cases.filter(c => !['finalizado', 'entregue', 'cancelado'].includes(c.status));
+  const committedHours = activeCases.reduce((sum, c) => sum + c.estimated_hours, 0);
+
+  // Available hours: 44 hours per week default.
+  // Calculate if there are blocking events in the current week/month.
+  // E.g., subtract 8 hours for each weekday of 'viagem' or 'feriado'
+  const getCapacityAnalysis = () => {
+    let baseAvailableHours = 44; // default weekly capacity
+    let blockedHours = 0;
+
+    // Check events in the next 7 days
+    const next7Days = new Date();
+    next7Days.setDate(next7Days.getDate() + 7);
+    const today = new Date();
+
+    events.forEach(ev => {
+      const start = new Date(ev.start_date);
+      const end = new Date(ev.end_date);
+      
+      // If event overlaps with the next 7 days
+      if (start <= next7Days && end >= today) {
+        // Simple mock: count days and multiply by 8 hours
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+        blockedHours += diffDays * 8;
+      }
+    });
+
+    const netAvailableHours = Math.max(0, baseAvailableHours - blockedHours);
+    const overloadPercent = netAvailableHours > 0 ? (committedHours / netAvailableHours) * 100 : 100;
+    const isOverloaded = committedHours > netAvailableHours;
+
+    return {
+      netAvailableHours,
+      blockedHours,
+      overloadPercent,
+      isOverloaded
+    };
+  };
+
+  const cap = getCapacityAnalysis();
+
+  const getEventBadgeColor = (type: CalendarEventType) => {
+    const styles: Record<CalendarEventType, string> = {
+      feriado: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+      viagem: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+      bloqueio: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+      indisponibilidade: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+    };
+    return styles[type];
+  };
+
+  if (loading) {
+    return <div className="text-center py-12 text-muted-foreground">Carregando cronogramas e capacidade...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-3xl font-extrabold tracking-tight">Agenda & Capacidade</h2>
+        <p className="text-muted-foreground text-sm">
+          Planeje prazos de entrega, visualize a carga de trabalho laboratorial e configure bloqueios de expediente.
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-white/10 w-fit gap-1 bg-secondary/30 p-1.5 rounded-xl">
+        <button
+          onClick={() => setActiveTab('deliveries')}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+            activeTab === 'deliveries'
+              ? 'bg-primary text-white shadow-md'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Cronograma de Entregas
+        </button>
+        <button
+          onClick={() => setActiveTab('capacity')}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+            activeTab === 'capacity'
+              ? 'bg-primary text-white shadow-md'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Capacidade Produtiva
+        </button>
+        <button
+          onClick={() => setActiveTab('blocks')}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+            activeTab === 'blocks'
+              ? 'bg-primary text-white shadow-md'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Bloqueios e Feriados
+        </button>
+      </div>
+
+      {activeTab === 'deliveries' ? (
+        /* DELIVERIES TAB - GOOGLE-STYLE CALENDAR */
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-6 animate-fade-in">
+          {/* Calendar Navigation and View Toggles */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
+            <div className="flex items-center gap-3">
+              <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+                <CalendarIcon size={20} className="text-primary" />
+                {calendarView === 'monthly' 
+                  ? `${monthNames[currentDate.getMonth()]} de ${currentDate.getFullYear()}`
+                  : `Semana de ${new Date(getDaysInWeekGrid(currentDate)[0]).toLocaleDateString('pt-BR')} a ${new Date(getDaysInWeekGrid(currentDate)[6]).toLocaleDateString('pt-BR')}`
+                }
+              </h3>
+              <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-xl border border-white/10">
+                <button
+                  onClick={handlePrev}
+                  className="p-1.5 hover:bg-secondary rounded-lg transition-all"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={handleToday}
+                  className="px-2.5 py-1 text-xs font-bold hover:bg-secondary rounded-lg transition-all"
+                >
+                  Hoje
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="p-1.5 hover:bg-secondary rounded-lg transition-all"
+                  title="Próximo"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 bg-secondary/55 p-1 rounded-xl border border-white/10">
+              <button
+                onClick={() => setCalendarView('monthly')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  calendarView === 'monthly'
+                    ? 'bg-primary text-white shadow'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setCalendarView('weekly')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  calendarView === 'weekly'
+                    ? 'bg-primary text-white shadow'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Semanal
+              </button>
+            </div>
+          </div>
+
+          {calendarView === 'monthly' ? (
+            /* MONTHLY VIEW GRID */
+            <div className="grid grid-cols-7 gap-px bg-white/10 rounded-xl overflow-hidden border border-white/10">
+              {/* Day names */}
+              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                <div key={d} className="bg-secondary/40 py-2 text-center text-xs font-extrabold uppercase text-muted-foreground tracking-wider">
+                  {d}
+                </div>
+              ))}
+
+              {getDaysInMonthGrid(currentDate).map((day, idx) => {
+                const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                const isToday = day.toDateString() === new Date().toDateString();
+                const dayCases = getCasesForDate(day);
+                const dayEvents = getEventsForDate(day);
+
+                return (
+                  <div 
+                    key={idx} 
+                    className={`min-h-[110px] bg-card p-2 flex flex-col justify-between hover:bg-secondary/10 transition-all ${
+                      isCurrentMonth ? '' : 'opacity-40'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-xs font-bold ${
+                        isToday 
+                          ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md shadow-primary/30' 
+                          : 'text-muted-foreground'
+                      }`}>
+                        {day.getDate()}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[80px] pr-0.5 custom-scrollbar">
+                      {/* Events/Blockages */}
+                      {dayEvents.map(ev => (
+                        <div 
+                          key={ev.id}
+                          className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 truncate"
+                          title={`${ev.title}: ${ev.notes || ''}`}
+                        >
+                          🚫 {ev.title}
+                        </div>
+                      ))}
+
+                      {/* Cases */}
+                      {dayCases.map(c => {
+                        const dentist = dentists.find(d => d.id === c.dentist_id);
+                        return (
+                          <div 
+                            key={c.id}
+                            onClick={() => onSelectCase && onSelectCase(c.id)}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/45 transition-all truncate cursor-pointer"
+                            title={`Caso ${c.id} - Paciente: ${c.patient_name} (${dentist?.full_name || ''})`}
+                          >
+                            📦 {c.patient_name}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* WEEKLY VIEW GRID */
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+              {getDaysInWeekGrid(currentDate).map((day, idx) => {
+                const isToday = day.toDateString() === new Date().toDateString();
+                const dayCases = getCasesForDate(day);
+                const dayEvents = getEventsForDate(day);
+                const weekdays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+                return (
+                  <div 
+                    key={idx} 
+                    className={`glass-panel p-4 rounded-xl border flex flex-col justify-between min-h-[200px] transition-all ${
+                      isToday 
+                        ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' 
+                        : 'border-white/5 bg-secondary/15'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-baseline mb-2">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                          {weekdays[day.getDay()]}
+                        </span>
+                        <span className={`text-base font-extrabold ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                          {day.getDate()}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 overflow-y-auto max-h-[140px] pr-0.5">
+                        {dayEvents.length === 0 && dayCases.length === 0 && (
+                          <div className="text-[10px] text-muted-foreground italic text-center py-6">
+                            Sem prazos
+                          </div>
+                        )}
+
+                        {/* Events */}
+                        {dayEvents.map(ev => (
+                          <div 
+                            key={ev.id}
+                            className="p-1.5 rounded-lg text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/25 space-y-0.5"
+                          >
+                            <div className="flex items-center gap-1 text-[10px]">
+                              <span>🚫</span>
+                              <span className="truncate">{ev.title}</span>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Cases */}
+                        {dayCases.map(c => {
+                          const dentist = dentists.find(d => d.id === c.dentist_id);
+                          return (
+                            <div 
+                              key={c.id}
+                              onClick={() => onSelectCase && onSelectCase(c.id)}
+                              className="p-2 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/25 hover:border-primary/45 transition-all cursor-pointer space-y-1"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="truncate">📦 {c.patient_name}</span>
+                              </div>
+                              <div className="text-[9px] text-muted-foreground">
+                                Dr. {dentist?.full_name || 'Desconhecido'}
+                              </div>
+                              <span className="px-1.5 py-0.5 rounded bg-primary/20 text-[8px] font-black uppercase text-primary">
+                                {c.status}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'capacity' ? (
+        /* CAPACITY PRODUCTIVITY TAB */
+        <div className="space-y-6 animate-fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Status Indicator */}
+            <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+              cap.isOverloaded 
+                ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' 
+                : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+            }`}>
+              <div className="space-y-2">
+                <span className="text-[10px] uppercase font-bold tracking-widest block opacity-75">Status Produtivo</span>
+                <h3 className="text-2xl font-black">{cap.isOverloaded ? 'Alerta: Sobrecarga!' : 'Capacidade Adequada'}</h3>
+                <p className="text-xs opacity-90 font-medium">
+                  {cap.isOverloaded 
+                    ? 'O volume estimado de horas excede o limite disponível para a semana.' 
+                    : 'A fila de confecção está equilibrada com o horário laboratorial.'
+                  }
+                </p>
+              </div>
+              <span className="p-3 bg-card/40 border border-white/5 rounded-xl mt-4 w-fit">
+                {cap.isOverloaded ? <ShieldAlert size={24} /> : <CheckCircle2 size={24} />}
+              </span>
+            </div>
+
+            {/* Total Committed hours */}
+            <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">Horas Comprometidas</span>
+                <h3 className="text-3xl font-black text-foreground">{committedHours}h</h3>
+                <p className="text-xs text-muted-foreground">Soma estimada de todos os dentes/casos ativos.</p>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="mt-4 space-y-1">
+                <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+                  <span>Volume da Fila</span>
+                  <span>{cap.overloadPercent.toFixed(0)}%</span>
+                </div>
+                <div className="w-full bg-secondary/40 rounded-full h-2 overflow-hidden border border-white/5">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${cap.isOverloaded ? 'bg-rose-500' : 'bg-primary'}`} 
+                    style={{ width: `${Math.min(100, cap.overloadPercent)}%` }} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Net Available hours */}
+            <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">Horas Disponíveis (Semana)</span>
+                <h3 className="text-3xl font-black text-primary">{cap.netAvailableHours}h</h3>
+                <p className="text-xs text-muted-foreground">Feriados ou viagens reduzem esse tempo.</p>
+              </div>
+              
+              <div className="bg-secondary/45 p-3 rounded-xl border border-white/5 flex items-center gap-2.5 text-xs text-muted-foreground mt-4">
+                <Info size={14} className="text-primary shrink-0" />
+                <span>Bloqueios ativos nesta semana: {cap.blockedHours}h</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Productivity recommendations */}
+          <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-3">
+            <h4 className="font-bold text-base text-foreground">Diretrizes de Cronograma Laboratorial</h4>
+            <ul className="text-xs text-muted-foreground space-y-2 list-disc list-inside">
+              <li>Horário Padrão de Expediente: Segunda a Sexta comercial (8h às 12h, 13h30 às 18h) + Sábado de manhã (8h às 12h).</li>
+              <li>A capacidade máxima semanal líquida padrão é de <strong>44 horas de bancada</strong>.</li>
+              <li>Caso novos trabalhos entrem na zona de sobrecarga (faixa vermelha), defina os prazos finais de entrega com folga de 3 a 5 dias adicionais.</li>
+            </ul>
+          </div>
+        </div>
+      ) : (
+        /* CALENDAR EVENTS AND BLOCKAGES TAB */
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+          
+          {/* List of active blocks */}
+          <div className="glass-panel p-5 rounded-2xl border border-white/5 md:col-span-2 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-lg">Bloqueios & Feriados Ativos</h3>
+              <span className="text-xs text-muted-foreground font-semibold">({events.length} registrados)</span>
+            </div>
+
+            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+              {events.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-xs border border-dashed border-white/5 rounded-xl bg-card">
+                  Nenhum bloqueio de agenda configurado.
+                </div>
+              ) : (
+                events.map(ev => (
+                  <div key={ev.id} className="p-3 rounded-xl bg-secondary/35 border border-white/5 flex items-center justify-between hover:bg-secondary/65 transition-all">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground">{ev.title}</span>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase border ${getEventBadgeColor(ev.type)}`}>
+                          {ev.type}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Período: {new Date(ev.start_date).toLocaleDateString('pt-BR')} até {new Date(ev.end_date).toLocaleDateString('pt-BR')}
+                      </p>
+                      {ev.notes && <p className="text-[10px] font-medium text-muted-foreground">Nota: {ev.notes}</p>}
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteBlock(ev.id)}
+                      className="p-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-all"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Form to add block */}
+          <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h3 className="font-bold text-lg">Bloquear Agenda</h3>
+              
+              <form onSubmit={handleCreateBlock} className="space-y-3.5">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Título / Motivo
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={blockTitle}
+                    onChange={(e) => setBlockTitle(e.target.value)}
+                    placeholder="Ex: Feriado Tiradentes"
+                    className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-sm font-medium focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Tipo do Bloqueio
+                  </label>
+                  <select
+                    value={blockType}
+                    onChange={(e: any) => setBlockType(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-sm font-semibold focus:outline-none"
+                  >
+                    <option value="indisponibilidade">Indisponibilidade</option>
+                    <option value="feriado">Feriado</option>
+                    <option value="viagem">Viagem</option>
+                    <option value="bloqueio">Bloqueio Geral</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      Data Início
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-secondary border border-white/10 text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      Data Fim
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-secondary border border-white/10 text-xs font-semibold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Observações
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={blockNotes}
+                    onChange={(e) => setBlockNotes(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl bg-secondary border border-white/10 text-xs focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/95 text-white font-semibold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 glow-btn mt-4"
+                >
+                  <Plus size={14} />
+                  Adicionar Bloqueio
+                </button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+};
