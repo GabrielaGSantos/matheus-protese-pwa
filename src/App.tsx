@@ -9,6 +9,7 @@ import { ServicesScreen } from './components/ServicesScreen';
 import { FinanceScreen } from './components/FinanceScreen';
 import { AgendaScreen } from './components/AgendaScreen';
 import { DentistDashboard } from './components/DentistDashboard';
+import { LogsScreen } from './components/LogsScreen';
 
 const AppContent: React.FC = () => {
   const { user, loading, isAdmin } = useAuth();
@@ -65,6 +66,8 @@ const AppContent: React.FC = () => {
           return <FinanceScreen />;
         case 'agenda':
           return <AgendaScreen onSelectCase={handleSelectCase} />;
+        case 'logs':
+          return <LogsScreen />;
         default:
           return <DashboardScreen onSelectCase={handleSelectCase} />;
       }

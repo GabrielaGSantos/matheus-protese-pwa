@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { Case, CalendarEvent, Profile, CalendarEventType } from '../types';
 import { 
   CheckCircle2, Plus, Trash2, ShieldAlert, Info,
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Edit2
 } from 'lucide-react';
 
 interface AgendaScreenProps {
@@ -27,6 +27,9 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [blockNotes, setBlockNotes] = useState('');
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -137,29 +140,64 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
     if (!blockTitle || !startDate || !endDate) return;
 
     try {
-      await api.calendar.save({
-        id: '',
+      const payload: CalendarEvent = {
+        id: editingEventId || '',
         title: blockTitle,
         type: blockType,
         start_date: startDate,
         end_date: endDate,
         notes: blockNotes,
         created_at: new Date().toISOString()
-      });
+      };
+
+      if (blockType === 'consulta') {
+        payload.start_time = startTime || undefined;
+        payload.end_time = endTime || undefined;
+      }
+
+      await api.calendar.save(payload);
       setBlockTitle('');
       setStartDate('');
       setEndDate('');
       setBlockNotes('');
+      setStartTime('');
+      setEndTime('');
+      setEditingEventId(null);
       fetchData();
     } catch (err) {
       console.error(err);
     }
   };
 
+  const handleStartEditBlock = (ev: CalendarEvent) => {
+    setEditingEventId(ev.id);
+    setBlockTitle(ev.title);
+    setBlockType(ev.type);
+    setStartDate(ev.start_date);
+    setEndDate(ev.end_date);
+    setBlockNotes(ev.notes || '');
+    setStartTime(ev.start_time || '');
+    setEndTime(ev.end_time || '');
+    setActiveTab('blocks');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEventId(null);
+    setBlockTitle('');
+    setStartDate('');
+    setEndDate('');
+    setBlockNotes('');
+    setStartTime('');
+    setEndTime('');
+  };
+
   const handleDeleteBlock = async (id: string) => {
     if (!window.confirm('Excluir este bloqueio de agenda?')) return;
     try {
       await api.calendar.delete(id);
+      if (editingEventId === id) {
+        handleCancelEdit();
+      }
       fetchData();
     } catch (err) {
       console.error(err);
@@ -183,6 +221,9 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
     const today = new Date();
 
     events.forEach(ev => {
+      // Exclude neuroreab and consulta from subtracting capacity hours
+      if (ev.type === 'neuroreab' || ev.type === 'consulta') return;
+
       const start = new Date(ev.start_date);
       const end = new Date(ev.end_date);
       
@@ -215,6 +256,8 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
       viagem: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
       bloqueio: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
       indisponibilidade: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+      neuroreab: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
+      consulta: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
     };
     return styles[type];
   };
@@ -363,15 +406,28 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
 
                     <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[80px] pr-0.5 custom-scrollbar">
                       {/* Events/Blockages */}
-                      {dayEvents.map(ev => (
-                        <div 
-                          key={ev.id}
-                          className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 truncate"
-                          title={`${ev.title}: ${ev.notes || ''}`}
-                        >
-                          🚫 {ev.title}
-                        </div>
-                      ))}
+                      {dayEvents.map(ev => {
+                        const emojiMap: Record<string, string> = {
+                          feriado: '🎈',
+                          viagem: '✈️',
+                          bloqueio: '🚫',
+                          indisponibilidade: '📴',
+                          neuroreab: '🧠',
+                          consulta: '🩺'
+                        };
+                        const emoji = emojiMap[ev.type] || '🚫';
+                        const timeStr = ev.type === 'consulta' && ev.start_time ? ` (${ev.start_time})` : '';
+                        return (
+                          <div 
+                            key={ev.id}
+                            onClick={() => handleStartEditBlock(ev)}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 truncate cursor-pointer hover:bg-rose-100 transition-all"
+                            title={`${ev.title}: ${ev.notes || ''}`}
+                          >
+                            {emoji} {ev.title}{timeStr}
+                          </div>
+                        );
+                      })}
 
                       {/* Cases */}
                       {dayCases.map(c => {
@@ -428,17 +484,31 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                         )}
 
                         {/* Events */}
-                        {dayEvents.map(ev => (
-                          <div 
-                            key={ev.id}
-                            className="p-1.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 space-y-0.5"
-                          >
-                            <div className="flex items-center gap-1 text-[10px]">
-                              <span>🚫</span>
-                              <span className="truncate">{ev.title}</span>
+                        {dayEvents.map(ev => {
+                          const emojiMap: Record<string, string> = {
+                            feriado: '🎈',
+                            viagem: '✈️',
+                            bloqueio: '🚫',
+                            indisponibilidade: '📴',
+                            neuroreab: '🧠',
+                            consulta: '🩺'
+                          };
+                          const emoji = emojiMap[ev.type] || '🚫';
+                          const timeStr = ev.type === 'consulta' && ev.start_time ? ` (${ev.start_time})` : '';
+                          return (
+                            <div 
+                              key={ev.id}
+                              onClick={() => handleStartEditBlock(ev)}
+                              className="p-1.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 space-y-0.5 cursor-pointer hover:bg-rose-100 transition-all"
+                              title={`${ev.title}: ${ev.notes || ''}`}
+                            >
+                              <div className="flex items-center gap-1 text-[10px]">
+                                <span>{emoji}</span>
+                                <span className="truncate">{ev.title}{timeStr}</span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         {/* Cases */}
                         {dayCases.map(c => {
@@ -561,37 +631,61 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                   Nenhum bloqueio de agenda configurado.
                 </div>
               ) : (
-                events.map(ev => (
-                  <div key={ev.id} className="p-3 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-between hover:bg-slate-50 transition-all">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-slate-900">{ev.title}</span>
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase border ${getEventBadgeColor(ev.type)}`}>
-                          {ev.type}
-                        </span>
+                events.map(ev => {
+                  const emojiMap: Record<string, string> = {
+                    feriado: '🎈',
+                    viagem: '✈️',
+                    bloqueio: '🚫',
+                    indisponibilidade: '📴',
+                    neuroreab: '🧠',
+                    consulta: '🩺'
+                  };
+                  const emoji = emojiMap[ev.type] || '🚫';
+                  const timeStr = ev.type === 'consulta' && ev.start_time ? ` (${ev.start_time}${ev.end_time ? ` - ${ev.end_time}` : ''})` : '';
+                  return (
+                    <div key={ev.id} className="p-3 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-between hover:bg-slate-50 transition-all">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-slate-900">{emoji} {ev.title}</span>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase border ${getEventBadgeColor(ev.type)}`}>
+                            {ev.type}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Período: {new Date(ev.start_date).toLocaleDateString('pt-BR')} até {new Date(ev.end_date).toLocaleDateString('pt-BR')}{timeStr}
+                        </p>
+                        {ev.notes && <p className="text-[10px] font-medium text-muted-foreground">Nota: {ev.notes}</p>}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        Período: {new Date(ev.start_date).toLocaleDateString('pt-BR')} até {new Date(ev.end_date).toLocaleDateString('pt-BR')}
-                      </p>
-                      {ev.notes && <p className="text-[10px] font-medium text-muted-foreground">Nota: {ev.notes}</p>}
-                    </div>
 
-                    <button
-                      onClick={() => handleDeleteBlock(ev.id)}
-                      className="p-1.5 rounded-lg bg-white text-rose-500 border border-[#E2E8F0] hover:bg-rose-50 hover:border-rose-200 transition-all"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleStartEditBlock(ev)}
+                          className="p-1.5 rounded-lg bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50 transition-all cursor-pointer"
+                          title="Editar"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBlock(ev.id)}
+                          className="p-1.5 rounded-lg bg-white text-rose-500 border border-[#E2E8F0] hover:bg-rose-50 hover:border-rose-200 transition-all"
+                          title="Excluir"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
 
-          {/* Form to add block */}
+          {/* Form to add/edit block */}
           <div className="glass-panel p-5 space-y-4 flex flex-col justify-between">
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-slate-900">Bloquear Agenda</h3>
+              <h3 className="font-semibold text-sm text-slate-900">
+                {editingEventId ? 'Editar Bloqueio' : 'Bloquear Agenda'}
+              </h3>
               
               <form onSubmit={handleCreateBlock} className="space-y-3.5">
                 <div>
@@ -614,15 +708,52 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                   </label>
                   <select
                     value={blockType}
-                    onChange={(e: any) => setBlockType(e.target.value)}
+                    onChange={(e: any) => {
+                      setBlockType(e.target.value);
+                      if (e.target.value !== 'consulta') {
+                        setStartTime('');
+                        setEndTime('');
+                      }
+                    }}
                     className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
                   >
                     <option value="indisponibilidade">Indisponibilidade</option>
                     <option value="feriado">Feriado</option>
                     <option value="viagem">Viagem</option>
                     <option value="bloqueio">Bloqueio Geral</option>
+                    <option value="neuroreab">Neuroreabilitação</option>
+                    <option value="consulta">Consulta Médica</option>
                   </select>
                 </div>
+
+                {blockType === 'consulta' && (
+                  <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Hora Início
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Hora Fim
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -663,13 +794,25 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold py-2.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 mt-3"
-                >
-                  <Plus size={14} />
-                  Adicionar Bloqueio
-                </button>
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="w-full bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold py-2.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    {editingEventId ? <CheckCircle2 size={14} /> : <Plus size={14} />}
+                    {editingEventId ? 'Salvar Alterações' : 'Adicionar Bloqueio'}
+                  </button>
+
+                  {editingEventId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2 rounded-lg text-xs transition-all border border-[#E2E8F0] cursor-pointer"
+                    >
+                      Cancelar Edição
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>

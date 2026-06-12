@@ -101,13 +101,15 @@ export interface Case {
   updated_at: string;
 }
 
-export type CalendarEventType = 'feriado' | 'viagem' | 'bloqueio' | 'indisponibilidade';
+export type CalendarEventType = 'feriado' | 'viagem' | 'bloqueio' | 'indisponibilidade' | 'neuroreab' | 'consulta';
 
 export interface CalendarEvent {
   id: string;
   title: string;
   start_date: string;
   end_date: string;
+  start_time?: string;
+  end_time?: string;
   type: CalendarEventType;
   notes?: string;
   created_at: string;

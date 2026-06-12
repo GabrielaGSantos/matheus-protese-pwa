@@ -14,7 +14,8 @@ import {
   User,
   PlusCircle,
   FileText,
-  KeyRound
+  KeyRound,
+  History
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -42,6 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
     { id: 'services', label: 'Serviços', icon: Wrench },
     { id: 'finance', label: 'Financeiro & Cobrança', icon: DollarSign },
     { id: 'agenda', label: 'Agenda & Produção', icon: Calendar },
+    { id: 'logs', label: 'Logs de Atividades', icon: History },
   ] : [
     { id: 'dentist-cases', label: 'Meus Casos', icon: FileText },
     { id: 'dentist-new-case', label: 'Solicitar Caso', icon: PlusCircle },

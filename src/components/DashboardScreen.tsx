@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { api } from '../services/api';
+import { api, recordActivity } from '../services/api';
 import type { Case, Profile } from '../types';
 import { 
   DollarSign, Briefcase, Clock, AlertTriangle, 
@@ -91,7 +91,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
               dentistNameMap[normClient] = dentistId;
             }
 
-            const rawDate = row['Data Recebido'];
+            const rawDate = row['Data Recebido'] || row['Data'] || row['data'] || row['Data recebido'];
             const isoDateStr = getJsDate(rawDate);
             const datePart = isoDateStr.split('T')[0];
             const yearMonth = datePart.slice(0, 7).replace('-', '');
@@ -154,6 +154,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
         localStorage.setItem('matheus_protese_profiles', JSON.stringify(profiles));
         localStorage.setItem('matheus_protese_cases', JSON.stringify(allCases));
 
+        await recordActivity('importacao', '', { count: allCases.length });
+
         alert(`Planilha importada com sucesso! ${allCases.length} casos e novos dentistas foram carregados.`);
         fetchData();
       } catch (err) {
@@ -199,7 +201,26 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
     })
     .reduce((sum, c) => sum + c.total_value, 0);
 
+  const monthlyReceived = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
+    })
+    .reduce((sum, c) => sum + (c.paid_value || 0), 0);
 
+  const monthlyPending = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
+    })
+    .reduce((sum, c) => sum + (c.remaining_value || 0), 0);
+
+  const otherMonthsPending = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && !c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
+    })
+    .reduce((sum, c) => sum + (c.remaining_value || 0), 0);
 
   const activeCasesCount = cases.filter(c => {
     const year = new Date(c.created_at).getFullYear();
@@ -350,12 +371,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* KPI: Rendimento Bruto Mensal */}
         <div className="glass-panel p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Bruto Mensal</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Mensal</span>
             <h3 className="text-xl font-bold text-slate-900">{formatCurrency(monthlyGrossBilled)}</h3>
             <p className="text-[10px] text-slate-400 font-medium mt-1">
               Faturamento bruto de {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
@@ -363,6 +384,39 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
           </div>
           <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
             <DollarSign size={16} />
+          </div>
+        </div>
+
+        {/* KPI: Recebido no Mês */}
+        <div className="glass-panel p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Recebido no Mês</span>
+            <h3 className="text-xl font-bold text-emerald-600">{formatCurrency(monthlyReceived)}</h3>
+            <p className="text-[10px] text-slate-400 font-medium mt-1">
+              Total pago este mês
+            </p>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <CheckCircle size={16} />
+          </div>
+        </div>
+
+        {/* KPI: Falta Receber */}
+        <div className="glass-panel p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Falta Receber (Mês)</span>
+            <h3 className="text-xl font-bold text-amber-600">{formatCurrency(monthlyPending)}</h3>
+            <p className="text-[10px] text-slate-400 font-medium mt-1">
+              Saldo pendente deste mês
+            </p>
+            {otherMonthsPending > 0 && (
+              <p className="text-[9px] text-rose-500 font-bold mt-1.5 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded w-fit">
+                ⚠️ Outros meses pendentes: {formatCurrency(otherMonthsPending)}
+              </p>
+            )}
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+            <Clock size={16} />
           </div>
         </div>
 

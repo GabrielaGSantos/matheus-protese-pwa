@@ -4,7 +4,7 @@ import type { Case, Profile, Service, CaseStatus, FinancialStatus, OdontogramSel
 import { Odontogram } from './Odontogram';
 import { 
   Search, Plus, Edit2, Trash2, Calendar, 
-  X, FolderOpen, History 
+  X, FolderOpen, History, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 
 interface CasesScreenProps {
@@ -384,6 +384,55 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   );
 
   const isAllSelectedOnPage = paginatedCases.length > 0 && paginatedCases.every(c => selectedCaseIds[c.id]);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let start = currentPage - 2;
+      let end = currentPage + 2;
+      
+      if (start < 1) {
+        end = end + (1 - start);
+        start = 1;
+      }
+      if (end > totalPages) {
+        start = start - (end - totalPages);
+        end = totalPages;
+      }
+      
+      start = Math.max(1, start);
+      end = Math.min(totalPages, end);
+      
+      if (start > 1) {
+        pages.push(1);
+        if (start > 2) {
+          pages.push('... ');
+        }
+      }
+      
+      for (let i = start; i <= end; i++) {
+        if (i !== 1 && i !== totalPages) {
+          pages.push(i);
+        } else if (i === 1 && !pages.includes(1)) {
+          pages.push(1);
+        }
+      }
+      
+      if (end < totalPages) {
+        if (end < totalPages - 1) {
+          pages.push(' ...');
+        }
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   const handleToggleSelectAllOnPage = () => {
     if (isAllSelectedOnPage) {
@@ -1113,6 +1162,40 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         <div className="text-center py-12 text-[#64748B] text-sm font-medium">Carregando lista de casos...</div>
       ) : (
         <div className="space-y-4">
+          {/* Banner de Seleção Lote de todas as páginas */}
+          {isAllSelectedOnPage && filteredCases.length > paginatedCases.length && (
+            <div className="bg-teal-50 border border-teal-100 rounded-lg p-3 text-xs text-[#0F766E] font-medium flex items-center justify-between animate-fade-in shadow-sm">
+              <span>
+                Todos os <strong>{paginatedCases.length}</strong> casos desta página estão selecionados.
+              </span>
+              {selectedCount < filteredCases.length ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds: Record<string, boolean> = {};
+                    filteredCases.forEach(c => {
+                      allIds[c.id] = true;
+                    });
+                    setSelectedCaseIds(allIds);
+                  }}
+                  className="underline hover:text-[#115E59] font-bold cursor-pointer bg-transparent border-none p-0"
+                >
+                  Selecionar todos os {filteredCases.length} casos correspondentes aos filtros.
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <span>Todos os <strong>{filteredCases.length}</strong> casos correspondentes aos filtros foram selecionados.</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCaseIds({})}
+                    className="underline hover:text-[#115E59] font-bold cursor-pointer bg-transparent border-none p-0"
+                  >
+                    Limpar seleção
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Desktop Table View */}
           <div className="hidden lg:block overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
@@ -1269,25 +1352,32 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               <div>
                 Exibindo {Math.min(sortedCases.length, (currentPage - 1) * itemsPerPage + 1)} a {Math.min(sortedCases.length, currentPage * itemsPerPage)} de {sortedCases.length} casos
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <button
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  className="px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer font-semibold"
+                  className="p-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title="Anterior"
                 >
-                  Anterior
+                  <ChevronLeft size={16} />
                 </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const pageNum = i + 1;
+                <div className="flex items-center gap-1.5">
+                  {getPageNumbers().map((pageNum, idx) => {
+                    if (typeof pageNum === 'string') {
+                      return (
+                        <span key={`ell-${idx}`} className="px-1 text-slate-400 font-semibold select-none">
+                          {pageNum.trim()}
+                        </span>
+                      );
+                    }
                     const isCurrent = pageNum === currentPage;
                     return (
                       <button
                         key={pageNum}
                         type="button"
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all cursor-pointer font-semibold ${
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all cursor-pointer font-bold ${
                           isCurrent
                             ? 'border-[#0F766E] bg-[#ECFDF5] text-[#0F766E]'
                             : 'border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-600'
@@ -1302,9 +1392,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  className="px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer font-semibold"
+                  className="p-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title="Próximo"
                 >
-                  Próximo
+                  <ChevronRight size={16} />
                 </button>
               </div>
             </div>

@@ -236,6 +236,47 @@ const saveMockData = <T>(key: string, data: T[]): void => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
+export const recordActivity = async (action: string, caseId: string = '', newData: any = null, prevData: any = null) => {
+  if (useMockData) {
+    try {
+      const currentUserStr = localStorage.getItem(MOCK_STORAGE_KEYS.CURRENT_USER);
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+      const userId = currentUser ? currentUser.id : 'admin-1';
+
+      const historyLogs = getMockData<CaseHistory>(MOCK_STORAGE_KEYS.HISTORY);
+      const newLog: CaseHistory = {
+        id: `h-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        case_id: caseId,
+        user_id: userId,
+        action: action,
+        previous_data: prevData,
+        new_data: newData,
+        created_at: new Date().toISOString()
+      };
+      historyLogs.push(newLog);
+      saveMockData(MOCK_STORAGE_KEYS.HISTORY, historyLogs);
+    } catch (err) {
+      console.error('Error saving activity log:', err);
+    }
+  } else {
+    try {
+      const { data: { user } } = await supabase!.auth.getUser();
+      if (user) {
+        await supabase!.from('case_history').insert([{
+          case_id: caseId || null,
+          user_id: user.id,
+          action: action,
+          previous_data: prevData,
+          new_data: newData,
+          created_at: new Date().toISOString()
+        }]);
+      }
+    } catch (err) {
+      console.error('Error saving Supabase activity log:', err);
+    }
+  }
+};
+
 // =========================================================================
 // API SERVICES EXPORT
 // =========================================================================
@@ -543,7 +584,7 @@ export const api = {
       return data;
     },
 
-    async save(caseItem: Case, historyUser: string): Promise<Case> {
+    async save(caseItem: Case, _historyUser: string): Promise<Case> {
       if (useMockData) {
         const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
         const isEdit = cases.some(c => c.id === caseItem.id);
@@ -565,18 +606,7 @@ export const api = {
         saveMockData(MOCK_STORAGE_KEYS.CASES, cases);
 
         // Record history log
-        const historyLogs = getMockData<CaseHistory>(MOCK_STORAGE_KEYS.HISTORY);
-        const newLog: CaseHistory = {
-          id: `h-${Date.now()}`,
-          case_id: caseItem.id,
-          user_id: historyUser,
-          action: isEdit ? 'edit' : 'create',
-          previous_data: oldCase ? JSON.parse(JSON.stringify(oldCase)) : null,
-          new_data: JSON.parse(JSON.stringify(caseItem)),
-          created_at: new Date().toISOString()
-        };
-        historyLogs.push(newLog);
-        saveMockData(MOCK_STORAGE_KEYS.HISTORY, historyLogs);
+        recordActivity(isEdit ? 'edit' : 'create', caseItem.id, JSON.parse(JSON.stringify(caseItem)), oldCase ? JSON.parse(JSON.stringify(oldCase)) : null);
 
         return caseItem;
       }
@@ -594,8 +624,10 @@ export const api = {
     async delete(id: string): Promise<void> {
       if (useMockData) {
         const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
+        const oldCase = cases.find(c => c.id === id);
         const filtered = cases.filter(c => c.id !== id);
         saveMockData(MOCK_STORAGE_KEYS.CASES, filtered);
+        recordActivity('delete', id, null, oldCase ? JSON.parse(JSON.stringify(oldCase)) : null);
         return;
       }
       const { error } = await supabase!
@@ -626,13 +658,16 @@ export const api = {
       if (useMockData) {
         const events = getMockData<CalendarEvent>(MOCK_STORAGE_KEYS.CALENDAR_EVENTS);
         const idx = events.findIndex(e => e.id === event.id);
-        if (idx >= 0) {
+        const isEdit = idx >= 0;
+        const oldEvent = isEdit ? events[idx] : null;
+        if (isEdit) {
           events[idx] = event;
         } else {
           event.id = event.id || `ev-${Date.now()}`;
           events.push(event);
         }
         saveMockData(MOCK_STORAGE_KEYS.CALENDAR_EVENTS, events);
+        recordActivity(isEdit ? 'edit_block' : 'create_block', event.id, JSON.parse(JSON.stringify(event)), oldEvent ? JSON.parse(JSON.stringify(oldEvent)) : null);
         return event;
       }
       const { data, error } = await supabase!
@@ -647,8 +682,10 @@ export const api = {
     async delete(id: string): Promise<void> {
       if (useMockData) {
         const events = getMockData<CalendarEvent>(MOCK_STORAGE_KEYS.CALENDAR_EVENTS);
+        const oldEvent = events.find(e => e.id === id);
         const filtered = events.filter(e => e.id !== id);
         saveMockData(MOCK_STORAGE_KEYS.CALENDAR_EVENTS, filtered);
+        recordActivity('delete_block', id, null, oldEvent ? JSON.parse(JSON.stringify(oldEvent)) : null);
         return;
       }
       const { error } = await supabase!
@@ -686,6 +723,36 @@ export const api = {
           profiles:user_id (full_name)
         `)
         .eq('case_id', caseId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data.map((d: any) => ({
+        ...d,
+        user_name: d.profiles?.full_name || 'Desconhecido'
+      }));
+    },
+
+    async listAll(): Promise<CaseHistory[]> {
+      if (useMockData) {
+        const allLogs = getMockData<CaseHistory>(MOCK_STORAGE_KEYS.HISTORY);
+        const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
+        return allLogs
+          .map(h => {
+            const user = profiles.find(p => p.id === h.user_id);
+            return {
+              ...h,
+              user_name: user ? user.full_name : 'Sistema/Desconhecido'
+            };
+          })
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+      
+      const { data, error } = await supabase!
+        .from('case_history')
+        .select(`
+          *,
+          profiles:user_id (full_name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
