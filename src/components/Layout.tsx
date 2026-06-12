@@ -45,58 +45,58 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background text-foreground transition-all duration-300">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#F8FAFC] text-[#0F172A] transition-all duration-300">
       {/* Mobile Top Header */}
-      <header className="md:hidden glass-panel sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b border-white/10">
+      <header className="md:hidden bg-white sticky top-0 z-50 flex items-center justify-between px-5 py-3.5 border-b border-[#E2E8F0] shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center text-white font-bold text-lg shadow-md">
+          <div className="w-8 h-8 rounded-lg bg-[#0F766E] flex items-center justify-center text-white font-bold text-lg shadow-sm">
             M
           </div>
-          <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+          <span className="font-bold text-lg tracking-tight text-[#0F172A]">
             Iorc Lab
           </span>
         </div>
         
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg bg-secondary/80 text-foreground hover:bg-secondary transition-all"
+          className="p-2 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 transition-all border border-[#E2E8F0]"
         >
-          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
       </header>
 
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex md:w-64 flex-col glass-panel border-r border-white/10 sticky top-0 h-screen p-6 shadow-lg z-40">
+      <aside className="hidden md:flex md:w-60 flex-col bg-white border-r border-[#E2E8F0] sticky top-0 h-screen p-5 z-40">
         {/* Logo */}
-        <div className="flex items-center gap-3 mb-8 px-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20">
+        <div className="flex items-center gap-2.5 mb-6 px-1.5">
+          <div className="w-8.5 h-8.5 rounded-lg bg-[#0F766E] flex items-center justify-center text-white font-bold text-lg">
             M
           </div>
           <div>
-            <h1 className="font-extrabold text-lg leading-tight bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+            <h1 className="font-bold text-sm leading-tight text-[#0F172A]">
               {user.role === 'secretary' ? 'Secretária' : 'Dr. Matheus'}
             </h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
               Odontologia Digital
             </p>
           </div>
         </div>
 
         {/* User Badge */}
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/40 border border-white/5 mb-6">
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <User size={18} />
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-[#E2E8F0] mb-6">
+          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+            <User size={16} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-semibold truncate text-foreground">{user.full_name}</h4>
-            <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-0.5 bg-primary/20 text-primary-foreground text-primary dark:bg-primary/30">
+            <h4 className="text-xs font-semibold truncate text-[#0F172A]">{user.full_name}</h4>
+            <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-0.5 bg-[#ECFDF5] text-[#0F766E] border border-emerald-100">
               {user.role === 'admin' ? 'Matheus (Admin)' : user.role === 'secretary' ? 'Secretária' : 'Dentista'}
             </span>
           </div>
         </div>
 
         {/* Nav Links */}
-        <nav className="flex-1 space-y-1.5">
+        <nav className="flex-1 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -104,13 +104,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
               <button
                 key={item.id}
                 onClick={() => handleNav(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
                   isActive 
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 translate-x-1' 
-                    : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
+                    ? 'bg-[#ECFDF5] text-[#0F766E] font-semibold' 
+                    : 'text-[#64748B] hover:bg-slate-50 hover:text-[#0F172A]'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-white' : 'text-muted-foreground'} />
+                <Icon size={16} className={isActive ? 'text-[#0F766E]' : 'text-[#64748B]'} />
                 {item.label}
               </button>
             );
@@ -118,12 +118,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
         </nav>
 
         {/* Footer / Logout */}
-        <div className="pt-4 border-t border-white/10">
+        <div className="pt-4 border-t border-[#E2E8F0]">
           <button 
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-300"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 transition-all duration-200"
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
             Sair da Conta
           </button>
         </div>
@@ -131,34 +131,34 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
 
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-background/90 backdrop-blur-lg z-40 flex flex-col p-6 animate-fade-in">
+        <div className="md:hidden fixed inset-0 bg-white z-40 flex flex-col p-5 animate-fade-in border-r border-[#E2E8F0]">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-8 h-8 rounded-lg bg-[#0F766E] flex items-center justify-center text-white font-bold text-lg">
                 M
               </div>
-              <span className="font-extrabold text-xl">Iorc Lab</span>
+              <span className="font-bold text-lg text-[#0F172A]">Iorc Lab</span>
             </div>
             <button 
               onClick={() => setMobileMenuOpen(false)}
-              className="p-2 rounded-lg bg-secondary text-foreground"
+              className="p-2 rounded-lg bg-slate-50 border border-[#E2E8F0] text-slate-600"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
           {/* Mobile User Details */}
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/50 mb-6">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <User size={20} />
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-[#E2E8F0] mb-6">
+            <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+              <User size={18} />
             </div>
             <div>
-              <h4 className="font-bold text-base">{user.full_name}</h4>
-              <span className="text-xs font-semibold text-primary">{isAdmin ? 'Admin' : 'Dentista'}</span>
+              <h4 className="font-semibold text-sm text-[#0F172A]">{user.full_name}</h4>
+              <span className="text-xs font-semibold text-[#0F766E]">{isAdmin ? 'Admin' : 'Dentista'}</span>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-2">
+          <nav className="flex-1 space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentTab === item.id;
@@ -166,13 +166,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
                 <button
                   key={item.id}
                   onClick={() => handleNav(item.id)}
-                  className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl text-base font-semibold transition-all ${
+                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
                     isActive 
-                      ? 'bg-primary text-primary-foreground shadow-lg' 
-                      : 'text-muted-foreground hover:bg-secondary'
+                      ? 'bg-[#ECFDF5] text-[#0F766E]' 
+                      : 'text-[#64748B] hover:bg-slate-50 hover:text-[#0F172A]'
                   }`}
                 >
-                  <Icon size={20} />
+                  <Icon size={18} />
                   {item.label}
                 </button>
               );
@@ -181,16 +181,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
 
           <button 
             onClick={logout}
-            className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 transition-all mt-4"
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all mt-4"
           >
-            <LogOut size={20} />
+            <LogOut size={18} />
             Sair da Conta
           </button>
         </div>
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-full">
+      <main className="flex-1 p-5 md:p-8 overflow-y-auto max-w-full">
         <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
           {children}
         </div>

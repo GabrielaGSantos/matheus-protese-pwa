@@ -4,7 +4,7 @@ import type { Case, Service, OdontogramSelection, CaseStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
 import { 
-  AlertCircle, Calendar, DollarSign, 
+  AlertCircle, DollarSign, 
   Clock, CheckCircle, FolderOpen, Send, Paperclip 
 } from 'lucide-react';
 
@@ -249,60 +249,71 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
     dentistAllowedNames.includes(s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
   );
 
+  const getServiceNames = (caseItem: Case) => {
+    if (!caseItem.selected_services || caseItem.selected_services.length === 0) {
+      const matched = services.find(s => s.default_value === caseItem.total_value);
+      return matched ? matched.name : 'Outro';
+    }
+    return caseItem.selected_services
+      .map(id => services.find(s => s.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Portal do Dentista</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Portal do Dentista</h2>
+          <p className="text-slate-500 text-xs mt-1">
             Envie novos pedidos de prótese, envie escaneamentos/arquivos e controle seu extrato financeiro.
           </p>
         </div>
 
         {/* Total Owed card */}
-        <div className="bg-primary/10 border border-primary/20 px-5 py-3 rounded-2xl flex items-center gap-3 w-fit">
-          <div className="p-2 bg-primary rounded-xl text-white">
-            <DollarSign size={18} />
+        <div className="bg-white border border-[#E2E8F0] px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-3 w-fit">
+          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
+            <DollarSign size={16} />
           </div>
           <div>
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Saldo Devedor Geral</span>
-            <span className="text-base font-black text-foreground">R$ {totalOwed.toFixed(2)}</span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo Devedor Geral</span>
+            <span className="text-base font-bold text-slate-900">R$ {totalOwed.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 w-fit gap-1 bg-secondary/30 p-1.5 rounded-xl">
+      <div className="flex border-b border-[#E2E8F0] w-full gap-6 mb-2 pb-px">
         <button
           onClick={() => {
             setActiveTab('my-cases');
             setEditingCase(null);
           }}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'my-cases'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Meus Casos
         </button>
         <button
           onClick={() => setActiveTab('new-case')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'new-case'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           {editingCase ? 'Editar Solicitação' : 'Solicitar Novo Trabalho'}
         </button>
         <button
           onClick={() => setActiveTab('change-password')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'change-password'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Alterar Senha
@@ -313,121 +324,154 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         /* MY CASES TAB */
         <div className="space-y-6 animate-fade-in">
           {loading ? (
-            <div className="text-center py-12 text-muted-foreground">Carregando seus casos...</div>
+            <div className="text-center py-12 text-slate-500 text-sm font-medium">Carregando seus casos...</div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
               
-              {/* Active Cases column */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                  <Clock size={18} className="text-primary" />
-                  Pedidos em Andamento ({activeCases.length})
-                </h3>
-
-                <div className="space-y-3">
-                  {activeCases.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground text-xs border border-dashed border-white/5 bg-card rounded-2xl">
-                      Nenhum pedido ativo no momento.
-                    </div>
-                  ) : (
-                    activeCases.map(c => (
-                      <div key={c.id} className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4 hover:shadow-md transition-all">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[10px] text-muted-foreground font-bold">{c.id}</span>
-                            <h4 className="font-bold text-base text-foreground leading-snug">{c.patient_name}</h4>
-                          </div>
-                          
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => startEdit(c)}
-                              className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-secondary hover:bg-secondary/80 border border-white/5 text-foreground transition-all"
-                            >
-                              Editar
-                            </button>
-                            {c.google_drive_folder_url && (
-                              <a
-                                href={c.google_drive_folder_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all"
-                              >
-                                <FolderOpen size={14} />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-xs py-3 border-t border-b border-white/5">
-                          <div>
-                            <span className="text-muted-foreground block text-[9px] font-bold uppercase tracking-wider">Status Clínico</span>
-                            {getStatusBadge(c.status)}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground block text-[9px] font-bold uppercase tracking-wider">Previsão Entrega</span>
-                            <span className="font-bold text-foreground flex items-center gap-1 mt-0.5">
-                              <Calendar size={12} className="text-muted-foreground" />
-                              {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="text-muted-foreground">Custo Total:</span>
-                          <span className="text-foreground font-bold text-sm">
-                            R$ {c.total_value.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
+              {/* Active Cases Table */}
+              <div className="glass-panel p-5 space-y-4">
+                <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-3.5">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                      <Clock size={16} className="text-[#0F766E]" />
+                      Pedidos em Andamento
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Trabalhos solicitados e atualmente em produção ou análise.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 px-2 py-0.5 rounded-md">
+                    {activeCases.length} Ativo{activeCases.length > 1 ? 's' : ''}
+                  </span>
                 </div>
+
+                {activeCases.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 bg-slate-50 rounded-lg">
+                    Nenhum pedido ativo no momento.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <tr>
+                          <th className="p-3">ID do Caso</th>
+                          <th className="p-3">Paciente</th>
+                          <th className="p-3">Procedimento(s)</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Previsão</th>
+                          <th className="p-3">Custo Total</th>
+                          <th className="p-3 text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E2E8F0]">
+                        {activeCases.map(c => (
+                          <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                            <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                            <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
+                            <td className="p-3 text-slate-600 font-medium">{getServiceNames(c)}</td>
+                            <td className="p-3">{getStatusBadge(c.status)}</td>
+                            <td className="p-3 text-slate-500 font-medium font-mono">
+                              {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
+                            </td>
+                            <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
+                            <td className="p-3 text-right">
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  onClick={() => startEdit(c)}
+                                  className="inline-flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all cursor-pointer"
+                                >
+                                  Editar
+                                </button>
+                                {c.google_drive_folder_url && (
+                                  <a
+                                    href={c.google_drive_folder_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center p-1.5 rounded-md bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 hover:bg-[#ECFDF5]/80 transition-all cursor-pointer"
+                                    title="Google Drive"
+                                  >
+                                    <FolderOpen size={13} />
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
-              {/* Finalized Cases column */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                  <CheckCircle size={18} className="text-emerald-500" />
-                  Trabalhos Concluídos ({finalizedCases.length})
-                </h3>
-
-                <div className="space-y-3">
-                  {finalizedCases.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground text-xs border border-dashed border-white/5 bg-card rounded-2xl">
-                      Nenhum trabalho concluído ainda.
-                    </div>
-                  ) : (
-                    finalizedCases.map(c => (
-                      <div key={c.id} className="glass-panel p-5 rounded-2xl border border-white/5 opacity-85 hover:opacity-100 hover:shadow-md transition-all space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[10px] text-muted-foreground font-bold">{c.id}</span>
-                            <h4 className="font-bold text-base text-foreground leading-snug">{c.patient_name}</h4>
-                          </div>
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-extrabold uppercase tracking-widest">
-                            Entregue / Pronto
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between text-xs py-2 border-t border-b border-white/5">
-                          <div>
-                            <span className="text-muted-foreground block text-[9px] font-bold uppercase tracking-wider">Pago</span>
-                            <span className="font-bold text-emerald-500">R$ {c.paid_value.toFixed(2)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground block text-[9px] font-bold uppercase tracking-wider">Aberto</span>
-                            <span className="font-bold text-foreground">R$ {c.remaining_value.toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="text-muted-foreground">Valor Matheus:</span>
-                          <span className="text-foreground font-bold">R$ {c.value_matheus.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
+              {/* Finalized Cases Table */}
+              <div className="glass-panel p-5 space-y-4">
+                <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-3.5">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                      <CheckCircle size={16} className="text-emerald-500" />
+                      Trabalhos Concluídos
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Casos entregues ou prontos para retirada/envio.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold bg-[#ECFDF5] text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-md">
+                    {finalizedCases.length} Concluído{finalizedCases.length > 1 ? 's' : ''}
+                  </span>
                 </div>
+
+                {finalizedCases.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 bg-slate-50 rounded-lg">
+                    Nenhum trabalho concluído ainda.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <tr>
+                          <th className="p-3">ID do Caso</th>
+                          <th className="p-3">Paciente</th>
+                          <th className="p-3">Procedimento(s)</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Valor Total</th>
+                          <th className="p-3">Pago</th>
+                          <th className="p-3">Aberto</th>
+                          <th className="p-3 text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E2E8F0]">
+                        {finalizedCases.map(c => (
+                          <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                            <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                            <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
+                            <td className="p-3 text-slate-600 font-medium">{getServiceNames(c)}</td>
+                            <td className="p-3">
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-extrabold uppercase tracking-wide">
+                                {c.status === 'entregue' ? 'Entregue' : 'Finalizado'}
+                              </span>
+                            </td>
+                            <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
+                            <td className="p-3 font-semibold text-emerald-600">R$ {c.paid_value.toFixed(2)}</td>
+                            <td className="p-3 font-semibold text-slate-700">R$ {c.remaining_value.toFixed(2)}</td>
+                            <td className="p-3 text-right">
+                              {c.google_drive_folder_url && (
+                                <a
+                                  href={c.google_drive_folder_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 hover:bg-[#ECFDF5]/80 transition-all cursor-pointer"
+                                  title="Google Drive"
+                                >
+                                  <FolderOpen size={13} />
+                                </a>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -437,29 +481,29 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
 
       {activeTab === 'new-case' && (
         /* SOLICITAR NOVO TRABALHO TAB */
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 max-w-2xl animate-fade-in space-y-6">
+        <div className="glass-panel p-5 max-w-2xl animate-fade-in space-y-5">
           <div>
-            <h3 className="text-lg font-bold">
+            <h3 className="text-base font-bold text-slate-900">
               {editingCase ? 'Editar Solicitação' : 'Nova Solicitação de Serviço'}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-500 mt-1">
               Cadastre o nome do paciente, selecione os dentes e insira observações para o Dr. Matheus.
             </p>
           </div>
 
           {/* Alert / Informational disclaimer */}
-          <div className="p-4 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex gap-3 text-xs leading-relaxed font-medium">
-            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-lg bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] flex gap-3 text-xs leading-relaxed font-medium">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <p>
               <strong>Atenção:</strong> A data solicitada abaixo é apenas uma indicação da sua necessidade de agenda. 
               A data oficial de entrega será analisada e confirmada pelo Dr. Matheus de acordo com a fila de produção.
             </p>
           </div>
 
-          <form onSubmit={handleCreateCase} className="space-y-6">
+          <form onSubmit={handleCreateCase} className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                   Nome do Paciente
                 </label>
                 <input
@@ -467,13 +511,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                   required
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="Nome do paciente (apenas nome)"
-                  className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-medium"
+                  placeholder="Nome do paciente"
+                  className="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                   Data de Entrega Solicitada
                 </label>
                 <input
@@ -481,21 +525,21 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                   required
                   value={requestedDate}
                   onChange={(e) => setRequestedDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-medium"
+                  className="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
                 />
               </div>
             </div>
 
             {/* Checklist of allowed services (multi-selection, hidden prices) */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
                 Procedimento(s) Requerido(s) (Selecione um ou mais)
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-secondary/10 p-4 rounded-xl border border-white/5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50/50 p-4 rounded-lg border border-[#E2E8F0]">
                 {dentistServices.map(s => {
                   const isChecked = !!selectedServices[s.id];
                   return (
-                    <div key={s.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-card border border-white/5 hover:bg-secondary/40 transition-all">
+                    <div key={s.id} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all">
                       <input
                         type="checkbox"
                         id={`dentist-serv-${s.id}`}
@@ -506,9 +550,9 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                             [s.id]: e.target.checked
                           });
                         }}
-                        className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                       />
-                      <label htmlFor={`dentist-serv-${s.id}`} className="text-xs font-semibold text-foreground cursor-pointer flex-1">
+                      <label htmlFor={`dentist-serv-${s.id}`} className="text-xs font-medium text-slate-700 cursor-pointer flex-1">
                         {s.name}
                       </label>
                     </div>
@@ -519,15 +563,15 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
 
             {/* Odontogram selector */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Selecione os elementos
+              <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
+                Selecione os elementos no Odontograma FDI
               </label>
               <Odontogram value={teethSelection} onChange={setTeethSelection} />
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                 Observações Clínicas / Recomendações
               </label>
               <textarea
@@ -535,13 +579,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                 value={dentistNotes}
                 onChange={(e) => setDentistNotes(e.target.value)}
                 placeholder="Insira detalhes adicionais sobre cor, material, espessura ou particularidades..."
-                className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm"
+                className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
               />
             </div>
 
             {/* Warning note for file uploads */}
-            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground font-semibold flex items-center gap-2">
-              <FolderOpen size={16} className="text-primary shrink-0" />
+            <div className="p-3 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] font-medium flex items-center gap-2">
+              <FolderOpen size={16} className="text-[#0F766E] shrink-0" />
               <span>
                 Os arquivos enviados serão salvos na pasta correspondente no Google Drive: <strong>Fotos</strong> para imagens e <strong>Escaneamento</strong> para arquivos 3D.
               </span>
@@ -550,12 +594,12 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
             {/* File Upload zones (Separate Fotos / Escaneamentos) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Fotos Clínicas zone */}
-              <div className="p-5 rounded-2xl border border-dashed border-white/10 bg-secondary/10 space-y-3">
-                <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+              <div className="p-5 rounded-lg border border-dashed border-[#E2E8F0] bg-slate-50/50 space-y-3">
+                <div className="flex items-center gap-2 text-[#0F766E] font-bold text-[10px] uppercase tracking-wider">
                   <Paperclip size={14} />
                   Enviar Fotos Clínicas
                 </div>
-                <p className="text-[10px] text-muted-foreground">Arraste ou clique para enviar fotos clínicas (JPG, PNG).</p>
+                <p className="text-[10px] text-slate-400">Arraste ou clique para enviar fotos clínicas (JPG, PNG).</p>
                 <input
                   type="file"
                   multiple
@@ -566,13 +610,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                     setPhotoFiles(prev => [...prev, ...mapped]);
                     setHasPhoto(true);
                   }}
-                  className="w-full text-xs text-muted-foreground file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-secondary file:text-foreground hover:file:bg-secondary/80 cursor-pointer"
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-200 file:text-[10px] file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 file:cursor-pointer"
                 />
                 {photoFiles.length > 0 && (
                   <div className="space-y-1 pt-1.5">
                     {photoFiles.map((f, i) => (
-                      <div key={i} className="flex justify-between items-center bg-card p-2 rounded-xl text-[10px] border border-white/5">
-                        <span className="truncate max-w-[150px] text-foreground font-semibold">{f.name}</span>
+                      <div key={i} className="flex justify-between items-center bg-white p-2.5 rounded-lg text-[10px] border border-[#E2E8F0]">
+                        <span className="truncate max-w-[150px] text-slate-800 font-semibold">{f.name}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -580,7 +624,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                             setPhotoFiles(updated);
                             if (updated.length === 0) setHasPhoto(false);
                           }}
-                          className="text-rose-500 hover:text-rose-600 font-bold px-1.5"
+                          className="text-rose-600 hover:text-rose-700 font-semibold px-1.5"
                         >
                           Remover
                         </button>
@@ -591,12 +635,12 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
               </div>
 
               {/* Escaneamentos 3D zone */}
-              <div className="p-5 rounded-2xl border border-dashed border-white/10 bg-secondary/10 space-y-3">
-                <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+              <div className="p-5 rounded-lg border border-dashed border-[#E2E8F0] bg-slate-50/50 space-y-3">
+                <div className="flex items-center gap-2 text-[#0F766E] font-bold text-[10px] uppercase tracking-wider">
                   <Paperclip size={14} />
                   Enviar Escaneamento (3D)
                 </div>
-                <p className="text-[10px] text-muted-foreground">Arraste ou clique para enviar escaneamentos 3D (STL, OBJ, PLY, ZIP).</p>
+                <p className="text-[10px] text-slate-400">Arraste ou clique para enviar escaneamentos 3D (STL, OBJ, PLY, ZIP).</p>
                 <input
                   type="file"
                   multiple
@@ -607,13 +651,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                     setScanFiles(prev => [...prev, ...mapped]);
                     setHasFile(true);
                   }}
-                  className="w-full text-xs text-muted-foreground file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-secondary file:text-foreground hover:file:bg-secondary/80 cursor-pointer"
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-200 file:text-[10px] file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 file:cursor-pointer"
                 />
                 {scanFiles.length > 0 && (
                   <div className="space-y-1 pt-1.5">
                     {scanFiles.map((f, i) => (
-                      <div key={i} className="flex justify-between items-center bg-card p-2 rounded-xl text-[10px] border border-white/5">
-                        <span className="truncate max-w-[150px] text-foreground font-semibold">{f.name}</span>
+                      <div key={i} className="flex justify-between items-center bg-white p-2.5 rounded-lg text-[10px] border border-[#E2E8F0]">
+                        <span className="truncate max-w-[150px] text-slate-800 font-semibold">{f.name}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -621,7 +665,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                             setScanFiles(updated);
                             if (updated.length === 0) setHasFile(false);
                           }}
-                          className="text-rose-500 hover:text-rose-600 font-bold px-1.5"
+                          className="text-rose-600 hover:text-rose-700 font-semibold px-1.5"
                         >
                           Remover
                         </button>
@@ -632,21 +676,21 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-[#E2E8F0]">
               <button
                 type="button"
                 onClick={() => {
                   setEditingCase(null);
                   setActiveTab('my-cases');
                 }}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-secondary transition-all"
+                className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 border border-transparent transition-all"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="glow-btn bg-primary hover:bg-primary/95 text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5 shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all disabled:opacity-50"
               >
                 <Send size={14} />
                 {submitting ? 'Enviando...' : editingCase ? 'Salvar Alterações' : 'Enviar Solicitação'}
@@ -660,29 +704,29 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
 
       {activeTab === 'change-password' && (
         /* ALTERAR SENHA TAB */
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 max-w-md animate-fade-in space-y-6">
+        <div className="glass-panel p-5 max-w-md animate-fade-in space-y-5">
           <div>
-            <h3 className="text-lg font-bold">Alterar Senha</h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="text-base font-bold text-slate-900">Alterar Senha</h3>
+            <p className="text-xs text-slate-500 mt-1">
               Atualize sua senha de acesso ao portal.
             </p>
           </div>
 
           {passError && (
-            <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold">
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium">
               {passError}
             </div>
           )}
 
           {passSuccess && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-medium">
               {passSuccess}
             </div>
           )}
 
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                 Nova Senha
               </label>
               <input
@@ -691,12 +735,12 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Insira a nova senha"
-                className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+              <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                 Confirmar Nova Senha
               </label>
               <input
@@ -705,7 +749,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirme a nova senha"
-                className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
               />
             </div>
 
@@ -713,7 +757,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
               <button
                 type="submit"
                 disabled={submitting}
-                className="glow-btn bg-primary hover:bg-primary/95 text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5 shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                className="bg-[#0F766E] hover:bg-[#0F766E]/90 text-white font-semibold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
               >
                 {submitting ? 'Atualizando...' : 'Atualizar Senha'}
               </button>

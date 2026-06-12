@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
@@ -48,153 +48,151 @@
 }
 
 :root {
-  --background: 172 15% 96.5%; /* Clean off-white #F4F7F6 */
-  --foreground: 180 50% 10%;
+  /* Slate & Teal & Cyan SaaS Palette */
+  --background: 210 40% 98%; /* Slate-50 off-white #F8FAFC */
+  --foreground: 222 47% 11%; /* Slate-900 #0F172A */
 
-  --card: 0 0% 100%;
-  --card-foreground: 180 50% 10%;
+  --card: 0 0% 100%; /* #FFFFFF */
+  --card-foreground: 222 47% 11%; /* #0F172A */
 
   --popover: 0 0% 100%;
-  --popover-foreground: 180 50% 10%;
+  --popover-foreground: 222 47% 11%;
 
-  --primary: 185 100% 27%; /* Solid Teal #007E8A */
+  --primary: 174 77% 26%; /* Primary Teal #0F766E */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 180 12% 92%;
-  --secondary-foreground: 185 100% 20%;
+  --secondary: 192 91% 36%; /* Secondary Cyan #0891B2 */
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 180 10% 95%;
-  --muted-foreground: 180 10% 45%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215 16% 47%; /* Secondary Text #64748B */
 
-  --accent: 185 45% 94%;
-  --accent-foreground: 185 100% 27%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222 47% 11%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 180 10% 88%;
-  --input: 180 10% 88%;
-  --ring: 185 100% 27%;
+  --border: 214 32% 91%; /* Borders #E2E8F0 */
+  --input: 214 32% 91%;
+  --ring: 174 77% 26%;
 
-  --radius: 0.5rem;
+  --radius: 12px; /* 12px Border Radius */
 }
 
 .dark {
-  --background: 180 40% 8%;
-  --foreground: 180 10% 95%;
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
 
-  --card: 180 40% 10%;
-  --card-foreground: 180 10% 95%;
+  --card: 222 47% 6%;
+  --card-foreground: 210 40% 98%;
 
-  --popover: 180 40% 10%;
-  --popover-foreground: 180 10% 95%;
+  --popover: 222 47% 6%;
+  --popover-foreground: 210 40% 98%;
 
-  --primary: 185 100% 27%;
+  --primary: 174 77% 26%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 180 30% 15%;
-  --secondary-foreground: 185 100% 90%;
+  --secondary: 192 91% 36%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 180 20% 15%;
-  --muted-foreground: 180 10% 65%;
+  --muted: 222 47% 15%;
+  --muted-foreground: 215 16% 65%;
 
-  --accent: 185 100% 15%;
-  --accent-foreground: 180 10% 95%;
+  --accent: 222 47% 15%;
+  --accent-foreground: 210 40% 98%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 180 20% 16%;
-  --input: 180 20% 16%;
-  --ring: 185 100% 27%;
+  --border: 222 47% 15%;
+  --input: 222 47% 15%;
+  --ring: 174 77% 26%;
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     background-image: none;
     background-attachment: fixed;
+    font-size: 14px;
+    font-weight: 400;
+  }
+  
+  /* Typography Scale */
+  h1 {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em;
+  }
+  h2 {
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.02em;
+  }
+  h3 {
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.015em;
   }
 }
 
-/* Custom premium classes */
-.glass-panel {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+/* Minimalist SaaS Card Styles (Replaces glass reflections with solid borders/shadows) */
+.glass-panel, .glass-card {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03) !important;
+  backdrop-filter: none !important;
 }
 
-.dark .glass-panel {
-  background-color: rgba(9, 15, 26, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.dark .glass-panel, .dark .glass-card {
+  background-color: #0B1329 !important;
+  border: 1px solid #1E293B !important;
 }
 
-.glass-card {
-  background-color: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3rem cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  transform: translateY(-2px);
-}
-
-.dark .glass-card {
-  background-color: rgba(9, 15, 26, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
+/* shadcn/ui buttons pattern utility (hover translations/scaling simplified) */
 .glow-btn {
-  transition: all 0.3rem cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease-in-out;
 }
 
 .glow-btn:hover {
-  box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.2), 0 4px 6px -4px rgba(14, 165, 233, 0.2);
+  opacity: 0.95;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .glow-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 
-/* Animations */
+/* Clean Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Hide scrollbar but keep functional */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Premium Scrollbar */
+/* Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 116, 139, 0.2);
+  background-color: #CBD5E1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(100, 116, 139, 0.4);
+  background-color: #94A3B8;
 }

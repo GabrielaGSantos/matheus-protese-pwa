@@ -323,8 +323,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Trabalhos / Casos</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Trabalhos / Casos</h2>
+          <p className="text-slate-500 text-xs mt-1">
             Acompanhe o andamento dos modelos, prazos de entrega e pendências de faturamento.
           </p>
         </div>
@@ -334,9 +334,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             setShowEditor(true);
             setActiveEditorTab('info');
           }}
-          className="glow-btn bg-primary hover:bg-primary/95 text-white font-semibold px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm"
+          className="bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
         >
-          <Plus size={18} />
+          <Plus size={14} />
           Cadastrar Novo Trabalho
         </button>
       </div>
@@ -877,19 +877,19 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       )}
 
       {/* Advanced Filters */}
-      <div className="glass-panel p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="glass-panel p-4 rounded-xl border border-[#E2E8F0] flex flex-col md:flex-row gap-4 items-center justify-between">
         
         {/* Search Input */}
         <div className="relative w-full md:max-w-xs">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground pointer-events-none">
-            <Search size={16} />
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#64748B] pointer-events-none">
+            <Search size={14} />
           </span>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Pesquisar por paciente, dente ou ID..."
-            className="w-full pl-9 pr-3 py-2 bg-secondary/40 border border-white/10 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] text-[#0F172A] placeholder:text-[#94A3B8]"
           />
         </div>
 
@@ -897,11 +897,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
           {/* Status Filter */}
           <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden sm:inline">Status:</span>
+            <span className="text-[11px] font-medium text-[#64748B] hidden sm:inline">Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-secondary/40 border border-white/10 text-xs font-semibold"
+              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
             >
               <option value="todos">Todos os Status</option>
               <option value="recebido">Recebido</option>
@@ -917,11 +917,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
           {/* Dentist Filter */}
           <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden sm:inline">Dentista:</span>
+            <span className="text-[11px] font-medium text-[#64748B] hidden sm:inline">Dentista:</span>
             <select
               value={dentistFilter}
               onChange={(e) => setDentistFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-secondary/40 border border-white/10 text-xs font-semibold w-full sm:w-44"
+              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#0F766E] w-full sm:w-40"
             >
               <option value="todos">Todos os Dentistas</option>
               {dentists.map(d => (
@@ -932,11 +932,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
           {/* Order Filter */}
           <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden sm:inline">Ordenação:</span>
+            <span className="text-[11px] font-medium text-[#64748B] hidden sm:inline">Ordenação:</span>
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as any)}
-              className="px-3 py-2 rounded-xl bg-secondary/40 border border-white/10 text-xs font-semibold"
+              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
             >
               <option value="date-desc">Data (Mais recente)</option>
               <option value="date-asc">Data (Mais antiga)</option>
@@ -950,29 +950,29 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
       {/* Main Cases Table (desktop) / Cards (mobile) */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Carregando lista de casos...</div>
+        <div className="text-center py-12 text-[#64748B] text-sm font-medium">Carregando lista de casos...</div>
       ) : (
         <div className="space-y-4">
           
           {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto rounded-2xl border border-white/5 glass-panel">
+          <div className="hidden lg:block overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
             <table className="w-full text-left text-xs">
-              <thead className="bg-secondary/40 border-b border-white/10">
+              <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 <tr>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px]">ID do Caso</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Dentista</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Paciente</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Status Clínico</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px]">Status Financeiro</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px] text-center">Entrega Final</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px] text-right">Valor Total</th>
-                  <th className="p-4 font-bold text-muted-foreground uppercase tracking-widest text-[9px] text-center">Ações</th>
+                  <th className="p-3.5">ID do Caso</th>
+                  <th className="p-3.5">Dentista</th>
+                  <th className="p-3.5">Paciente</th>
+                  <th className="p-3.5">Status Clínico</th>
+                  <th className="p-3.5">Status Financeiro</th>
+                  <th className="p-3.5 text-center">Entrega Final</th>
+                  <th className="p-3.5 text-right">Valor Total</th>
+                  <th className="p-3.5 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#E2E8F0]">
                 {sortedCases.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-muted-foreground">
+                    <td colSpan={8} className="text-center py-12 text-[#64748B] text-xs">
                       Nenhum caso cadastrado correspondente aos filtros.
                     </td>
                   </tr>
@@ -980,26 +980,26 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                   sortedCases.map(c => {
                     const dentist = dentists.find(d => d.id === c.dentist_id);
                     return (
-                      <tr key={c.id} className="hover:bg-secondary/20 transition-all duration-200">
-                        <td className="p-4 font-bold text-foreground">{c.id}</td>
-                        <td className="p-4 font-semibold">{dentist?.full_name || 'Desconhecido'}</td>
-                        <td className="p-4 font-semibold text-foreground">{c.patient_name}</td>
-                        <td className="p-4">{getStatusBadge(c.status)}</td>
-                        <td className="p-4">{getFinancialBadge(c.financial_status)}</td>
-                        <td className="p-4 text-center font-bold text-muted-foreground">
+                      <tr key={c.id} className="hover:bg-slate-50/70 transition-all duration-150">
+                        <td className="p-3.5 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                        <td className="p-3.5 text-slate-600 font-medium">{dentist?.full_name || 'Desconhecido'}</td>
+                        <td className="p-3.5 font-bold text-[#0F172A]">{c.patient_name}</td>
+                        <td className="p-3.5">{getStatusBadge(c.status)}</td>
+                        <td className="p-3.5">{getFinancialBadge(c.financial_status)}</td>
+                        <td className="p-3.5 text-center font-medium text-slate-600">
                           {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                         </td>
-                        <td className="p-4 text-right font-bold text-foreground">
+                        <td className="p-3.5 text-right font-bold text-[#0F172A]">
                           R$ {c.total_value.toFixed(2)}
                         </td>
-                        <td className="p-4 text-center">
+                        <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => {
                                 setEditingCase(c);
                                 setShowEditor(true);
                               }}
-                              className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                              className="p-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
                             >
                               <Edit2 size={13} />
                             </button>
@@ -1008,7 +1008,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                 href={c.google_drive_folder_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-1.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                                className="p-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-slate-600 hover:text-[#0F766E] transition-all cursor-pointer"
                               >
                                 <FolderOpen size={13} />
                               </a>
