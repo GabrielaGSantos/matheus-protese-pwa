@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
   
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -86,6 +92,12 @@ export const DentistsScreen: React.FC = () => {
 
   const filteredDentists = dentists.filter(d => 
     d.full_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filteredDentists.length / itemsPerPage));
+  const paginatedDentists = filteredDentists.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -242,60 +254,92 @@ export const DentistsScreen: React.FC = () => {
           Carregando lista de dentistas...
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDentists.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-slate-400 text-xs border border-dashed border-[#E2E8F0] rounded-xl">
-              Nenhum dentista encontrado para a busca.
-            </div>
-          ) : (
-            filteredDentists.map((d) => (
-              <div key={d.id} className="glass-panel p-4 flex flex-col justify-between hover:shadow-sm transition-all">
-                <div>
-                  <h4 className="font-semibold text-sm text-slate-900">{d.full_name}</h4>
-                  <span className="text-[9px] uppercase font-bold text-[#0F766E] px-1.5 py-px rounded-full bg-[#ECFDF5] border border-emerald-100 inline-block mt-1">
-                    Dentista Parceiro
-                  </span>
-                  
-                  <div className="space-y-2 mt-3">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Mail size={12} className="text-slate-400" />
-                      <span>{d.full_name.toLowerCase().replace(/[^a-z0-9]/g, '')}@dentista.com</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <Calendar size={12} className="text-slate-400" />
-                      <span>Cadastrado em {new Date(d.created_at).toLocaleDateString('pt-BR')}</span>
-                    </div>
-                    {d.notes && (
-                      <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] text-[10px] text-slate-500 mt-2 leading-relaxed">
-                        <strong className="text-slate-700 block mb-0.5">Observação:</strong>
-                        {d.notes}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedDentists.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-slate-400 text-xs border border-dashed border-[#E2E8F0] rounded-xl">
+                Nenhum dentista encontrado para a busca.
+              </div>
+            ) : (
+              paginatedDentists.map((d) => (
+                <div key={d.id} className="glass-panel p-4 flex flex-col justify-between hover:shadow-sm transition-all">
+                  <div>
+                    <h4 className="font-semibold text-sm text-slate-900">{d.full_name}</h4>
+                    <span className="text-[9px] uppercase font-bold text-[#0F766E] px-1.5 py-px rounded-full bg-[#ECFDF5] border border-emerald-100 inline-block mt-1">
+                      Dentista Parceiro
+                    </span>
+                    
+                    <div className="space-y-2 mt-3">
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <Mail size={12} className="text-slate-400" />
+                        <span>{d.full_name.toLowerCase().replace(/[^a-z0-9]/g, '')}@dentista.com</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <Calendar size={12} className="text-slate-400" />
+                        <span>Cadastrado em {new Date(d.created_at).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      {d.notes && (
+                        <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] text-[10px] text-slate-500 mt-2 leading-relaxed">
+                          <strong className="text-slate-700 block mb-0.5">Observação:</strong>
+                          {d.notes}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 mt-4 pt-3 border-t border-[#E2E8F0]">
-                  {d.whatsapp && (
-                    <a
-                      href={`https://wa.me/55${d.whatsapp.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                  <div className="flex gap-2 mt-4 pt-3 border-t border-[#E2E8F0]">
+                    {d.whatsapp && (
+                      <a
+                        href={`https://wa.me/55${d.whatsapp.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Phone size={11} className="text-emerald-500" />
+                        WhatsApp
+                      </a>
+                    )}
+                    <button
+                      onClick={() => startEdit(d)}
                       className="flex-1 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all"
                     >
-                      <Phone size={11} className="text-emerald-500" />
-                      WhatsApp
-                    </a>
-                  )}
-                  <button
-                    onClick={() => startEdit(d)}
-                    className="flex-1 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <FileText size={11} className="text-slate-400" />
-                    Editar
-                  </button>
+                      <FileText size={11} className="text-slate-400" />
+                      Editar
+                    </button>
+                  </div>
                 </div>
+              ))
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-[#E2E8F0] gap-4 text-xs font-medium text-slate-500 mt-6">
+              <div>
+                Exibindo {Math.min(filteredDentists.length, (currentPage - 1) * itemsPerPage + 1)} a {Math.min(filteredDentists.length, currentPage * itemsPerPage)} de {filteredDentists.length} dentistas
               </div>
-            ))
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="p-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="font-semibold text-slate-700">Página {currentPage} de {totalPages}</span>
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="p-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title="Próximo"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}

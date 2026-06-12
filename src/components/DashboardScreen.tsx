@@ -199,28 +199,37 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
       const year = new Date(c.created_at).getFullYear();
       return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
     })
-    .reduce((sum, c) => sum + c.total_value, 0);
+    .reduce((sum, c) => sum + c.value_matheus, 0);
 
   const monthlyReceived = cases
     .filter(c => {
       const year = new Date(c.created_at).getFullYear();
       return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
     })
-    .reduce((sum, c) => sum + (c.paid_value || 0), 0);
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.paid_value / c.total_value : 0;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
 
   const monthlyPending = cases
     .filter(c => {
       const year = new Date(c.created_at).getFullYear();
       return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
     })
-    .reduce((sum, c) => sum + (c.remaining_value || 0), 0);
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
 
   const otherMonthsPending = cases
     .filter(c => {
       const year = new Date(c.created_at).getFullYear();
       return year >= 2026 && !c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
     })
-    .reduce((sum, c) => sum + (c.remaining_value || 0), 0);
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
 
   const activeCasesCount = cases.filter(c => {
     const year = new Date(c.created_at).getFullYear();
