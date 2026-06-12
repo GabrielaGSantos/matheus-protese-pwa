@@ -340,39 +340,38 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
           Cadastrar Novo Trabalho
         </button>
       </div>
-
       {/* Editor Modal Overlay */}
       {showEditor && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
-          <div className="w-full max-w-4xl bg-card border-l border-white/10 h-screen overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
+          <div className="w-full max-w-4xl bg-white border-l border-[#E2E8F0] h-screen overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
             <button
               onClick={() => {
                 setShowEditor(false);
                 setEditingCase(null);
               }}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground transition-all"
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
             >
               <X size={20} />
             </button>
 
             <form onSubmit={handleSave} className="flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-xl font-bold mb-1">
+                <h3 className="text-lg font-bold text-slate-900 mb-1">
                   {editingCase ? `Editar Trabalho - ${editingCase.id}` : 'Cadastrar Trabalho'}
                 </h3>
-                <p className="text-xs text-muted-foreground mb-6">
+                <p className="text-xs text-slate-500 mb-6">
                   Preencha as informações clínicas, dentes selecionados e custos associados.
                 </p>
 
                 {/* Editor Tabs */}
-                <div className="flex border-b border-white/5 mb-6 gap-2">
+                <div className="flex border-b border-[#E2E8F0] mb-6 gap-6 pb-px">
                   <button
                     type="button"
                     onClick={() => setActiveEditorTab('info')}
-                    className={`pb-2.5 text-sm font-semibold border-b-2 transition-all ${
+                    className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
                       activeEditorTab === 'info'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                        ? 'border-[#0F766E] text-[#0F766E]'
+                        : 'border-transparent text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Clínico & Odontograma
@@ -380,10 +379,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveEditorTab('financial')}
-                    className={`pb-2.5 text-sm font-semibold border-b-2 transition-all ${
+                    className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
                       activeEditorTab === 'financial'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                        ? 'border-[#0F766E] text-[#0F766E]'
+                        : 'border-transparent text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Financeiro & Custos
@@ -392,10 +391,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveEditorTab('history')}
-                      className={`pb-2.5 text-sm font-semibold border-b-2 transition-all ${
+                      className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
                         activeEditorTab === 'history'
-                          ? 'border-primary text-primary'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                          ? 'border-[#0F766E] text-[#0F766E]'
+                          : 'border-transparent text-slate-500 hover:text-slate-900'
                       }`}
                     >
                       Auditoria
@@ -408,13 +407,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Dentista Requisitante
                         </label>
                         <select
                           value={selectedDentistId}
                           onChange={(e) => setSelectedDentistId(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm font-semibold"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         >
                           {dentists.map(d => (
                             <option key={d.id} value={d.id}>{d.full_name}</option>
@@ -423,7 +422,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Nome do Paciente
                         </label>
                         <input
@@ -432,14 +431,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           value={patientName}
                           onChange={(e) => setPatientName(e.target.value)}
                           placeholder="Ex: João da Silva"
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Data Limite Solicitada
                         </label>
                         <input
@@ -447,32 +446,32 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           required
                           value={requestedDeliveryDate}
                           onChange={(e) => setRequestedDeliveryDate(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Prazo Final de Entrega (Dr. Matheus)
                         </label>
                         <input
                           type="date"
                           value={finalDeliveryDate}
                           onChange={(e) => setFinalDeliveryDate(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Status do Caso
                         </label>
                         <select
                           value={caseStatus}
                           onChange={(e: any) => setCaseStatus(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm font-semibold"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         >
                           <option value="recebido">Recebido</option>
                           <option value="em_analise">Em Análise</option>
@@ -485,16 +484,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         </select>
                       </div>
 
-                      <div className="flex items-center gap-6 bg-secondary/20 p-4 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-xl border border-[#E2E8F0]">
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
                             id="photo_check"
                             checked={hasPhoto}
                             onChange={(e) => setHasPhoto(e.target.checked)}
-                            className="w-4 h-4 rounded text-primary focus:ring-primary"
+                            className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                           />
-                          <label htmlFor="photo_check" className="text-xs font-semibold text-foreground cursor-pointer">
+                          <label htmlFor="photo_check" className="text-xs font-semibold text-slate-700 cursor-pointer">
                             Enviou Foto?
                           </label>
                         </div>
@@ -504,9 +503,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             id="file_check"
                             checked={hasFile}
                             onChange={(e) => setHasFile(e.target.checked)}
-                            className="w-4 h-4 rounded text-primary focus:ring-primary"
+                            className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                           />
-                          <label htmlFor="file_check" className="text-xs font-semibold text-foreground cursor-pointer">
+                          <label htmlFor="file_check" className="text-xs font-semibold text-slate-700 cursor-pointer">
                             Enviou Arquivo?
                           </label>
                         </div>
@@ -515,8 +514,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
                     {/* Odontogram selector */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                        Odontograma FDI
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
+                        Selecione os elementos no Odontograma FDI
                       </label>
                       <Odontogram value={teethSelection} onChange={setTeethSelection} />
                     </div>
@@ -524,7 +523,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     {/* Notes */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Observações do Dentista
                         </label>
                         <textarea
@@ -532,11 +531,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           value={dentistNotes}
                           onChange={(e) => setDentistNotes(e.target.value)}
                           placeholder="Recomendações clínicas ou solicitações do dentista parceiro..."
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm"
+                          className="w-full px-3.5 py-2.5 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Observação Interna (Apenas Admin)
                         </label>
                         <textarea
@@ -544,22 +543,22 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           value={internalNotes}
                           onChange={(e) => setInternalNotes(e.target.value)}
                           placeholder="Anotações internas, cronogramas de confecção ou notas laboratoriais..."
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm"
+                          className="w-full px-3.5 py-2.5 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                         />
                       </div>
                     </div>
 
                     {/* Services Selector Checklist */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
                         Procedimentos / Serviços
                       </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-secondary/10 p-4 rounded-xl border border-white/5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-[#E2E8F0]">
                         {services.map(s => {
                           const isSelected = caseServicesSelected[s.id]?.selected || false;
                           const qty = caseServicesSelected[s.id]?.quantity || 1;
                           return (
-                            <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-card border border-white/5 hover:bg-secondary/40 transition-all">
+                            <div key={s.id} className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all">
                               <div className="flex items-center gap-2.5">
                                 <input
                                   type="checkbox"
@@ -571,15 +570,15 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                       [s.id]: { selected: e.target.checked, quantity: qty }
                                     });
                                   }}
-                                  className="w-4 h-4 rounded text-primary focus:ring-primary"
+                                  className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                                 />
-                                <label htmlFor={`serv-${s.id}`} className="text-xs font-semibold text-foreground cursor-pointer">
+                                <label htmlFor={`serv-${s.id}`} className="text-xs font-medium text-slate-700 cursor-pointer">
                                   {s.name}
                                 </label>
                               </div>
                               {isSelected && (
-                                <div className="flex items-center gap-1 bg-secondary px-2 py-0.5 rounded-lg border border-white/5">
-                                  <span className="text-[10px] text-muted-foreground uppercase font-bold">Qtd:</span>
+                                <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-lg border border-[#E2E8F0]">
+                                  <span className="text-[10px] text-slate-400 uppercase font-bold">Qtd:</span>
                                   <input
                                     type="number"
                                     min="1"
@@ -590,7 +589,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                         [s.id]: { selected: true, quantity: Math.max(1, parseInt(e.target.value) || 1) }
                                       });
                                     }}
-                                    className="w-10 bg-transparent border-none text-center text-xs font-bold text-foreground focus:outline-none"
+                                    className="w-10 bg-transparent border-none text-center text-xs font-bold text-slate-900 focus:outline-none"
                                   />
                                 </div>
                               )}
@@ -608,13 +607,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                   <div className="space-y-6 animate-fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Status Financeiro
                         </label>
                         <select
                           value={financialStatus}
                           onChange={(e: any) => setFinancialStatus(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm font-semibold"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         >
                           <option value="aguardando_pagamento">Aguardando Pagamento</option>
                           <option value="pago_parcial">Pago Parcial</option>
@@ -625,7 +624,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                           Valor Pago (R$)
                         </label>
                         <input
@@ -633,17 +632,17 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           step="0.01"
                           value={paidValue}
                           onChange={(e) => setPaidValue(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm font-semibold"
+                          className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         />
                       </div>
                     </div>
 
-                    <div className="bg-secondary/20 p-4 rounded-xl border border-white/5 space-y-4">
-                      <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">Preços & Comissões Laboratoriais (Substitui automático se preenchido)</h4>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-[#E2E8F0] space-y-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F766E]">Preços & Comissões Laboratoriais (Substitui automático se preenchido)</h4>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">
                             Valor Matheus (R$)
                           </label>
                           <input
@@ -652,12 +651,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             placeholder="Deixar vazio para cálculo automático"
                             value={overrideValueMatheus}
                             onChange={(e) => setOverrideValueMatheus(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
+                            className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">
                             Valor Paschoal (R$)
                           </label>
                           <input
@@ -666,19 +665,19 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             placeholder="Deixar vazio para cálculo automático"
                             value={overrideValuePaschoal}
                             onChange={(e) => setOverrideValuePaschoal(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
+                            className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-secondary/20 p-4 rounded-xl border border-white/5 space-y-4">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-[#E2E8F0] space-y-4">
                       <div className="flex justify-between items-center">
-                        <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">Custos Internos / Subcontratações</h4>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F766E]">Custos Internos / Subcontratações</h4>
                         <button
                           type="button"
                           onClick={() => setDynamicCosts([...dynamicCosts, { name: '', value: 0 }])}
-                          className="px-2 py-1 text-[10px] font-bold rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/25 transition-all"
+                          className="px-2 py-1.5 text-[10px] font-bold rounded-lg bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
                         >
                           + Adicionar Custo
                         </button>
@@ -686,18 +685,18 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       
                       <div className="space-y-3">
                         {/* Fixed Cost: Andrey */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center bg-card p-3 rounded-xl border border-white/5">
-                          <div className="text-xs font-semibold text-foreground">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center bg-white p-3 rounded-xl border border-[#E2E8F0]">
+                          <div className="text-xs font-semibold text-slate-700">
                             Dr. Andrey (Fixo)
                           </div>
                           <div>
-                            <label className="block text-[10px] text-muted-foreground mb-1">Valor (R$)</label>
+                            <label className="block text-[10px] text-slate-400 mb-1">Valor (R$)</label>
                             <input
                               type="number"
                               step="0.01"
                               value={costAndrey}
                               onChange={(e) => setCostAndrey(e.target.value)}
-                              className="w-full px-3 py-1.5 rounded-lg bg-secondary border border-white/10 text-xs font-semibold text-right"
+                              className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold text-right"
                             />
                           </div>
                           <div className="flex items-center gap-2 pt-4">
@@ -706,9 +705,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                               id="andrey_discounted"
                               checked={costAndreyDiscounted}
                               onChange={(e) => setCostAndreyDiscounted(e.target.checked)}
-                              className="w-4 h-4 rounded text-primary focus:ring-primary"
+                              className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                             />
-                            <label htmlFor="andrey_discounted" className="text-[10px] font-semibold text-muted-foreground cursor-pointer">
+                            <label htmlFor="andrey_discounted" className="text-[10px] font-semibold text-slate-500 cursor-pointer">
                               Descontado de Dr. Andrey?
                             </label>
                           </div>
@@ -716,9 +715,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
                         {/* Dynamic Costs */}
                         {dynamicCosts.map((cost, idx) => (
-                          <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-secondary/30 p-3 rounded-xl border border-white/5">
+                          <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-slate-50 p-3 rounded-xl border border-[#E2E8F0]">
                             <div className="sm:col-span-6">
-                              <label className="block text-[10px] text-muted-foreground mb-1">Descrição / Nome do Custo</label>
+                              <label className="block text-[10px] text-slate-400 mb-1">Descrição / Nome do Custo</label>
                               <input
                                 type="text"
                                 value={cost.name}
@@ -728,11 +727,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                   updated[idx].name = e.target.value;
                                   setDynamicCosts(updated);
                                 }}
-                                className="w-full px-3 py-1.5 rounded-lg bg-card border border-white/10 text-xs font-semibold"
+                                className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold"
                               />
                             </div>
                             <div className="sm:col-span-4">
-                              <label className="block text-[10px] text-muted-foreground mb-1">Valor (R$)</label>
+                              <label className="block text-[10px] text-slate-400 mb-1">Valor (R$)</label>
                               <input
                                 type="number"
                                 step="0.01"
@@ -743,7 +742,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                   updated[idx].value = parseFloat(e.target.value) || 0;
                                   setDynamicCosts(updated);
                                 }}
-                                className="w-full px-3 py-1.5 rounded-lg bg-card border border-white/10 text-xs font-semibold text-right"
+                                className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold text-right"
                               />
                             </div>
                             <div className="sm:col-span-2 text-right">
@@ -753,7 +752,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                   const updated = dynamicCosts.filter((_, i) => i !== idx);
                                   setDynamicCosts(updated);
                                 }}
-                                className="p-2 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/25 hover:bg-rose-500/20 transition-all text-xs font-bold"
+                                className="p-2 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all text-xs font-bold cursor-pointer"
                               >
                                 Excluir
                               </button>
@@ -764,13 +763,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     </div>
 
                     {/* Drive Integration View */}
-                    <div className="bg-secondary/10 p-5 rounded-2xl border border-dashed border-white/10 space-y-3">
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-dashed border-[#E2E8F0] space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="text-sm font-bold">Pasta do Caso no Google Drive</h4>
-                          <p className="text-xs text-muted-foreground">Estrutura automatizada de armazenamento na nuvem.</p>
+                          <h4 className="text-xs font-bold text-slate-900">Pasta do Caso no Google Drive</h4>
+                          <p className="text-[11px] text-slate-500">Estrutura automatizada de armazenamento na nuvem.</p>
                         </div>
-                        <span className="p-2 rounded-xl bg-primary/10 text-primary">
+                        <span className="p-2 rounded-xl bg-teal-50 border border-teal-100 text-[#0F766E]">
                           <FolderOpen size={20} />
                         </span>
                       </div>
@@ -781,53 +780,52 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             href={editingCase.google_drive_folder_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-center rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                            className="flex-1 py-2.5 bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 text-center rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                           >
                             Abrir Pasta no Drive
                           </a>
                           <button
                             type="button"
-                            className="flex-1 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground border border-white/10 text-center rounded-xl text-xs font-semibold transition-all"
+                            className="flex-1 py-2.5 bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 text-center rounded-xl text-xs font-semibold transition-all cursor-pointer"
                           >
                             Sincronizar Arquivos
                           </button>
                         </div>
                       ) : (
-                        <p className="text-[10px] text-muted-foreground font-semibold">
+                        <p className="text-[10px] text-slate-400 font-semibold">
                           * A pasta será criada automaticamente após salvar e o login do Google Drive estiver conectado nas configurações.
                         </p>
                       )}
                     </div>
-
                   </div>
                 )}
 
                 {/* TAB 3: Audit history logs */}
                 {activeEditorTab === 'history' && (
                   <div className="space-y-4 animate-fade-in">
-                    <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F766E] flex items-center gap-1.5">
                       <History size={14} />
                       Log de Auditoria
                     </h4>
                     <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2">
                       {historyLogs.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground text-xs">
+                        <div className="text-center py-8 text-slate-500 text-xs">
                           Nenhum registro de auditoria disponível para este caso.
                         </div>
                       ) : (
                         historyLogs.map(log => (
-                          <div key={log.id} className="p-3 rounded-xl bg-secondary/40 border border-white/5 space-y-1.5 text-xs">
+                          <div key={log.id} className="p-3 rounded-xl bg-white border border-[#E2E8F0] space-y-1.5 text-xs">
                             <div className="flex justify-between items-center">
-                              <span className="font-bold text-foreground">{log.user_name}</span>
-                              <span className="text-muted-foreground text-[10px]">
+                              <span className="font-bold text-slate-900">{log.user_name}</span>
+                              <span className="text-slate-400 text-[10px]">
                                 {new Date(log.created_at).toLocaleString('pt-BR')}
                               </span>
                             </div>
-                            <div className="text-muted-foreground">
-                              Ação realizada: <strong className="text-primary">{log.action === 'create' ? 'Criação' : 'Edição'}</strong>
+                            <div className="text-slate-500">
+                              Ação realizada: <strong className="text-[#0F766E]">{log.action === 'create' ? 'Criação' : 'Edição'}</strong>
                             </div>
                             {log.previous_data && (
-                              <div className="mt-2 text-[10px] bg-secondary/80 p-2 rounded-lg text-muted-foreground overflow-x-auto whitespace-pre-wrap font-mono">
+                              <div className="mt-2 text-[10px] bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] text-slate-500 overflow-x-auto whitespace-pre-wrap font-mono">
                                 Modificado de: {log.previous_data.status} para {log.new_data?.status}
                               </div>
                             )}
@@ -840,12 +838,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               </div>
 
               {/* Editor bottom bar */}
-              <div className="flex justify-between items-center pt-6 border-t border-white/10 mt-8">
+              <div className="flex justify-between items-center pt-6 border-t border-[#E2E8F0] mt-8">
                 {editingCase ? (
                   <button
                     type="button"
                     onClick={() => handleDelete(editingCase.id)}
-                    className="p-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 text-destructive flex items-center justify-center gap-1.5 transition-all text-xs font-bold"
+                    className="p-2.5 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center justify-center gap-1.5 transition-all text-xs font-bold cursor-pointer"
                   >
                     <Trash2 size={16} />
                     Excluir Caso
@@ -859,13 +857,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       setShowEditor(false);
                       setEditingCase(null);
                     }}
-                    className="px-5 py-3 rounded-xl text-sm font-semibold hover:bg-secondary transition-all"
+                    className="px-4 py-2 bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                   >
                     Fechar
                   </button>
                   <button
                     type="submit"
-                    className="glow-btn bg-primary hover:bg-primary/95 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all"
+                    className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer"
                   >
                     {editingCase ? 'Salvar Alterações' : 'Criar Caso'}
                   </button>
@@ -1026,48 +1024,48 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
           {/* Mobile Cards View */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
             {sortedCases.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-xs col-span-full border border-dashed border-white/5 rounded-2xl bg-card">
+              <div className="text-center py-12 text-slate-400 text-xs col-span-full border border-dashed border-[#E2E8F0] rounded-xl bg-white">
                 Nenhum caso cadastrado correspondente aos filtros.
               </div>
             ) : (
               sortedCases.map(c => {
                 const dentist = dentists.find(d => d.id === c.dentist_id);
                 return (
-                  <div key={c.id} className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
+                  <div key={c.id} className="glass-panel p-5 rounded-xl border border-[#E2E8F0] flex flex-col justify-between space-y-4 hover:shadow-sm transition-all">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[10px] text-muted-foreground font-bold">{c.id}</span>
-                        <h4 className="font-bold text-base text-foreground leading-snug">{c.patient_name}</h4>
-                        <p className="text-xs font-semibold text-primary">{dentist?.full_name || 'Desconhecido'}</p>
+                        <span className="text-[10px] text-slate-400 font-bold">{c.id}</span>
+                        <h4 className="font-bold text-sm text-slate-900 leading-snug">{c.patient_name}</h4>
+                        <p className="text-xs font-semibold text-[#0F766E]">{dentist?.full_name || 'Desconhecido'}</p>
                       </div>
                       <button
                         onClick={() => {
                           setEditingCase(c);
                           setShowEditor(true);
                         }}
-                        className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                        className="p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
                       >
                         <Edit2 size={14} />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs py-3 border-t border-b border-white/5">
+                    <div className="grid grid-cols-2 gap-2 text-xs py-3 border-t border-b border-[#E2E8F0]">
                       <div>
-                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Status</span>
+                        <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Status</span>
                         {getStatusBadge(c.status)}
                       </div>
                       <div>
-                        <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Financeiro</span>
+                        <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Financeiro</span>
                         {getFinancialBadge(c.financial_status)}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-muted-foreground flex items-center gap-1">
+                      <span className="text-slate-500 flex items-center gap-1.5">
                         <Calendar size={13} />
                         Fim: {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                       </span>
-                      <span className="text-foreground font-bold text-sm">
+                      <span className="text-slate-900 font-bold text-sm">
                         R$ {c.total_value.toFixed(2)}
                       </span>
                     </div>

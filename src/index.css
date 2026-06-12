@@ -61,8 +61,8 @@
   --primary: 174 77% 26%; /* Primary Teal #0F766E */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 192 91% 36%; /* Secondary Cyan #0891B2 */
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%; /* Slate-100 #F1F5F9 */
+  --secondary-foreground: 222 47% 11%;
 
   --muted: 210 40% 96.1%;
   --muted-foreground: 215 16% 47%; /* Secondary Text #64748B */
@@ -156,20 +156,7 @@
   border: 1px solid #1E293B !important;
 }
 
-/* shadcn/ui buttons pattern utility (hover translations/scaling simplified) */
-.glow-btn {
-  transition: all 0.2s ease-in-out;
-}
-
-.glow-btn:hover {
-  opacity: 0.95;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-.glow-btn:active {
-  transform: scale(0.98);
-}
+/* Removed .glow-btn — no longer used */
 
 /* Clean Animations */
 @keyframes fadeIn {

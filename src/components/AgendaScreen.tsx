@@ -227,40 +227,40 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight">Agenda & Capacidade</h2>
-        <p className="text-muted-foreground text-sm">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Agenda & Capacidade</h2>
+        <p className="text-slate-500 text-xs mt-1">
           Planeje prazos de entrega, visualize a carga de trabalho laboratorial e configure bloqueios de expediente.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 w-fit gap-1 bg-secondary/30 p-1.5 rounded-xl">
+      <div className="flex border-b border-[#E2E8F0] w-full gap-6 pb-px">
         <button
           onClick={() => setActiveTab('deliveries')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'deliveries'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Cronograma de Entregas
         </button>
         <button
           onClick={() => setActiveTab('capacity')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'capacity'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Capacidade Produtiva
         </button>
         <button
           onClick={() => setActiveTab('blocks')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'blocks'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Bloqueios e Feriados
@@ -269,58 +269,58 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
 
       {activeTab === 'deliveries' ? (
         /* DELIVERIES TAB - GOOGLE-STYLE CALENDAR */
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-6 animate-fade-in">
+        <div className="glass-panel p-5 space-y-5 animate-fade-in">
           {/* Calendar Navigation and View Toggles */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-[#E2E8F0] pb-4">
             <div className="flex items-center gap-3">
-              <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                <CalendarIcon size={20} className="text-primary" />
+              <h3 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                <CalendarIcon size={16} className="text-[#0F766E]" />
                 {calendarView === 'monthly' 
                   ? `${monthNames[currentDate.getMonth()]} de ${currentDate.getFullYear()}`
                   : `Semana de ${new Date(getDaysInWeekGrid(currentDate)[0]).toLocaleDateString('pt-BR')} a ${new Date(getDaysInWeekGrid(currentDate)[6]).toLocaleDateString('pt-BR')}`
                 }
               </h3>
-              <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-xl border border-white/10">
+              <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-[#E2E8F0]">
                 <button
                   onClick={handlePrev}
-                  className="p-1.5 hover:bg-secondary rounded-lg transition-all"
+                  className="p-1.5 hover:bg-slate-50 rounded-md transition-all text-slate-500"
                   title="Anterior"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={14} />
                 </button>
                 <button
                   onClick={handleToday}
-                  className="px-2.5 py-1 text-xs font-bold hover:bg-secondary rounded-lg transition-all"
+                  className="px-2 py-1 text-[10px] font-bold hover:bg-slate-50 rounded-md transition-all text-slate-700"
                 >
                   Hoje
                 </button>
                 <button
                   onClick={handleNext}
-                  className="p-1.5 hover:bg-secondary rounded-lg transition-all"
+                  className="p-1.5 hover:bg-slate-50 rounded-md transition-all text-slate-500"
                   title="Próximo"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 bg-secondary/55 p-1 rounded-xl border border-white/10">
+            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-[#E2E8F0]">
               <button
                 onClick={() => setCalendarView('monthly')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-[10px] font-semibold rounded-md transition-all ${
                   calendarView === 'monthly'
-                    ? 'bg-primary text-white shadow'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-white text-slate-900 border border-[#E2E8F0] shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Mensal
               </button>
               <button
                 onClick={() => setCalendarView('weekly')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-[10px] font-semibold rounded-md transition-all ${
                   calendarView === 'weekly'
-                    ? 'bg-primary text-white shadow'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-white text-slate-900 border border-[#E2E8F0] shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Semanal
@@ -330,10 +330,10 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
 
           {calendarView === 'monthly' ? (
             /* MONTHLY VIEW GRID */
-            <div className="grid grid-cols-7 gap-px bg-white/10 rounded-xl overflow-hidden border border-white/10">
+            <div className="grid grid-cols-7 gap-px bg-[#E2E8F0] rounded-xl overflow-hidden border border-[#E2E8F0]">
               {/* Day names */}
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                <div key={d} className="bg-secondary/40 py-2 text-center text-xs font-extrabold uppercase text-muted-foreground tracking-wider">
+                <div key={d} className="bg-slate-50 py-2 text-center text-[9px] font-bold uppercase text-slate-400 tracking-wider">
                   {d}
                 </div>
               ))}
@@ -347,15 +347,15 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                 return (
                   <div 
                     key={idx} 
-                    className={`min-h-[110px] bg-card p-2 flex flex-col justify-between hover:bg-secondary/10 transition-all ${
+                    className={`min-h-[100px] bg-white p-2 flex flex-col justify-between hover:bg-slate-50/60 transition-all ${
                       isCurrentMonth ? '' : 'opacity-40'
                     }`}
                   >
                     <div className="flex justify-between items-center mb-1">
-                      <span className={`text-xs font-bold ${
+                      <span className={`text-[10px] font-bold ${
                         isToday 
-                          ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md shadow-primary/30' 
-                          : 'text-muted-foreground'
+                          ? 'bg-[#0F766E] text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm' 
+                          : 'text-slate-400'
                       }`}>
                         {day.getDate()}
                       </span>
@@ -366,7 +366,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                       {dayEvents.map(ev => (
                         <div 
                           key={ev.id}
-                          className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 truncate"
+                          className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 truncate"
                           title={`${ev.title}: ${ev.notes || ''}`}
                         >
                           🚫 {ev.title}
@@ -380,7 +380,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                           <div 
                             key={c.id}
                             onClick={() => onSelectCase && onSelectCase(c.id)}
-                            className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/45 transition-all truncate cursor-pointer"
+                            className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-teal-50 text-[#0F766E] border border-teal-100 hover:bg-teal-100 transition-all truncate cursor-pointer"
                             title={`Caso ${c.id} - Paciente: ${c.patient_name} (${dentist?.full_name || ''})`}
                           >
                             📦 {c.patient_name}
@@ -404,10 +404,10 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                 return (
                   <div 
                     key={idx} 
-                    className={`glass-panel p-4 rounded-xl border flex flex-col justify-between min-h-[200px] transition-all ${
+                    className={`glass-panel p-4 flex flex-col justify-between min-h-[200px] transition-all ${
                       isToday 
-                        ? 'border-primary bg-primary/5 shadow-md shadow-primary/5' 
-                        : 'border-white/5 bg-secondary/15'
+                        ? 'border-[#0F766E] border-2 bg-teal-50/30' 
+                        : ''
                     }`}
                   >
                     <div>
@@ -431,7 +431,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                         {dayEvents.map(ev => (
                           <div 
                             key={ev.id}
-                            className="p-1.5 rounded-lg text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/25 space-y-0.5"
+                            className="p-1.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-600 border border-rose-100 space-y-0.5"
                           >
                             <div className="flex items-center gap-1 text-[10px]">
                               <span>🚫</span>
@@ -447,7 +447,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                             <div 
                               key={c.id}
                               onClick={() => onSelectCase && onSelectCase(c.id)}
-                              className="p-2 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/25 hover:border-primary/45 transition-all cursor-pointer space-y-1"
+                              className="p-2 rounded-md text-[10px] font-semibold bg-teal-50 text-[#0F766E] border border-teal-100 hover:bg-teal-100 transition-all cursor-pointer space-y-1"
                             >
                               <div className="flex justify-between items-center">
                                 <span className="truncate">📦 {c.patient_name}</span>
@@ -455,7 +455,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                               <div className="text-[9px] text-muted-foreground">
                                 Dr. {dentist?.full_name || 'Desconhecido'}
                               </div>
-                              <span className="px-1.5 py-0.5 rounded bg-primary/20 text-[8px] font-black uppercase text-primary">
+                              <span className="px-1.5 py-0.5 rounded-full bg-teal-100 text-[8px] font-bold uppercase text-[#0F766E]">
                                 {c.status}
                               </span>
                             </div>
@@ -475,43 +475,43 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Status Indicator */}
-            <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+            <div className={`glass-panel p-5 flex flex-col justify-between ${
               cap.isOverloaded 
-                ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' 
-                : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                ? '' 
+                : ''
             }`}>
-              <div className="space-y-2">
-                <span className="text-[10px] uppercase font-bold tracking-widest block opacity-75">Status Produtivo</span>
-                <h3 className="text-2xl font-black">{cap.isOverloaded ? 'Alerta: Sobrecarga!' : 'Capacidade Adequada'}</h3>
-                <p className="text-xs opacity-90 font-medium">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold tracking-widest block text-slate-400">Status Produtivo</span>
+                <h3 className={`text-lg font-bold ${cap.isOverloaded ? 'text-rose-600' : 'text-emerald-600'}`}>{cap.isOverloaded ? 'Alerta: Sobrecarga!' : 'Capacidade Adequada'}</h3>
+                <p className="text-[10px] text-slate-500 font-medium">
                   {cap.isOverloaded 
                     ? 'O volume estimado de horas excede o limite disponível para a semana.' 
                     : 'A fila de confecção está equilibrada com o horário laboratorial.'
                   }
                 </p>
               </div>
-              <span className="p-3 bg-card/40 border border-white/5 rounded-xl mt-4 w-fit">
-                {cap.isOverloaded ? <ShieldAlert size={24} /> : <CheckCircle2 size={24} />}
+              <span className={`p-2.5 border border-[#E2E8F0] rounded-lg mt-3 w-fit ${cap.isOverloaded ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {cap.isOverloaded ? <ShieldAlert size={20} /> : <CheckCircle2 size={20} />}
               </span>
             </div>
 
             {/* Total Committed hours */}
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div className="glass-panel p-5 flex flex-col justify-between">
               <div className="space-y-1">
-                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">Horas Comprometidas</span>
-                <h3 className="text-3xl font-black text-foreground">{committedHours}h</h3>
-                <p className="text-xs text-muted-foreground">Soma estimada de todos os dentes/casos ativos.</p>
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Horas Comprometidas</span>
+                <h3 className="text-2xl font-bold text-slate-900">{committedHours}h</h3>
+                <p className="text-[10px] text-slate-500">Soma estimada de todos os dentes/casos ativos.</p>
               </div>
               
               {/* Progress bar */}
-              <div className="mt-4 space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+              <div className="mt-3 space-y-1">
+                <div className="flex justify-between text-[10px] text-slate-400 font-bold">
                   <span>Volume da Fila</span>
                   <span>{cap.overloadPercent.toFixed(0)}%</span>
                 </div>
-                <div className="w-full bg-secondary/40 rounded-full h-2 overflow-hidden border border-white/5">
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden border border-[#E2E8F0]">
                   <div 
-                    className={`h-full rounded-full transition-all duration-500 ${cap.isOverloaded ? 'bg-rose-500' : 'bg-primary'}`} 
+                    className={`h-full rounded-full transition-all duration-500 ${cap.isOverloaded ? 'bg-rose-500' : 'bg-[#0F766E]'}`} 
                     style={{ width: `${Math.min(100, cap.overloadPercent)}%` }} 
                   />
                 </div>
@@ -519,15 +519,15 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
             </div>
 
             {/* Net Available hours */}
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div className="glass-panel p-5 flex flex-col justify-between">
               <div className="space-y-1">
-                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">Horas Disponíveis (Semana)</span>
-                <h3 className="text-3xl font-black text-primary">{cap.netAvailableHours}h</h3>
-                <p className="text-xs text-muted-foreground">Feriados ou viagens reduzem esse tempo.</p>
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Horas Disponíveis (Semana)</span>
+                <h3 className="text-2xl font-bold text-[#0F766E]">{cap.netAvailableHours}h</h3>
+                <p className="text-[10px] text-slate-500">Feriados ou viagens reduzem esse tempo.</p>
               </div>
               
-              <div className="bg-secondary/45 p-3 rounded-xl border border-white/5 flex items-center gap-2.5 text-xs text-muted-foreground mt-4">
-                <Info size={14} className="text-primary shrink-0" />
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] flex items-center gap-2 text-[10px] text-slate-500 mt-3">
+                <Info size={12} className="text-[#0F766E] shrink-0" />
                 <span>Bloqueios ativos nesta semana: {cap.blockedHours}h</span>
               </div>
             </div>
@@ -535,9 +535,9 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
           </div>
 
           {/* Productivity recommendations */}
-          <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-3">
-            <h4 className="font-bold text-base text-foreground">Diretrizes de Cronograma Laboratorial</h4>
-            <ul className="text-xs text-muted-foreground space-y-2 list-disc list-inside">
+          <div className="glass-panel p-5 space-y-3">
+            <h4 className="font-semibold text-sm text-slate-900">Diretrizes de Cronograma Laboratorial</h4>
+            <ul className="text-[11px] text-slate-500 space-y-2 list-disc list-inside">
               <li>Horário Padrão de Expediente: Segunda a Sexta comercial (8h às 12h, 13h30 às 18h) + Sábado de manhã (8h às 12h).</li>
               <li>A capacidade máxima semanal líquida padrão é de <strong>44 horas de bancada</strong>.</li>
               <li>Caso novos trabalhos entrem na zona de sobrecarga (faixa vermelha), defina os prazos finais de entrega com folga de 3 a 5 dias adicionais.</li>
@@ -549,23 +549,23 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
           
           {/* List of active blocks */}
-          <div className="glass-panel p-5 rounded-2xl border border-white/5 md:col-span-2 space-y-4">
+          <div className="glass-panel p-5 md:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg">Bloqueios & Feriados Ativos</h3>
-              <span className="text-xs text-muted-foreground font-semibold">({events.length} registrados)</span>
+              <h3 className="font-semibold text-sm text-slate-900">Bloqueios & Feriados Ativos</h3>
+              <span className="text-[10px] text-slate-400 font-medium">({events.length} registrados)</span>
             </div>
 
             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
               {events.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-xs border border-dashed border-white/5 rounded-xl bg-card">
+                <div className="text-center py-12 text-slate-400 text-xs border border-dashed border-[#E2E8F0] rounded-xl">
                   Nenhum bloqueio de agenda configurado.
                 </div>
               ) : (
                 events.map(ev => (
-                  <div key={ev.id} className="p-3 rounded-xl bg-secondary/35 border border-white/5 flex items-center justify-between hover:bg-secondary/65 transition-all">
+                  <div key={ev.id} className="p-3 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-between hover:bg-slate-50 transition-all">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground">{ev.title}</span>
+                        <span className="font-semibold text-xs text-slate-900">{ev.title}</span>
                         <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase border ${getEventBadgeColor(ev.type)}`}>
                           {ev.type}
                         </span>
@@ -578,7 +578,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
 
                     <button
                       onClick={() => handleDeleteBlock(ev.id)}
-                      className="p-2 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-all"
+                      className="p-1.5 rounded-lg bg-white text-rose-500 border border-[#E2E8F0] hover:bg-rose-50 hover:border-rose-200 transition-all"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -589,13 +589,13 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
           </div>
 
           {/* Form to add block */}
-          <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4 flex flex-col justify-between">
+          <div className="glass-panel p-5 space-y-4 flex flex-col justify-between">
             <div className="space-y-4">
-              <h3 className="font-bold text-lg">Bloquear Agenda</h3>
+              <h3 className="font-semibold text-sm text-slate-900">Bloquear Agenda</h3>
               
               <form onSubmit={handleCreateBlock} className="space-y-3.5">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Título / Motivo
                   </label>
                   <input
@@ -604,18 +604,18 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                     value={blockTitle}
                     onChange={(e) => setBlockTitle(e.target.value)}
                     placeholder="Ex: Feriado Tiradentes"
-                    className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-sm font-medium focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Tipo do Bloqueio
                   </label>
                   <select
                     value={blockType}
                     onChange={(e: any) => setBlockType(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-sm font-semibold focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
                   >
                     <option value="indisponibilidade">Indisponibilidade</option>
                     <option value="feriado">Feriado</option>
@@ -626,7 +626,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                       Data Início
                     </label>
                     <input
@@ -634,11 +634,11 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                       required
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-secondary border border-white/10 text-xs font-semibold"
+                      className="w-full px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                       Data Fim
                     </label>
                     <input
@@ -646,26 +646,26 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                       required
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-secondary border border-white/10 text-xs font-semibold"
+                      className="w-full px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Observações
                   </label>
                   <textarea
                     rows={2}
                     value={blockNotes}
                     onChange={(e) => setBlockNotes(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-secondary border border-white/10 text-xs focus:outline-none"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-primary hover:bg-primary/95 text-white font-semibold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 glow-btn mt-4"
+                  className="w-full bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold py-2.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 mt-3"
                 >
                   <Plus size={14} />
                   Adicionar Bloqueio

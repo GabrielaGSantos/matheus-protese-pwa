@@ -68,29 +68,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex md:w-60 flex-col bg-white border-r border-[#E2E8F0] sticky top-0 h-screen p-5 z-40">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-6 px-1.5">
-          <div className="w-8.5 h-8.5 rounded-lg bg-[#0F766E] flex items-center justify-center text-white font-bold text-lg">
+        <div className="flex items-center gap-2 mb-4 px-1">
+          <div className="w-7 h-7 rounded-lg bg-[#0F766E] flex items-center justify-center text-white font-semibold text-sm">
             M
           </div>
           <div>
-            <h1 className="font-bold text-sm leading-tight text-[#0F172A]">
+            <h1 className="font-semibold text-xs leading-tight text-[#0F172A]">
               {user.role === 'secretary' ? 'Secretária' : 'Dr. Matheus'}
             </h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+            <p className="text-[9px] text-slate-400 uppercase tracking-wider font-medium">
               Odontologia Digital
             </p>
           </div>
         </div>
 
         {/* User Badge */}
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-[#E2E8F0] mb-6">
-          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
-            <User size={16} />
+        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50 border border-[#E2E8F0] mb-4">
+          <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+            <User size={14} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-semibold truncate text-[#0F172A]">{user.full_name}</h4>
-            <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-0.5 bg-[#ECFDF5] text-[#0F766E] border border-emerald-100">
-              {user.role === 'admin' ? 'Matheus (Admin)' : user.role === 'secretary' ? 'Secretária' : 'Dentista'}
+            <h4 className="text-[11px] font-semibold truncate text-[#0F172A]">{user.full_name}</h4>
+            <span className="inline-block text-[9px] px-1.5 py-px rounded-full font-medium mt-0.5 bg-[#ECFDF5] text-[#0F766E] border border-emerald-100">
+              {user.role === 'admin' ? 'Admin' : user.role === 'secretary' ? 'Secretária' : 'Dentista'}
             </span>
           </div>
         </div>

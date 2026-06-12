@@ -93,35 +93,35 @@ export const DentistsScreen: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Dentistas Parceiros</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Dentistas Parceiros</h2>
+          <p className="text-slate-500 text-xs mt-1">
             Gerencie e cadastre acessos para os dentistas que enviam casos para o seu laboratório.
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="glow-btn bg-primary hover:bg-primary/95 text-white font-semibold px-4 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+          className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 text-xs transition-all"
         >
-          <Plus size={18} />
+          <Plus size={15} />
           Cadastrar Dentista
         </button>
       </div>
 
-      {/* New/Edit Dentist Form Modal/Drawer */}
+      {/* New/Edit Dentist Form */}
       {showForm && (
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 relative animate-fade-in max-w-lg">
-          <h3 className="text-lg font-bold mb-4">{editingDentist ? 'Editar Dentista' : 'Novo Dentista'}</h3>
+        <div className="glass-panel p-5 animate-fade-in max-w-lg">
+          <h3 className="text-sm font-bold text-slate-900 mb-4">{editingDentist ? 'Editar Dentista' : 'Novo Dentista'}</h3>
           {success ? (
-            <div className="flex flex-col items-center justify-center py-6 text-emerald-500 font-bold gap-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                <Check size={24} />
+            <div className="flex flex-col items-center justify-center py-6 text-emerald-600 font-semibold gap-2 text-sm">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <Check size={20} />
               </div>
               {editingDentist ? 'Dentista atualizado com sucesso!' : 'Dentista cadastrado com sucesso!'}
             </div>
           ) : (
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                   Nome Completo
                 </label>
                 <input
@@ -130,13 +130,13 @@ export const DentistsScreen: React.FC = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Dr. Lucas Medeiros"
-                  className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium"
+                  className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                     WhatsApp / Telefone
                   </label>
                   <input
@@ -144,11 +144,11 @@ export const DentistsScreen: React.FC = () => {
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
                     placeholder="Ex: 47999998888"
-                    className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                     Login
                   </label>
                   <input
@@ -156,14 +156,13 @@ export const DentistsScreen: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Ex: lucas@dentista.com"
-                    className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                   />
                 </div>
               </div>
 
-              {/* Observação / Notas */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                   Observação
                 </label>
                 <textarea
@@ -171,15 +170,15 @@ export const DentistsScreen: React.FC = () => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Anotações internas sobre preferências do dentista, prazos, etc."
-                  className="w-full px-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium"
+                  className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                 />
               </div>
 
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[10px] text-slate-400">
                 * No modo de demonstração, a senha padrão criada será <strong>123456</strong>. O login rápido do dentista ficará disponível na tela de login.
               </p>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -190,14 +189,14 @@ export const DentistsScreen: React.FC = () => {
                     setEmail('');
                     setNotes('');
                   }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-secondary transition-all"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="bg-primary hover:bg-primary/95 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50"
+                  className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all disabled:opacity-50"
                 >
                   {saving ? 'Gravando...' : editingDentist ? 'Salvar Alterações' : 'Confirmar Cadastro'}
                 </button>
@@ -209,73 +208,73 @@ export const DentistsScreen: React.FC = () => {
 
       {/* Search Bar */}
       <div className="relative max-w-md">
-        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground pointer-events-none">
-          <Search size={18} />
+        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+          <Search size={15} />
         </span>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar dentista por nome..."
-          className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-white/10 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-medium"
+          className="w-full pl-10 pr-4 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
         />
       </div>
 
       {/* Grid List */}
       {loading ? (
-        <div className="flex justify-center items-center py-12 text-muted-foreground">
+        <div className="flex justify-center items-center py-12 text-slate-500 text-sm font-medium">
           Carregando lista de dentistas...
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDentists.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-muted-foreground text-sm border border-dashed border-white/10 rounded-2xl">
+            <div className="col-span-full text-center py-12 text-slate-400 text-xs border border-dashed border-[#E2E8F0] rounded-xl">
               Nenhum dentista encontrado para a busca.
             </div>
           ) : (
             filteredDentists.map((d) => (
-              <div key={d.id} className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+              <div key={d.id} className="glass-panel p-4 flex flex-col justify-between hover:shadow-sm transition-all">
                 <div>
-                  <h4 className="font-bold text-lg text-foreground">{d.full_name}</h4>
-                  <span className="text-[10px] uppercase font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10 inline-block mt-1">
+                  <h4 className="font-semibold text-sm text-slate-900">{d.full_name}</h4>
+                  <span className="text-[9px] uppercase font-bold text-[#0F766E] px-1.5 py-px rounded-full bg-[#ECFDF5] border border-emerald-100 inline-block mt-1">
                     Dentista Parceiro
                   </span>
                   
-                  <div className="space-y-2.5 mt-5">
-                    <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
-                      <Mail size={14} className="text-muted-foreground/75" />
+                  <div className="space-y-2 mt-3">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Mail size={12} className="text-slate-400" />
                       <span>{d.full_name.toLowerCase().replace(/[^a-z0-9]/g, '')}@dentista.com</span>
                     </div>
-                    <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
-                      <Calendar size={14} className="text-muted-foreground/75" />
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <Calendar size={12} className="text-slate-400" />
                       <span>Cadastrado em {new Date(d.created_at).toLocaleDateString('pt-BR')}</span>
                     </div>
                     {d.notes && (
-                      <div className="bg-secondary/40 p-3 rounded-xl border border-white/5 text-[11px] text-muted-foreground mt-3 leading-relaxed">
-                        <strong className="text-foreground block mb-0.5">Observação:</strong>
+                      <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] text-[10px] text-slate-500 mt-2 leading-relaxed">
+                        <strong className="text-slate-700 block mb-0.5">Observação:</strong>
                         {d.notes}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex gap-2 mt-6 pt-4 border-t border-white/5">
+                <div className="flex gap-2 mt-4 pt-3 border-t border-[#E2E8F0]">
                   {d.whatsapp && (
                     <a
                       href={`https://wa.me/55${d.whatsapp.replace(/\D/g, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-center rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-300"
+                      className="flex-1 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all"
                     >
-                      <Phone size={12} />
+                      <Phone size={11} className="text-emerald-500" />
                       WhatsApp
                     </a>
                   )}
                   <button
                     onClick={() => startEdit(d)}
-                    className="flex-1 py-2 bg-secondary hover:bg-secondary/80 text-foreground border border-white/5 text-center rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-300"
+                    className="flex-1 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <FileText size={12} />
+                    <FileText size={11} className="text-slate-400" />
                     Editar
                   </button>
                 </div>

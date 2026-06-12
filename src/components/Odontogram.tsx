@@ -41,9 +41,9 @@ export const Odontogram: React.FC<OdontogramProps> = ({ value, onChange, readOnl
     } else if (type === 'inferior') {
       teeth = [...lowerArchRight, ...lowerArchLeft];
     } else if (type === 'protocolo_superior') {
-      teeth = [16, 14, 12, 22, 24, 26]; // Exemplo de dentes padrão para protocolo superior
+      teeth = [16, 14, 12, 22, 24, 26];
     } else if (type === 'protocolo_inferior') {
-      teeth = [46, 44, 42, 32, 34, 36]; // Exemplo de dentes padrão para protocolo inferior
+      teeth = [46, 44, 42, 32, 34, 36];
     }
 
     onChange({
@@ -60,48 +60,47 @@ export const Odontogram: React.FC<OdontogramProps> = ({ value, onChange, readOnl
         type="button"
         disabled={readOnly}
         onClick={() => handleToothClick(tooth)}
-        className={`w-9 h-9 md:w-11 md:h-11 rounded-lg text-xs font-bold transition-all duration-300 border flex flex-col items-center justify-center ${
+        className={`w-9 h-9 md:w-10 md:h-10 rounded-lg text-xs font-semibold transition-all border flex items-center justify-center ${
           isSelected
-            ? 'bg-primary border-primary text-white scale-105 shadow-md shadow-primary/25'
-            : 'bg-secondary/40 border-white/5 text-muted-foreground hover:bg-secondary hover:text-foreground'
+            ? 'bg-[#0F766E] border-[#0F766E] text-white shadow-sm'
+            : 'bg-white border-[#E2E8F0] text-slate-500 hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300'
         }`}
       >
-        <span className="text-[10px] opacity-75">FDI</span>
-        <span>{tooth}</span>
+        {tooth}
       </button>
     );
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Quick selection actions */}
       {!readOnly && onChange && (
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => handleQuickSelect('superior')}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-secondary/80 border border-white/5 hover:bg-secondary text-foreground transition-all"
+            className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-white border border-[#E2E8F0] text-slate-600 hover:bg-slate-50 transition-all"
           >
             Arcada Superior
           </button>
           <button
             type="button"
             onClick={() => handleQuickSelect('inferior')}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-secondary/80 border border-white/5 hover:bg-secondary text-foreground transition-all"
+            className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-white border border-[#E2E8F0] text-slate-600 hover:bg-slate-50 transition-all"
           >
             Arcada Inferior
           </button>
           <button
             type="button"
             onClick={() => handleQuickSelect('todos')}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-secondary/80 border border-white/5 hover:bg-secondary text-foreground transition-all"
+            className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-white border border-[#E2E8F0] text-slate-600 hover:bg-slate-50 transition-all"
           >
             Todos os dentes
           </button>
           <button
             type="button"
             onClick={() => onChange({ teeth: [], type: 'individual' })}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 text-destructive transition-all"
+            className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-white border border-[#E2E8F0] text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all"
           >
             Limpar
           </button>
@@ -109,25 +108,21 @@ export const Odontogram: React.FC<OdontogramProps> = ({ value, onChange, readOnl
       )}
 
       {/* FDI Odontogram Grid */}
-      <div className="bg-card/45 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-white/5 space-y-6">
+      <div className="bg-white p-4 md:p-5 rounded-xl border border-[#E2E8F0] space-y-4">
         
         {/* Upper Arch (Superior) */}
         <div>
-          <div className="text-[10px] font-extrabold uppercase tracking-widest text-primary mb-2 text-center">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2 text-center">
             Arcada Superior
           </div>
           <div className="flex flex-col space-y-2">
-            {/* Grid layout splitting Left / Right quadrants */}
             <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
-              {/* Quadrant 1 (Right) */}
               <div className="flex gap-1.5 md:gap-2">
                 {upperArchRight.map(renderTooth)}
               </div>
               
-              {/* Divider */}
-              <div className="w-0.5 bg-white/10 hidden md:block" />
+              <div className="w-px bg-[#E2E8F0] hidden md:block" />
 
-              {/* Quadrant 2 (Left) */}
               <div className="flex gap-1.5 md:gap-2">
                 {upperArchLeft.map(renderTooth)}
               </div>
@@ -136,24 +131,21 @@ export const Odontogram: React.FC<OdontogramProps> = ({ value, onChange, readOnl
         </div>
 
         {/* Horizontal Divider between arches */}
-        <hr className="border-white/5" />
+        <hr className="border-[#E2E8F0]" />
 
         {/* Lower Arch (Inferior) */}
         <div>
-          <div className="text-[10px] font-extrabold uppercase tracking-widest text-primary mb-2 text-center">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2 text-center">
             Arcada Inferior
           </div>
           <div className="flex flex-col space-y-2">
             <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
-              {/* Quadrant 4 (Right) */}
               <div className="flex gap-1.5 md:gap-2">
                 {lowerArchRight.map(renderTooth)}
               </div>
               
-              {/* Divider */}
-              <div className="w-0.5 bg-white/10 hidden md:block" />
+              <div className="w-px bg-[#E2E8F0] hidden md:block" />
 
-              {/* Quadrant 3 (Left) */}
               <div className="flex gap-1.5 md:gap-2">
                 {lowerArchLeft.map(renderTooth)}
               </div>
@@ -164,9 +156,9 @@ export const Odontogram: React.FC<OdontogramProps> = ({ value, onChange, readOnl
       </div>
 
       {/* Selected stats summary */}
-      <div className="text-xs text-muted-foreground bg-secondary/20 p-3 rounded-xl border border-white/5 flex items-center justify-between">
+      <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-[#E2E8F0] flex items-center justify-between">
         <span>Elementos selecionados ({value.teeth.length}):</span>
-        <span className="font-bold text-foreground">
+        <span className="font-semibold text-slate-700">
           {value.teeth.length > 0 ? value.teeth.join(', ') : 'Nenhum dente selecionado'}
         </span>
       </div>

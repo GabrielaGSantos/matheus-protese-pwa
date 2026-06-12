@@ -192,42 +192,42 @@ export const FinanceScreen: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Módulo Financeiro</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Módulo Financeiro</h2>
+          <p className="text-slate-500 text-xs mt-1">
             Visualize o fluxo de caixa do laboratório, fechamentos por dentista e gere mensagens de cobrança.
           </p>
         </div>
 
         {/* Month Selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Competência:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Competência:</span>
           <input
             type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-secondary border border-white/10 text-xs font-bold text-foreground"
+            className="px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
           />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 w-fit gap-1 bg-secondary/30 p-1.5 rounded-xl">
+      <div className="flex border-b border-[#E2E8F0] w-full gap-6 pb-px">
         <button
           onClick={() => setActiveTab('billing')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'billing'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Fechamentos & Cobrança
         </button>
         <button
           onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'reports'
-              ? 'bg-primary text-white shadow-md'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Relatório Geral do Mês
@@ -237,11 +237,11 @@ export const FinanceScreen: React.FC = () => {
       {activeTab === 'billing' ? (
         /* BILLING AND COBRANCAS TAB */
         <div className="space-y-4">
-          <h3 className="font-bold text-lg">Dentistas com Casos Ativos no Mês</h3>
+          <h3 className="font-semibold text-sm text-slate-900">Dentistas com Casos Ativos no Mês</h3>
           
           <div className="space-y-3">
             {dentistsBalances.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-white/10 rounded-2xl bg-card">
+              <div className="text-center py-12 text-slate-400 text-xs border border-dashed border-[#E2E8F0] rounded-xl">
                 Nenhum faturamento registrado para a competência selecionada.
               </div>
             ) : (
@@ -250,50 +250,50 @@ export const FinanceScreen: React.FC = () => {
                 const whatsappText = getWhatsAppText(dentist, pendingCases, andreyDiscountCredit);
                 
                 return (
-                  <div key={dentist.id} className="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all">
+                  <div key={dentist.id} className="glass-panel overflow-hidden transition-all">
                     
                     {/* Dentist Header Card */}
                     <div 
                       onClick={() => setExpandedDentistId(isExpanded ? null : dentist.id)}
-                      className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer hover:bg-secondary/20 transition-all"
+                      className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-all"
                     >
-                      <div className="space-y-1">
-                        <h4 className="font-bold text-lg text-foreground">{dentist.full_name}</h4>
-                        <span className="text-xs text-muted-foreground font-semibold">
+                      <div className="space-y-0.5">
+                        <h4 className="font-semibold text-sm text-slate-900">{dentist.full_name}</h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
                           Total faturado no mês: R$ {totalBilled.toFixed(2)}
                         </span>
                         {andreyDiscountCredit > 0 && (
-                          <span className="text-xs text-emerald-500 font-bold block">
-                            Créditos de Repasse Andrey Descontados: -R$ {andreyDiscountCredit.toFixed(2)}
+                          <span className="text-[11px] text-emerald-600 font-semibold block">
+                            Créditos de Repasse Andrey: -R$ {andreyDiscountCredit.toFixed(2)}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                         <div className="text-right">
-                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Total Pendente</span>
-                          <span className={`text-base font-black ${totalPending > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Pendente</span>
+                          <span className={`text-sm font-bold ${totalPending > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                             R$ {totalPending.toFixed(2)}
                           </span>
                         </div>
-                        <span className="p-2 rounded-xl bg-secondary text-muted-foreground">
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        <span className="p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400">
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </span>
                       </div>
                     </div>
 
                     {/* Dentist Expanded cases / WhatsApp generator */}
                     {isExpanded && (
-                      <div className="p-5 bg-secondary/10 border-t border-white/5 space-y-5 animate-fade-in">
+                      <div className="p-4 bg-slate-50 border-t border-[#E2E8F0] space-y-4 animate-fade-in">
                         
                         {/* Action buttons */}
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => handleCopyText(whatsappText, dentist.id)}
-                            className="px-4 py-2.5 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+                            className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-lg flex items-center gap-1.5 transition-all"
                           >
-                            {copiedId === dentist.id ? <Check size={14} /> : <Copy size={14} />}
-                            {copiedId === dentist.id ? 'Copiado!' : 'Copiar Mensagem WhatsApp'}
+                            {copiedId === dentist.id ? <Check size={12} /> : <Copy size={12} />}
+                            {copiedId === dentist.id ? 'Copiado!' : 'Copiar Mensagem'}
                           </button>
                           
                           {dentist.whatsapp && (
@@ -301,29 +301,29 @@ export const FinanceScreen: React.FC = () => {
                               href={`https://wa.me/55${dentist.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappText)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-500 text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+                              className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-lg flex items-center gap-1.5 transition-all"
                             >
-                              <MessageSquare size={14} />
-                              Enviar p/ WhatsApp
+                              <MessageSquare size={12} className="text-emerald-500" />
+                              Enviar WhatsApp
                             </a>
                           )}
                         </div>
 
                         {/* List of expanded dentist's cases */}
-                        <div className="overflow-x-auto rounded-xl border border-white/5 bg-card">
+                        <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
                           <table className="w-full text-left text-xs">
-                            <thead className="bg-secondary/40 border-b border-white/10">
+                            <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
                               <tr>
-                                <th className="p-3 font-bold text-muted-foreground">ID do Caso</th>
-                                <th className="p-3 font-bold text-muted-foreground">Paciente</th>
-                                <th className="p-3 font-bold text-muted-foreground">Status Clínico</th>
-                                <th className="p-3 font-bold text-muted-foreground">Total</th>
-                                <th className="p-3 font-bold text-muted-foreground">Pago</th>
-                                <th className="p-3 font-bold text-muted-foreground">Aberto</th>
-                                <th className="p-3 font-bold text-muted-foreground text-center">Ações</th>
+                                <th className="p-3">ID do Caso</th>
+                                <th className="p-3">Paciente</th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3">Total</th>
+                                <th className="p-3">Pago</th>
+                                <th className="p-3">Aberto</th>
+                                <th className="p-3 text-center">Ações</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody className="divide-y divide-[#E2E8F0]">
                               {pendingCases.length === 0 ? (
                                 <tr>
                                   <td colSpan={7} className="p-4 text-center text-muted-foreground text-xs">
@@ -332,21 +332,21 @@ export const FinanceScreen: React.FC = () => {
                                 </tr>
                               ) : (
                                 pendingCases.map(c => (
-                                  <tr key={c.id} className="hover:bg-secondary/20 transition-all">
-                                    <td className="p-3 font-bold text-foreground">{c.id}</td>
-                                    <td className="p-3 font-semibold">{c.patient_name}</td>
+                                  <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                                    <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                                    <td className="p-3 font-semibold text-slate-900">{c.patient_name}</td>
                                     <td className="p-3">
-                                      <span className="px-2 py-0.5 rounded-lg bg-secondary border border-white/5 font-semibold text-[9px] uppercase tracking-wide text-foreground">
+                                      <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-bold text-[9px] uppercase tracking-wide text-slate-600">
                                         {c.status}
                                       </span>
                                     </td>
-                                    <td className="p-3 font-bold text-foreground">R$ {c.total_value.toFixed(2)}</td>
-                                    <td className="p-3 font-bold text-emerald-500">R$ {c.paid_value.toFixed(2)}</td>
-                                    <td className="p-3 font-bold text-amber-500">R$ {c.remaining_value.toFixed(2)}</td>
+                                    <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
+                                    <td className="p-3 font-semibold text-emerald-600">R$ {c.paid_value.toFixed(2)}</td>
+                                    <td className="p-3 font-semibold text-amber-600">R$ {c.remaining_value.toFixed(2)}</td>
                                     <td className="p-3 text-center">
                                       <button
                                         onClick={() => setPayingCase(c)}
-                                        className="px-2.5 py-1 bg-primary hover:bg-primary/95 text-white text-[10px] font-bold rounded-lg transition-all"
+                                        className="px-2.5 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-semibold rounded-md transition-all"
                                       >
                                         Baixa Pagamento
                                       </button>
@@ -359,8 +359,8 @@ export const FinanceScreen: React.FC = () => {
                         </div>
 
                         {andreyDiscountCredit > 0 && (
-                          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
-                            Foi aplicado um desconto de R$ {andreyDiscountCredit.toFixed(2)} no saldo total deste mês referente aos créditos de repasse de Andrey assinalados como "Descontado de Dr. Andrey".
+                          <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] font-medium">
+                            Desconto aplicado: R$ {andreyDiscountCredit.toFixed(2)} (créditos de repasse Andrey).
                           </div>
                         )}
 
@@ -374,37 +374,37 @@ export const FinanceScreen: React.FC = () => {
 
           {/* Payment Conciliation Modal overlay */}
           {payingCase && (
-            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-md bg-card border border-white/10 rounded-2xl shadow-2xl p-6 relative">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative">
                 <button
                   onClick={() => setPayingCase(null)}
-                  className="absolute top-4 right-4 p-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground"
+                  className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all"
                 >
                   <X size={16} />
                 </button>
 
-                <h3 className="text-lg font-bold mb-1">Registrar Recebimento</h3>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Conciliação de pagamento para o paciente: <strong>{payingCase.patient_name}</strong>
+                <h3 className="text-sm font-bold text-slate-900 mb-1">Registrar Recebimento</h3>
+                <p className="text-[11px] text-slate-500 mb-4">
+                  Conciliação de pagamento para o paciente: <strong className="text-slate-700">{payingCase.patient_name}</strong>
                 </p>
 
                 <form onSubmit={handleRegisterPayment} className="space-y-4">
-                  <div className="bg-secondary/30 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-[#E2E8F0] space-y-1 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Valor Total do Caso:</span>
-                      <span className="font-bold text-foreground">R$ {payingCase.total_value.toFixed(2)}</span>
+                      <span className="text-slate-500">Valor Total do Caso:</span>
+                      <span className="font-bold text-slate-900">R$ {payingCase.total_value.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Valor já Pago:</span>
-                      <span className="font-bold text-emerald-500">R$ {payingCase.paid_value.toFixed(2)}</span>
+                      <span className="text-slate-500">Valor já Pago:</span>
+                      <span className="font-semibold text-emerald-600">R$ {payingCase.paid_value.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between pt-1 border-t border-white/5">
-                      <span className="text-muted-foreground font-bold">Saldo em aberto:</span>
-                      <span className="font-bold text-amber-500">R$ {payingCase.remaining_value.toFixed(2)}</span>
+                    <div className="flex justify-between pt-1 border-t border-[#E2E8F0]">
+                      <span className="text-slate-600 font-semibold">Saldo em aberto:</span>
+                      <span className="font-bold text-amber-600">R$ {payingCase.remaining_value.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 py-2 border-b border-white/5">
+                  <div className="flex items-center gap-4 py-2 border-b border-[#E2E8F0]">
                     <div className="flex items-center gap-2">
                       <input
                         type="radio"
@@ -412,9 +412,9 @@ export const FinanceScreen: React.FC = () => {
                         name="payType"
                         checked={isFullPayment}
                         onChange={() => setIsFullPayment(true)}
-                        className="w-4 h-4 text-primary focus:ring-primary"
+                        className="w-4 h-4 text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                       />
-                      <label htmlFor="fullPay" className="text-xs font-semibold cursor-pointer">Quitação Total</label>
+                      <label htmlFor="fullPay" className="text-xs font-medium text-slate-700 cursor-pointer">Quitação Total</label>
                     </div>
                     <div className="flex items-center gap-2">
                       <input
@@ -423,15 +423,15 @@ export const FinanceScreen: React.FC = () => {
                         name="payType"
                         checked={!isFullPayment}
                         onChange={() => setIsFullPayment(false)}
-                        className="w-4 h-4 text-primary focus:ring-primary"
+                        className="w-4 h-4 text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                       />
-                      <label htmlFor="partialPay" className="text-xs font-semibold cursor-pointer">Pagamento Parcial</label>
+                      <label htmlFor="partialPay" className="text-xs font-medium text-slate-700 cursor-pointer">Pagamento Parcial</label>
                     </div>
                   </div>
 
                   {!isFullPayment && (
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                         Valor Recebido (R$)
                       </label>
                       <input
@@ -440,13 +440,13 @@ export const FinanceScreen: React.FC = () => {
                         required
                         value={payAmount}
                         onChange={(e) => setPayAmount(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground font-semibold text-sm"
+                        className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 font-semibold text-xs focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                       />
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                       Comprovante / Link do Recibo (Opcional)
                     </label>
                     <input
@@ -454,21 +454,21 @@ export const FinanceScreen: React.FC = () => {
                       value={receiptUrl}
                       onChange={(e) => setReceiptUrl(e.target.value)}
                       placeholder="Link da imagem, PDF ou código de arquivo"
-                      className="w-full px-4 py-2.5 rounded-xl bg-secondary border border-white/10 text-foreground text-sm"
+                      className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] text-xs focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-2">
+                  <div className="flex justify-end gap-2.5 pt-2">
                     <button
                       type="button"
                       onClick={() => setPayingCase(null)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-secondary"
+                      className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="bg-primary hover:bg-primary/95 text-white font-semibold px-4 py-2 rounded-xl text-sm"
+                      className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all"
                     >
                       Confirmar Pagamento
                     </button>
@@ -484,84 +484,84 @@ export const FinanceScreen: React.FC = () => {
         <div className="space-y-6 animate-fade-in">
           
           {/* Card Summary indicators */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Faturamento Bruto</span>
-              <h3 className="text-2xl font-black text-foreground">R$ {summary.billedTotal.toFixed(2)}</h3>
-              <p className="text-[10px] text-muted-foreground">Soma de todos os casos criados</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="glass-panel p-5 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Faturamento Bruto</span>
+              <h3 className="text-xl font-bold text-slate-900">R$ {summary.billedTotal.toFixed(2)}</h3>
+              <p className="text-[10px] text-slate-400">Soma de todos os casos criados</p>
             </div>
             
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Arrecadado (Quitado)</span>
-              <h3 className="text-2xl font-black text-emerald-500">R$ {summary.paidTotal.toFixed(2)}</h3>
-              <p className="text-[10px] text-muted-foreground">Total de baixas de pagamento</p>
+            <div className="glass-panel p-5 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Arrecadado (Quitado)</span>
+              <h3 className="text-xl font-bold text-emerald-600">R$ {summary.paidTotal.toFixed(2)}</h3>
+              <p className="text-[10px] text-slate-400">Total de baixas de pagamento</p>
             </div>
 
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">A Receber</span>
-              <h3 className="text-2xl font-black text-amber-500">R$ {summary.openTotal.toFixed(2)}</h3>
-              <p className="text-[10px] text-muted-foreground">Saldo remanescente de devedores</p>
+            <div className="glass-panel p-5 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">A Receber</span>
+              <h3 className="text-xl font-bold text-amber-600">R$ {summary.openTotal.toFixed(2)}</h3>
+              <p className="text-[10px] text-slate-400">Saldo remanescente de devedores</p>
             </div>
           </div>
 
           {/* Profits & internal divisions detailed */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* Margins & comissions */}
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4">
-              <h4 className="font-bold text-base text-foreground flex items-center gap-1.5">
-                <TrendingUp size={16} className="text-primary" />
+            <div className="glass-panel p-5 space-y-4">
+              <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-1.5">
+                <TrendingUp size={14} className="text-[#0F766E]" />
                 Rendimentos Laboratoriais
               </h4>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
                   <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Fração Dr. Matheus</span>
-                    <span className="text-[10px] text-muted-foreground block">Projetos atribuídos ao Matheus</span>
+                    <span className="font-semibold text-slate-700">Fração Dr. Matheus</span>
+                    <span className="text-[10px] text-slate-400 block">Projetos atribuídos ao Matheus</span>
                   </div>
-                  <span className="font-bold text-base text-foreground">R$ {summary.matheusBillings.toFixed(2)}</span>
+                  <span className="font-bold text-sm text-slate-900">R$ {summary.matheusBillings.toFixed(2)}</span>
                 </div>
 
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
                   <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Fração Dr. Paschoal</span>
-                    <span className="text-[10px] text-muted-foreground block">Projetos em parceria atribuídos</span>
+                    <span className="font-semibold text-slate-700">Fração Dr. Paschoal</span>
+                    <span className="text-[10px] text-slate-400 block">Projetos em parceria atribuídos</span>
                   </div>
-                  <span className="font-bold text-base text-foreground">R$ {summary.paschoalBillings.toFixed(2)}</span>
+                  <span className="font-bold text-sm text-slate-900">R$ {summary.paschoalBillings.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             {/* Internal Subcontract costs and Net Profit */}
-            <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4">
-              <h4 className="font-bold text-base text-foreground flex items-center gap-1.5">
-                <ShieldCheck size={16} className="text-emerald-500" />
+            <div className="glass-panel p-5 space-y-4">
+              <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-emerald-500" />
                 Custos Operacionais & Lucro Líquido
               </h4>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
                   <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Repasse Andrey</span>
+                    <span className="font-semibold text-slate-700">Repasse Andrey</span>
                   </div>
-                  <span className="font-semibold text-foreground">R$ {summary.costAndreyTotal.toFixed(2)}</span>
+                  <span className="font-semibold text-slate-900">R$ {summary.costAndreyTotal.toFixed(2)}</span>
                 </div>
 
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
                   <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Outros Custos Internos</span>
-                    <span className="text-[10px] text-muted-foreground block">Soma de outros custos dinâmicos cadastrados</span>
+                    <span className="font-semibold text-slate-700">Outros Custos Internos</span>
+                    <span className="text-[10px] text-slate-400 block">Soma de outros custos dinâmicos cadastrados</span>
                   </div>
-                  <span className="font-semibold text-foreground">R$ {summary.otherCostsTotal.toFixed(2)}</span>
+                  <span className="font-semibold text-slate-900">R$ {summary.otherCostsTotal.toFixed(2)}</span>
                 </div>
 
-                <div className="flex justify-between items-center p-4 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-sm font-black">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-white border border-[#E2E8F0] text-xs">
                   <div className="space-y-0.5">
-                    <span>Lucro Líquido Real (Dr. Matheus)</span>
-                    <span className="text-[9px] font-bold opacity-80 uppercase block">Fração Matheus menos Custos Internos</span>
+                    <span className="font-bold text-slate-900">Lucro Líquido Real (Dr. Matheus)</span>
+                    <span className="text-[9px] font-semibold text-slate-400 uppercase block">Fração Matheus menos Custos Internos</span>
                   </div>
-                  <span>R$ {summary.netProfit.toFixed(2)}</span>
+                  <span className="font-bold text-sm text-emerald-600">R$ {summary.netProfit.toFixed(2)}</span>
                 </div>
               </div>
             </div>
