@@ -258,15 +258,38 @@ export const api = {
         const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
         const query = email.toLowerCase().trim();
         // Admin Login mock: "matheus" or "admin"
-        if (query.includes('matheus') || query === 'admin') {
-          const admin = profiles.find(p => p.role === 'admin')!;
+        if (query.includes('matheus') || query === 'admin' || query === 'adm' || query === 'admin-1') {
+          let admin = profiles.find(p => p.role === 'admin');
+          if (!admin) {
+            admin = {
+              id: 'admin-1',
+              role: 'admin',
+              full_name: 'Dr. Matheus Iorczeski',
+              whatsapp: '47999999999',
+              pix_key: 'matheus@pix.com',
+              created_at: new Date().toISOString()
+            };
+            profiles.push(admin);
+            saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
+          }
           localStorage.setItem(MOCK_STORAGE_KEYS.CURRENT_USER, JSON.stringify(admin));
           return admin;
         }
 
-        // Secretary Login mock: "secretaria" or "secretária"
-        if (query.includes('secretar') || query === 'secretaria') {
-          const sec = profiles.find(p => p.role === 'secretary')!;
+        // Secretary Login mock: "secretaria", "secretária" or "sec"
+        if (query.includes('secretar') || query === 'secretaria' || query === 'sec' || query === 'sec-1') {
+          let sec = profiles.find(p => p.role === 'secretary');
+          if (!sec) {
+            sec = {
+              id: 'sec-1',
+              role: 'secretary',
+              full_name: 'Secretária Iorc Lab',
+              whatsapp: '47999999998',
+              created_at: new Date().toISOString()
+            };
+            profiles.push(sec);
+            saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
+          }
           localStorage.setItem(MOCK_STORAGE_KEYS.CURRENT_USER, JSON.stringify(sec));
           return sec;
         }
@@ -287,16 +310,25 @@ export const api = {
       }
 
       // Supabase logic: in actual Supabase we login using email & password.
-      // This is simulated here using normal supabase auth signin.
+      const formattedEmail = email.includes('@') ? email : `${email.trim().toLowerCase()}@iorclab.com`;
       const { error } = await supabase!.auth.signInWithPassword({
-        email,
-        password: 'Password123' // default password setup in seed
+        email: formattedEmail,
+        password: 'Password123'
       });
 
       if (error) throw error;
       const profile = await this.getCurrentUser();
       if (!profile) throw new Error('Perfil não encontrado no Supabase.');
       return profile;
+    },
+
+    async updatePassword(password: string): Promise<void> {
+      if (useMockData) {
+        console.log('Senha atualizada em simulação:', password);
+        return;
+      }
+      const { error } = await supabase!.auth.updateUser({ password });
+      if (error) throw error;
     },
 
     async logout(): Promise<void> {

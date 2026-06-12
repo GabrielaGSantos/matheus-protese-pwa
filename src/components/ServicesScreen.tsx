@@ -19,7 +19,8 @@ export const ServicesScreen: React.FC = () => {
   const [description, setDescription] = useState('');
   const [billingType, setBillingType] = useState<'per_element' | 'fixed'>('per_element');
   const [defaultValue, setDefaultValue] = useState('0');
-  const [estimatedTime, setEstimatedTime] = useState('1');
+  const [estHours, setEstHours] = useState('1');
+  const [estMinutes, setEstMinutes] = useState('0');
   const [entersMatheus, setEntersMatheus] = useState(true);
   const [entersPaschoal, setEntersPaschoal] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
@@ -71,13 +72,17 @@ export const ServicesScreen: React.FC = () => {
     if (!name) return;
 
     try {
+      const hours = parseFloat(estHours) || 0;
+      const minutes = parseFloat(estMinutes) || 0;
+      const finalEstTime = hours + minutes / 60;
+
       const payload: Service = {
         id: editingService?.id || '',
         name,
         description,
         billing_type: billingType,
         default_value: parseFloat(defaultValue) || 0,
-        default_estimated_time: parseFloat(estimatedTime) || 0,
+        default_estimated_time: finalEstTime,
         enters_matheus_value: entersMatheus,
         enters_paschoal_value: entersPaschoal,
         is_internal_cost: isInternal,
@@ -92,7 +97,8 @@ export const ServicesScreen: React.FC = () => {
       setDescription('');
       setBillingType('per_element');
       setDefaultValue('0');
-      setEstimatedTime('1');
+      setEstHours('1');
+      setEstMinutes('0');
       setEntersMatheus(true);
       setEntersPaschoal(false);
       setIsInternal(false);
@@ -108,7 +114,13 @@ export const ServicesScreen: React.FC = () => {
     setDescription(s.description || '');
     setBillingType(s.billing_type);
     setDefaultValue(String(s.default_value));
-    setEstimatedTime(String(s.default_estimated_time));
+    
+    const t = s.default_estimated_time || 0;
+    const h = Math.floor(t);
+    const m = Math.round((t - h) * 60);
+    setEstHours(String(h));
+    setEstMinutes(String(m));
+
     setEntersMatheus(s.enters_matheus_value);
     setEntersPaschoal(s.enters_paschoal_value);
     setIsInternal(s.is_internal_cost);
@@ -142,6 +154,14 @@ export const ServicesScreen: React.FC = () => {
   const filteredServices = services.filter(s => 
     s.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const formatEstimatedTime = (time: number) => {
+    const h = Math.floor(time);
+    const m = Math.round((time - h) * 60);
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  };
 
   return (
     <div className="space-y-6">
@@ -283,16 +303,35 @@ export const ServicesScreen: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                        Tempo Estimado (Horas)
+                        Tempo Estimado
                       </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={estimatedTime}
-                        onChange={(e) => setEstimatedTime(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={estHours}
+                            onChange={(e) => setEstHours(e.target.value)}
+                            placeholder="Horas"
+                            className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-semibold text-center focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                          />
+                          <span className="text-[10px] text-muted-foreground text-center block mt-1">Horas</span>
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            max="59"
+                            required
+                            value={estMinutes}
+                            onChange={(e) => setEstMinutes(e.target.value)}
+                            placeholder="Minutos"
+                            className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-semibold text-center focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                          />
+                          <span className="text-[10px] text-muted-foreground text-center block mt-1">Minutos</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -389,7 +428,7 @@ export const ServicesScreen: React.FC = () => {
                       </div>
                       <div className="flex justify-between text-xs pb-1">
                         <span className="text-muted-foreground">Tempo estimado:</span>
-                        <span className="font-medium text-foreground">{s.default_estimated_time}h</span>
+                        <span className="font-medium text-foreground">{formatEstimatedTime(s.default_estimated_time)}</span>
                       </div>
                     </div>
                   </div>

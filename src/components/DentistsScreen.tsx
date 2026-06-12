@@ -149,7 +149,7 @@ export const DentistsScreen: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                    E-mail de Login
+                    Login
                   </label>
                   <input
                     type="email"

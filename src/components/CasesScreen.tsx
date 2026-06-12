@@ -48,12 +48,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
   // Financial override fields
   const [overrideValueMatheus, setOverrideValueMatheus] = useState('');
-  const [overrideValuePlanning, setOverrideValuePlanning] = useState('');
   const [overrideValuePaschoal, setOverrideValuePaschoal] = useState('');
-  const [costAllanMatheus, setCostAllanMatheus] = useState('');
-  const [costAllanSolo, setCostAllanSolo] = useState('');
   const [costAndrey, setCostAndrey] = useState('');
+  const [costAndreyDiscounted, setCostAndreyDiscounted] = useState(false);
+  const [dynamicCosts, setDynamicCosts] = useState<{ name: string; value: number }[]>([]);
   const [paidValue, setPaidValue] = useState('');
+  const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'id-desc' | 'id-asc'>('date-desc');
 
   // History log
   const [historyLogs, setHistoryLogs] = useState<CaseHistory[]>([]);
@@ -114,11 +114,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       setHasPhoto(false);
       setHasFile(false);
       setOverrideValueMatheus('');
-      setOverrideValuePlanning('');
       setOverrideValuePaschoal('');
-      setCostAllanMatheus('0');
-      setCostAllanSolo('0');
       setCostAndrey('0');
+      setCostAndreyDiscounted(false);
+      setDynamicCosts([]);
       setPaidValue('0');
       setCaseServicesSelected({});
       setHistoryLogs([]);
@@ -139,12 +138,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     setHasFile(editingCase.has_file);
 
     // Overrides
-    setOverrideValueMatheus(String(editingCase.value_matheus));
-    setOverrideValuePlanning(String(editingCase.value_planning));
-    setOverrideValuePaschoal(String(editingCase.value_paschoal));
-    setCostAllanMatheus(String(editingCase.cost_allan_matheus));
-    setCostAllanSolo(String(editingCase.cost_allan_solo));
+    setOverrideValueMatheus(editingCase.value_matheus === 0 ? '' : String(editingCase.value_matheus));
+    setOverrideValuePaschoal(editingCase.value_paschoal === 0 ? '' : String(editingCase.value_paschoal));
     setCostAndrey(String(editingCase.cost_andrey));
+    setCostAndreyDiscounted(!!editingCase.cost_andrey_discounted);
+    setDynamicCosts(editingCase.other_internal_costs || []);
     setPaidValue(String(editingCase.paid_value));
 
     // Retrieve history
@@ -181,12 +179,15 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       }
     });
 
+    const matheusVal = overrideValueMatheus === '' ? computedMatheusVal : parseFloat(overrideValueMatheus) || 0;
+    const paschoalVal = overrideValuePaschoal === '' ? computedPaschoalVal : parseFloat(overrideValuePaschoal) || 0;
+
     return {
       estimated_hours: defaultEstHours,
-      value_matheus: overrideValueMatheus === '' ? computedMatheusVal : parseFloat(overrideValueMatheus) || 0,
-      value_planning: overrideValuePlanning === '' ? 0 : parseFloat(overrideValuePlanning) || 0,
-      value_paschoal: overrideValuePaschoal === '' ? computedPaschoalVal : parseFloat(overrideValuePaschoal) || 0,
-      total_value: computedTotalVal + (parseFloat(overrideValuePlanning) || 0)
+      value_matheus: matheusVal,
+      value_planning: 0,
+      value_paschoal: paschoalVal,
+      total_value: overrideValueMatheus === '' && overrideValuePaschoal === '' ? computedTotalVal : (matheusVal + paschoalVal)
     };
   };
 
@@ -196,9 +197,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
     try {
       const calculated = calculateDerivedValues();
+      const dentist = dentists.find(d => d.id === selectedDentistId);
+      const dentistName = dentist ? dentist.full_name : 'Sem_Dentista';
+      const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
       
+      const sanitizedDentist = encodeURIComponent('Dr_' + dentistName.trim().replace(/\s+/g, '_'));
+      const sanitizedPatient = encodeURIComponent('Caso_' + patientName.trim().replace(/\s+/g, '_') + '_' + caseId);
+      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing&subfolder=${sanitizedDentist}/${sanitizedPatient}`;
+
       const payload: Case = {
-        id: editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`,
+        id: caseId,
         dentist_id: selectedDentistId,
         patient_name: patientName,
         created_at: editingCase?.created_at || new Date().toISOString(),
@@ -213,17 +221,18 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         has_file: hasFile,
         estimated_hours: calculated.estimated_hours,
         value_matheus: calculated.value_matheus,
-        value_planning: calculated.value_planning,
+        value_planning: 0,
         value_paschoal: calculated.value_paschoal,
-        cost_allan_matheus: parseFloat(costAllanMatheus) || 0,
-        cost_allan_solo: parseFloat(costAllanSolo) || 0,
+        cost_allan_matheus: 0,
+        cost_allan_solo: 0,
         cost_andrey: parseFloat(costAndrey) || 0,
-        other_internal_costs: editingCase?.other_internal_costs || [],
+        cost_andrey_discounted: costAndreyDiscounted,
+        other_internal_costs: dynamicCosts.filter(c => c.name.trim() !== ''),
         total_value: calculated.total_value,
         paid_value: parseFloat(paidValue) || 0,
         remaining_value: calculated.total_value - (parseFloat(paidValue) || 0),
         google_drive_folder_id: editingCase?.google_drive_folder_id || `folder-mock-${Date.now()}`,
-        google_drive_folder_url: editingCase?.google_drive_folder_url || `https://drive.google.com/drive/folders/mock-${Date.now()}`,
+        google_drive_folder_url: editingCase?.google_drive_folder_url || driveFolderUrl,
         updated_at: new Date().toISOString()
       };
 
@@ -291,6 +300,22 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     const dentistMatch = dentistFilter === 'todos' || c.dentist_id === dentistFilter;
 
     return searchMatch && statusMatch && dentistMatch;
+  });
+
+  const sortedCases = [...filteredCases].sort((a, b) => {
+    if (sortOrder === 'date-desc') {
+      return b.created_at.localeCompare(a.created_at);
+    }
+    if (sortOrder === 'date-asc') {
+      return a.created_at.localeCompare(b.created_at);
+    }
+    if (sortOrder === 'id-desc') {
+      return b.id.localeCompare(a.id);
+    }
+    if (sortOrder === 'id-asc') {
+      return a.id.localeCompare(b.id);
+    }
+    return 0;
   });
 
   return (
@@ -616,7 +641,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     <div className="bg-secondary/20 p-4 rounded-xl border border-white/5 space-y-4">
                       <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">Preços & Comissões Laboratoriais (Substitui automático se preenchido)</h4>
                       
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-muted-foreground mb-1">
                             Valor Matheus (R$)
@@ -627,20 +652,6 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             placeholder="Deixar vazio para cálculo automático"
                             value={overrideValueMatheus}
                             onChange={(e) => setOverrideValueMatheus(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                            Valor Planning (R$)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Ex: 100.00"
-                            value={overrideValuePlanning}
-                            onChange={(e) => setOverrideValuePlanning(e.target.value)}
                             className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
                           />
                         </div>
@@ -662,47 +673,93 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     </div>
 
                     <div className="bg-secondary/20 p-4 rounded-xl border border-white/5 space-y-4">
-                      <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">Custos Internos / Subcontratações</h4>
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-extrabold uppercase tracking-widest text-primary">Custos Internos / Subcontratações</h4>
+                        <button
+                          type="button"
+                          onClick={() => setDynamicCosts([...dynamicCosts, { name: '', value: 0 }])}
+                          className="px-2 py-1 text-[10px] font-bold rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/25 transition-all"
+                        >
+                          + Adicionar Custo
+                        </button>
+                      </div>
                       
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                            Allan/Matheus (R$)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={costAllanMatheus}
-                            onChange={(e) => setCostAllanMatheus(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
-                          />
+                      <div className="space-y-3">
+                        {/* Fixed Cost: Andrey */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center bg-card p-3 rounded-xl border border-white/5">
+                          <div className="text-xs font-semibold text-foreground">
+                            Dr. Andrey (Fixo)
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-muted-foreground mb-1">Valor (R$)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={costAndrey}
+                              onChange={(e) => setCostAndrey(e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg bg-secondary border border-white/10 text-xs font-semibold text-right"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pt-4">
+                            <input
+                              type="checkbox"
+                              id="andrey_discounted"
+                              checked={costAndreyDiscounted}
+                              onChange={(e) => setCostAndreyDiscounted(e.target.checked)}
+                              className="w-4 h-4 rounded text-primary focus:ring-primary"
+                            />
+                            <label htmlFor="andrey_discounted" className="text-[10px] font-semibold text-muted-foreground cursor-pointer">
+                              Descontado de Dr. Andrey?
+                            </label>
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                            Allan Solo (R$)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={costAllanSolo}
-                            onChange={(e) => setCostAllanSolo(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                            Andrey (R$)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={costAndrey}
-                            onChange={(e) => setCostAndrey(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-card border border-white/10 text-sm font-semibold"
-                          />
-                        </div>
+                        {/* Dynamic Costs */}
+                        {dynamicCosts.map((cost, idx) => (
+                          <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-secondary/30 p-3 rounded-xl border border-white/5">
+                            <div className="sm:col-span-6">
+                              <label className="block text-[10px] text-muted-foreground mb-1">Descrição / Nome do Custo</label>
+                              <input
+                                type="text"
+                                value={cost.name}
+                                placeholder="Ex: Terceirizado X"
+                                onChange={(e) => {
+                                  const updated = [...dynamicCosts];
+                                  updated[idx].name = e.target.value;
+                                  setDynamicCosts(updated);
+                                }}
+                                className="w-full px-3 py-1.5 rounded-lg bg-card border border-white/10 text-xs font-semibold"
+                              />
+                            </div>
+                            <div className="sm:col-span-4">
+                              <label className="block text-[10px] text-muted-foreground mb-1">Valor (R$)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={cost.value || ''}
+                                placeholder="0.00"
+                                onChange={(e) => {
+                                  const updated = [...dynamicCosts];
+                                  updated[idx].value = parseFloat(e.target.value) || 0;
+                                  setDynamicCosts(updated);
+                                }}
+                                className="w-full px-3 py-1.5 rounded-lg bg-card border border-white/10 text-xs font-semibold text-right"
+                              />
+                            </div>
+                            <div className="sm:col-span-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = dynamicCosts.filter((_, i) => i !== idx);
+                                  setDynamicCosts(updated);
+                                }}
+                                className="p-2 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/25 hover:bg-rose-500/20 transition-all text-xs font-bold"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -872,6 +929,21 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               ))}
             </select>
           </div>
+
+          {/* Order Filter */}
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden sm:inline">Ordenação:</span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="px-3 py-2 rounded-xl bg-secondary/40 border border-white/10 text-xs font-semibold"
+            >
+              <option value="date-desc">Data (Mais recente)</option>
+              <option value="date-asc">Data (Mais antiga)</option>
+              <option value="id-desc">ID do Caso (Z-A)</option>
+              <option value="id-asc">ID do Caso (A-Z)</option>
+            </select>
+          </div>
         </div>
 
       </div>
@@ -898,14 +970,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredCases.length === 0 ? (
+                {sortedCases.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12 text-muted-foreground">
                       Nenhum caso cadastrado correspondente aos filtros.
                     </td>
                   </tr>
                 ) : (
-                  filteredCases.map(c => {
+                  sortedCases.map(c => {
                     const dentist = dentists.find(d => d.id === c.dentist_id);
                     return (
                       <tr key={c.id} className="hover:bg-secondary/20 transition-all duration-200">
@@ -953,12 +1025,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
           {/* Mobile Cards View */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
-            {filteredCases.length === 0 ? (
+            {sortedCases.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-xs col-span-full border border-dashed border-white/5 rounded-2xl bg-card">
                 Nenhum caso cadastrado correspondente aos filtros.
               </div>
             ) : (
-              filteredCases.map(c => {
+              sortedCases.map(c => {
                 const dentist = dentists.find(d => d.id === c.dentist_id);
                 return (
                   <div key={c.id} className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col justify-between space-y-4 hover:shadow-md transition-all">

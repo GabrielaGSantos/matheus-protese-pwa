@@ -90,6 +90,7 @@ export interface Case {
   cost_allan_matheus: number;
   cost_allan_solo: number;
   cost_andrey: number;
+  cost_andrey_discounted?: boolean;
   other_internal_costs: { name: string; value: number }[];
   total_value: number;
   paid_value: number;

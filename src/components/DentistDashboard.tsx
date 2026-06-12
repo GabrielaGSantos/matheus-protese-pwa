@@ -16,8 +16,14 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
   const { user } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [activeTab, setActiveTab] = useState<'my-cases' | 'new-case'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'my-cases' | 'new-case' | 'change-password'>(initialTab);
   const [loading, setLoading] = useState(true);
+  
+  // Change Password states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
 
   // New Case Form state
   const [patientName, setPatientName] = useState('');
@@ -92,8 +98,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         }
       });
 
+      const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
+      const sanitizedDentist = encodeURIComponent('Dr_' + (user.full_name || 'Sem_Nome').trim().replace(/\s+/g, '_'));
+      const sanitizedPatient = encodeURIComponent('Caso_' + patientName.trim().replace(/\s+/g, '_') + '_' + caseId);
+      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing&subfolder=${sanitizedDentist}/${sanitizedPatient}`;
+
       const payload: Case = {
-        id: editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`,
+        id: caseId,
         dentist_id: user.id,
         patient_name: patientName,
         created_at: editingCase?.created_at || new Date().toISOString(),
@@ -107,17 +118,17 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         has_file: hasFile || scanFiles.length > 0,
         estimated_hours: totalEstHours,
         value_matheus: valMatheus,
-        value_planning: editingCase?.value_planning || 0,
+        value_planning: 0,
         value_paschoal: valPaschoal,
-        cost_allan_matheus: editingCase?.cost_allan_matheus || 0,
-        cost_allan_solo: editingCase?.cost_allan_solo || 0,
+        cost_allan_matheus: 0,
+        cost_allan_solo: 0,
         cost_andrey: editingCase?.cost_andrey || 0,
         other_internal_costs: editingCase?.other_internal_costs || [],
         total_value: computedTotalValue,
         paid_value: editingCase?.paid_value || 0,
         remaining_value: computedTotalValue - (editingCase?.paid_value || 0),
         google_drive_folder_id: editingCase?.google_drive_folder_id || `folder-mock-${Date.now()}`,
-        google_drive_folder_url: editingCase?.google_drive_folder_url || `https://drive.google.com/drive/folders/mock-${Date.now()}`,
+        google_drive_folder_url: editingCase?.google_drive_folder_url || driveFolderUrl,
         selected_services: selectedIds,
         updated_at: new Date().toISOString()
       };
@@ -170,6 +181,31 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
     setPhotoFiles([]);
     setScanFiles([]);
     setActiveTab('new-case');
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+    if (!newPassword) {
+      setPassError('Por favor, insira uma nova senha.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPassError('As senhas não coincidem.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.auth.updatePassword(newPassword);
+      setPassSuccess('Senha atualizada com sucesso!');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPassError('Erro ao atualizar a senha.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Separations
@@ -261,11 +297,21 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         >
           {editingCase ? 'Editar Solicitação' : 'Solicitar Novo Trabalho'}
         </button>
+        <button
+          onClick={() => setActiveTab('change-password')}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+            activeTab === 'change-password'
+              ? 'bg-primary text-white shadow-md'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Alterar Senha
+        </button>
       </div>
 
-      {activeTab === 'my-cases' ? (
+      {activeTab === 'my-cases' && (
         /* MY CASES TAB */
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">Carregando seus casos...</div>
           ) : (
@@ -387,7 +433,9 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'new-case' && (
         /* SOLICITAR NOVO TRABALHO TAB */
         <div className="glass-panel p-6 rounded-2xl border border-white/10 max-w-2xl animate-fade-in space-y-6">
           <div>
@@ -489,6 +537,14 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                 placeholder="Insira detalhes adicionais sobre cor, material, espessura ou particularidades..."
                 className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm"
               />
+            </div>
+
+            {/* Warning note for file uploads */}
+            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground font-semibold flex items-center gap-2">
+              <FolderOpen size={16} className="text-primary shrink-0" />
+              <span>
+                Os arquivos enviados serão salvos na pasta correspondente no Google Drive: <strong>Fotos</strong> para imagens e <strong>Escaneamento</strong> para arquivos 3D.
+              </span>
             </div>
 
             {/* File Upload zones (Separate Fotos / Escaneamentos) */}
@@ -599,6 +655,70 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
 
           </form>
 
+        </div>
+      )}
+
+      {activeTab === 'change-password' && (
+        /* ALTERAR SENHA TAB */
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 max-w-md animate-fade-in space-y-6">
+          <div>
+            <h3 className="text-lg font-bold">Alterar Senha</h3>
+            <p className="text-xs text-muted-foreground">
+              Atualize sua senha de acesso ao portal.
+            </p>
+          </div>
+
+          {passError && (
+            <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold">
+              {passError}
+            </div>
+          )}
+
+          {passSuccess && (
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
+              {passSuccess}
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Nova Senha
+              </label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Insira a nova senha"
+                className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Confirmar Nova Senha
+              </label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirme a nova senha"
+                className="w-full px-4 py-2.5 rounded-xl bg-secondary/50 border border-white/10 text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="glow-btn bg-primary hover:bg-primary/95 text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5 shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+              >
+                {submitting ? 'Atualizando...' : 'Atualizar Senha'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

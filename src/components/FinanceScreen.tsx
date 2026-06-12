@@ -72,7 +72,7 @@ export const FinanceScreen: React.FC = () => {
   };
 
   // Generate WhatsApp Message
-  const getWhatsAppText = (dentist: Profile, pendingCases: Case[]) => {
+  const getWhatsAppText = (dentist: Profile, pendingCases: Case[], andreyDiscountCredit: number = 0) => {
     const monthNames = [
       'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
@@ -94,7 +94,15 @@ export const FinanceScreen: React.FC = () => {
 
     const pixKey = dentist.pix_key || 'matheus@pix.com'; // Admin default key
 
-    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos de ${monthLabel}:\n\n${itemsText}\nTotal em aberto: *R$ ${totalOpen.toFixed(2)}*\n\nPix para pagamento: *${pixKey}*\nFavor enviar o comprovante após a transação. Obrigado!`;
+    let totalOpenText = '';
+    if (andreyDiscountCredit > 0) {
+      const finalOpen = Math.max(0, totalOpen - andreyDiscountCredit);
+      totalOpenText = `Subtotal em aberto: R$ ${totalOpen.toFixed(2)}\nDesconto de Créditos (Repasse Andrey): -R$ ${andreyDiscountCredit.toFixed(2)}\nTotal com Desconto: *R$ ${finalOpen.toFixed(2)}*`;
+    } else {
+      totalOpenText = `Total em aberto: *R$ ${totalOpen.toFixed(2)}*`;
+    }
+
+    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos de ${monthLabel}:\n\n${itemsText}\n${totalOpenText}\n\nPix para pagamento: *${pixKey}*\nFavor enviar o comprovante após a transação. Obrigado!`;
   };
 
   const handleCopyText = (text: string, dentistId: string) => {
@@ -106,7 +114,7 @@ export const FinanceScreen: React.FC = () => {
   // Dentist remaining balance calculations
   const getDentistsWithBalances = () => {
     return dentists.map(d => {
-      // filter cases of this dentist that have pending values and belong to selected month
+      // filter cases of this dentist that belong to selected month and are active
       const dentistCases = cases.filter(c => 
         c.dentist_id === d.id && 
         c.created_at.startsWith(selectedMonth) &&
@@ -117,14 +125,28 @@ export const FinanceScreen: React.FC = () => {
       const totalPending = pendingCases.reduce((sum, c) => sum + c.remaining_value, 0);
       const totalBilled = dentistCases.reduce((sum, c) => sum + c.total_value, 0);
 
+      // Calculate total credit discount for Dr. Andrey
+      let andreyDiscountCredit = 0;
+      const isAndrey = d.full_name.toLowerCase().includes('andrey');
+      if (isAndrey) {
+        // Find all cases of the selected month that have cost_andrey_discounted === true
+        const discountedCases = cases.filter(c => 
+          c.created_at.startsWith(selectedMonth) &&
+          c.status !== 'cancelado' &&
+          c.cost_andrey_discounted === true
+        );
+        andreyDiscountCredit = discountedCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
+      }
+
       return {
         dentist: d,
         totalBilled,
-        totalPending,
+        totalPending: Math.max(0, totalPending - andreyDiscountCredit),
         pendingCases,
-        allCases: dentistCases
+        allCases: dentistCases,
+        andreyDiscountCredit
       };
-    }).filter(x => x.allCases.length > 0) // only show dentists with cases in this month
+    }).filter(x => x.allCases.length > 0 || x.andreyDiscountCredit > 0) // show Dr. Andrey even if he has no cases but has credit
       .sort((a, b) => b.totalPending - a.totalPending);
   };
 
@@ -138,13 +160,15 @@ export const FinanceScreen: React.FC = () => {
     
     const matheusBillings = monthCases.reduce((sum, c) => sum + c.value_matheus, 0);
     const paschoalBillings = monthCases.reduce((sum, c) => sum + c.value_paschoal, 0);
-    const planningBillings = monthCases.reduce((sum, c) => sum + c.value_planning, 0);
 
-    const costAllanMatheusTotal = monthCases.reduce((sum, c) => sum + c.cost_allan_matheus, 0);
-    const costAllanSoloTotal = monthCases.reduce((sum, c) => sum + c.cost_allan_solo, 0);
-    const costAndreyTotal = monthCases.reduce((sum, c) => sum + c.cost_andrey, 0);
+    const costAndreyTotal = monthCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
+    const otherCostsTotal = monthCases.reduce((sum, c) => {
+      const caseOther = c.other_internal_costs || [];
+      const caseOtherSum = caseOther.reduce((s, o) => s + (o.value || 0), 0);
+      return sum + caseOtherSum;
+    }, 0);
 
-    const internalCosts = costAllanMatheusTotal + costAllanSoloTotal + costAndreyTotal;
+    const internalCosts = costAndreyTotal + otherCostsTotal;
     const netProfit = matheusBillings - internalCosts;
 
     return {
@@ -153,10 +177,8 @@ export const FinanceScreen: React.FC = () => {
       openTotal,
       matheusBillings,
       paschoalBillings,
-      planningBillings,
-      costAllanMatheusTotal,
-      costAllanSoloTotal,
       costAndreyTotal,
+      otherCostsTotal,
       internalCosts,
       netProfit
     };
@@ -223,9 +245,9 @@ export const FinanceScreen: React.FC = () => {
                 Nenhum faturamento registrado para a competência selecionada.
               </div>
             ) : (
-              dentistsBalances.map(({ dentist, totalBilled, totalPending, pendingCases }) => {
+              dentistsBalances.map(({ dentist, totalBilled, totalPending, pendingCases, andreyDiscountCredit }) => {
                 const isExpanded = expandedDentistId === dentist.id;
-                const whatsappText = getWhatsAppText(dentist, pendingCases);
+                const whatsappText = getWhatsAppText(dentist, pendingCases, andreyDiscountCredit);
                 
                 return (
                   <div key={dentist.id} className="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all">
@@ -240,6 +262,11 @@ export const FinanceScreen: React.FC = () => {
                         <span className="text-xs text-muted-foreground font-semibold">
                           Total faturado no mês: R$ {totalBilled.toFixed(2)}
                         </span>
+                        {andreyDiscountCredit > 0 && (
+                          <span className="text-xs text-emerald-500 font-bold block">
+                            Créditos de Repasse Andrey Descontados: -R$ {andreyDiscountCredit.toFixed(2)}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
@@ -330,6 +357,12 @@ export const FinanceScreen: React.FC = () => {
                             </tbody>
                           </table>
                         </div>
+
+                        {andreyDiscountCredit > 0 && (
+                          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
+                            Foi aplicado um desconto de R$ {andreyDiscountCredit.toFixed(2)} no saldo total deste mês referente aos créditos de repasse de Andrey assinalados como "Descontado de Dr. Andrey".
+                          </div>
+                        )}
 
                       </div>
                     )}
@@ -497,14 +530,6 @@ export const FinanceScreen: React.FC = () => {
                   </div>
                   <span className="font-bold text-base text-foreground">R$ {summary.paschoalBillings.toFixed(2)}</span>
                 </div>
-
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Fração de Planejamento (Planning)</span>
-                    <span className="text-[10px] text-muted-foreground block">Custos operacionais de planejamento</span>
-                  </div>
-                  <span className="font-bold text-base text-foreground">R$ {summary.planningBillings.toFixed(2)}</span>
-                </div>
               </div>
             </div>
 
@@ -518,23 +543,17 @@ export const FinanceScreen: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
                   <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Repasse Allan / Matheus</span>
-                  </div>
-                  <span className="font-semibold text-foreground">R$ {summary.costAllanMatheusTotal.toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-foreground">Repasse Allan Solo</span>
-                  </div>
-                  <span className="font-semibold text-foreground">R$ {summary.costAllanSoloTotal.toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
-                  <div className="space-y-0.5">
                     <span className="font-bold text-foreground">Repasse Andrey</span>
                   </div>
                   <span className="font-semibold text-foreground">R$ {summary.costAndreyTotal.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center p-3 rounded-xl bg-secondary/40 border border-white/5 text-xs">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-foreground">Outros Custos Internos</span>
+                    <span className="text-[10px] text-muted-foreground block">Soma de outros custos dinâmicos cadastrados</span>
+                  </div>
+                  <span className="font-semibold text-foreground">R$ {summary.otherCostsTotal.toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between items-center p-4 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-sm font-black">
