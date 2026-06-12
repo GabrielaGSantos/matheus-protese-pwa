@@ -227,7 +227,7 @@ export const ServicesScreen: React.FC = () => {
 
           {/* Form Dialog */}
           {showForm && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-900/40 z-50 flex justify-center items-center p-4 animate-fade-in">
               <div className="w-full max-w-2xl bg-white border border-[#E2E8F0] rounded-2xl overflow-y-auto p-6 md:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative max-h-[90vh]">
                 <button
                   type="button"

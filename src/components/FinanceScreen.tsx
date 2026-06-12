@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { Case, Profile } from '../types';
 import { 
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
-  TrendingUp, ShieldCheck, X 
+  TrendingUp, ShieldCheck, X, Download 
 } from 'lucide-react';
 
 export const FinanceScreen: React.FC = () => {
@@ -182,6 +182,49 @@ export const FinanceScreen: React.FC = () => {
       internalCosts,
       netProfit
     };
+  };
+
+  const handleExportCSV = () => {
+    const summary = getReportSummary();
+    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado');
+    
+    let csvContent = '\uFEFF'; // UTF-8 BOM
+    csvContent += `MÉTRICAS DO MÊS;${selectedMonth}\n`;
+    csvContent += `Faturamento Bruto;R$ ${summary.billedTotal.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Arrecadado (Quitado);R$ ${summary.paidTotal.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `A Receber;R$ ${summary.openTotal.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Fração Dr. Matheus;R$ ${summary.matheusBillings.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Fração Dr. Paschoal;R$ ${summary.paschoalBillings.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Repasse Andrey;R$ ${summary.costAndreyTotal.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Outros Custos Internos;R$ ${summary.otherCostsTotal.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Lucro Líquido Real (Dr. Matheus);R$ ${summary.netProfit.toFixed(2).replace('.', ',')}\n\n`;
+
+    csvContent += `DETALHAMENTO DE CASOS DA COMPETÊNCIA\n`;
+    csvContent += `ID Caso;Paciente;Dentista;Data de Criação;Valor Total;Fração Matheus;Fração Paschoal;Custo Andrey;Outros Custos;Status;Status Financeiro\n`;
+
+    monthCases.forEach(c => {
+      const dentistName = dentists.find(d => d.id === c.dentist_id)?.full_name || 'Desconhecido';
+      const creationDate = new Date(c.created_at).toLocaleDateString('pt-BR');
+      const totalVal = c.total_value.toFixed(2).replace('.', ',');
+      const valMatheus = c.value_matheus.toFixed(2).replace('.', ',');
+      const valPaschoal = c.value_paschoal.toFixed(2).replace('.', ',');
+      const costAndrey = (c.cost_andrey || 0).toFixed(2).replace('.', ',');
+      const otherCosts = (c.other_internal_costs || []).reduce((sum, o) => sum + (o.value || 0), 0).toFixed(2).replace('.', ',');
+      const statusText = c.status === 'em_analise' ? 'Aguardando Análise' : c.status;
+      const finStatusText = c.financial_status === 'pago' ? 'Pago' : c.financial_status === 'pago_parcial' ? 'Parcial' : 'Aguardando';
+
+      csvContent += `${c.id};${c.patient_name};${dentistName};${creationDate};R$ ${totalVal};R$ ${valMatheus};R$ ${valPaschoal};R$ ${costAndrey};R$ ${otherCosts};${statusText};${finStatusText}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_financeiro_${selectedMonth}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const summary = getReportSummary();
@@ -374,7 +417,7 @@ export const FinanceScreen: React.FC = () => {
 
           {/* Payment Conciliation Modal overlay */}
           {payingCase && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
               <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative">
                 <button
                   onClick={() => setPayingCase(null)}
@@ -482,6 +525,16 @@ export const FinanceScreen: React.FC = () => {
       ) : (
         /* GENERAL MONTHLY REPORT TAB */
         <div className="space-y-6 animate-fade-in">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">Métricas Detalhadas do Mês</h3>
+            <button
+              onClick={handleExportCSV}
+              className="px-3.5 py-2 bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            >
+              <Download size={14} />
+              Exportar CSV
+            </button>
+          </div>
           
           {/* Card Summary indicators */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

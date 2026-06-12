@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
@@ -109,100 +109,116 @@ export const DentistsScreen: React.FC = () => {
 
       {/* New/Edit Dentist Form */}
       {showForm && (
-        <div className="glass-panel p-5 animate-fade-in max-w-lg">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">{editingDentist ? 'Editar Dentista' : 'Novo Dentista'}</h3>
-          {success ? (
-            <div className="flex flex-col items-center justify-center py-6 text-emerald-600 font-semibold gap-2 text-sm">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                <Check size={20} />
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex justify-center items-center p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-white border border-[#E2E8F0] rounded-2xl overflow-y-auto p-6 md:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative max-h-[90vh]">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setEditingDentist(null);
+                setName('');
+                setWhatsapp('');
+                setEmail('');
+                setNotes('');
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+            <h3 className="text-sm font-bold text-slate-900 mb-4">{editingDentist ? 'Editar Dentista' : 'Novo Dentista'}</h3>
+            {success ? (
+              <div className="flex flex-col items-center justify-center py-6 text-emerald-600 font-semibold gap-2 text-sm">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                  <Check size={20} />
+                </div>
+                {editingDentist ? 'Dentista atualizado com sucesso!' : 'Dentista cadastrado com sucesso!'}
               </div>
-              {editingDentist ? 'Dentista atualizado com sucesso!' : 'Dentista cadastrado com sucesso!'}
-            </div>
-          ) : (
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Dr. Lucas Medeiros"
-                  className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            ) : (
+              <form onSubmit={handleCreate} className="space-y-4">
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
-                    WhatsApp / Telefone
+                    Nome Completo
                   </label>
                   <input
-                    type="tel"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="Ex: 47999998888"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex: Dr. Lucas Medeiros"
                     className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                   />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                      WhatsApp / Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="Ex: 47999998888"
+                      className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                      Login
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Ex: lucas@dentista.com"
+                      className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
-                    Login
+                    Observação
                   </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Ex: lucas@dentista.com"
+                  <textarea
+                    rows={3}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Anotações internas sobre preferências do dentista, prazos, etc."
                     className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
-                  Observação
-                </label>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Anotações internas sobre preferências do dentista, prazos, etc."
-                  className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
-                />
-              </div>
+                <p className="text-[10px] text-slate-400">
+                  * No modo de demonstração, a senha padrão criada será <strong>123456</strong>. O login rápido do dentista ficará disponível na tela de login.
+                </p>
 
-              <p className="text-[10px] text-slate-400">
-                * No modo de demonstração, a senha padrão criada será <strong>123456</strong>. O login rápido do dentista ficará disponível na tela de login.
-              </p>
-
-              <div className="flex justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingDentist(null);
-                    setName('');
-                    setWhatsapp('');
-                    setEmail('');
-                    setNotes('');
-                  }}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all disabled:opacity-50"
-                >
-                  {saving ? 'Gravando...' : editingDentist ? 'Salvar Alterações' : 'Confirmar Cadastro'}
-                </button>
-              </div>
-            </form>
-          )}
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingDentist(null);
+                      setName('');
+                      setWhatsapp('');
+                      setEmail('');
+                      setNotes('');
+                    }}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {saving ? 'Gravando...' : editingDentist ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
 

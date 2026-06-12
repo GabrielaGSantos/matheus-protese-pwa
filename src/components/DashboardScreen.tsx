@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import type { Case, Profile } from '../types';
 import { 
   DollarSign, Briefcase, Clock, AlertTriangle, 
   CheckCircle, ShieldAlert, TrendingUp
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import * as XLSX from 'xlsx';
 
 interface DashboardScreenProps {
   onSelectCase?: (caseId: string) => void;
@@ -14,10 +16,151 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isAdmin } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const fileData = evt.target?.result;
+        if (!fileData) return;
+
+        const workbook = XLSX.read(fileData, { type: 'array' });
+        const targetSheets = [
+          'Maio26', 'Abril26', 'Março26', 'Fevereiro26', 'Janeiro26',
+          'Dezembro25', 'Novembro25', 'Outubro25', 'Setembro25', 'Agosto25',
+          'Junho e Julho25', 'Abril25', 'Março25'
+        ];
+
+        const getJsDate = (excelSerial: any) => {
+          if (!excelSerial) return new Date().toISOString();
+          if (typeof excelSerial === 'string') {
+            const d = new Date(excelSerial);
+            return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+          }
+          // Convert serial to JS date
+          const date = new Date(Math.round((excelSerial - 25569) * 86400 * 1000));
+          return date.toISOString();
+        };
+
+        const profiles: Profile[] = JSON.parse(localStorage.getItem('matheus_protese_profiles') || '[]');
+        const dentistNameMap: Record<string, string> = {};
+
+        // Seed name mapping from existing profiles
+        profiles.forEach(p => {
+          if (p.role === 'dentist') {
+            const norm = p.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+            dentistNameMap[norm] = p.id;
+          }
+        });
+
+        const allCases: Case[] = [];
+        let caseCount = 1;
+
+        workbook.SheetNames.forEach(sheetName => {
+          if (!targetSheets.includes(sheetName)) return;
+          const worksheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+          rows.forEach((row, idx) => {
+            const clientName = String(row['Cliente'] || '').trim();
+            if (!clientName) return;
+
+            const normClient = clientName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+            let dentistId = dentistNameMap[normClient];
+
+            if (!dentistId) {
+              // Create dynamic dentist
+              dentistId = `dentist-dynamic-${normClient || 'unknown'}`;
+              const newProfile: Profile = {
+                id: dentistId,
+                role: 'dentist',
+                full_name: clientName,
+                whatsapp: '',
+                created_at: new Date().toISOString()
+              };
+              profiles.push(newProfile);
+              dentistNameMap[normClient] = dentistId;
+            }
+
+            const rawDate = row['Data Recebido'];
+            const isoDateStr = getJsDate(rawDate);
+            const datePart = isoDateStr.split('T')[0];
+            const yearMonth = datePart.slice(0, 7).replace('-', '');
+
+            const caseId = `CASE-${yearMonth}-${String(caseCount++).padStart(4, '0')}`;
+
+            const valueMatheus = parseFloat(row['Valor Matheus']) || 0;
+            const valuePlanning = parseFloat(row['Valor Planning']) || 0;
+            const valuePaschoal = parseFloat(row['Valor Paschoal']) || 0;
+            const costAllanMatheus = parseFloat(row['Allan/Matheus']) || 0;
+            const costAllanSolo = parseFloat(row['Allan Solo']) || 0;
+            const costAndrey = parseFloat(row['Andrey']) || 0;
+
+            const calculatedTotal = valueMatheus + valuePlanning + valuePaschoal;
+            const statusText = String(row['Status'] || 'Aguardando Pagamento').toLowerCase();
+
+            let financialStatus: 'pago' | 'isento' | 'aguardando_pagamento' = 'aguardando_pagamento';
+            if (statusText.includes('pago')) {
+              financialStatus = 'pago';
+            } else if (statusText.includes('isento')) {
+              financialStatus = 'isento';
+            }
+
+            allCases.push({
+              id: caseId,
+              dentist_id: dentistId,
+              patient_name: String(row['Paciente'] || 'Sem Nome'),
+              created_at: isoDateStr,
+              requested_delivery_date: datePart,
+              final_delivery_date: datePart,
+              status: 'finalizado',
+              financial_status: financialStatus,
+              teeth_selection: { teeth: [], type: 'individual' },
+              dentist_notes: String(row['Observações'] || ''),
+              internal_notes: `Feito por: ${row['Feito por'] || 'N/A'}`,
+              has_photo: false,
+              has_file: false,
+              estimated_hours: 0,
+              value_matheus: valueMatheus,
+              value_planning: valuePlanning,
+              value_paschoal: valuePaschoal,
+              cost_allan_matheus: costAllanMatheus,
+              cost_allan_solo: costAllanSolo,
+              cost_andrey: costAndrey,
+              other_internal_costs: [],
+              total_value: calculatedTotal,
+              paid_value: financialStatus === 'pago' ? calculatedTotal : 0,
+              remaining_value: financialStatus === 'pago' ? 0 : calculatedTotal,
+              google_drive_folder_id: `folder-imported-${idx}`,
+              google_drive_folder_url: 'https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing',
+              updated_at: isoDateStr
+            });
+          });
+        });
+
+        // Save to LocalStorage
+        localStorage.setItem('matheus_protese_profiles', JSON.stringify(profiles));
+        localStorage.setItem('matheus_protese_cases', JSON.stringify(allCases));
+
+        alert(`Planilha importada com sucesso! ${allCases.length} casos e novos dentistas foram carregados.`);
+        fetchData();
+      } catch (err) {
+        console.error(evt);
+        console.error(err);
+        alert('Erro ao processar a planilha. Verifique o formato do arquivo.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -147,18 +290,38 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
           </p>
         </div>
         
-        {/* Overload status banner */}
-        <div className={`px-4 py-2.5 rounded-lg border flex items-center gap-2.5 w-fit ${
-          isOverloaded 
-            ? 'bg-[#FEE2E2] text-rose-600 border-rose-100' 
-            : 'bg-[#ECFDF5] text-[#0F766E] border-emerald-100'
-        }`}>
-          <span>
-            {isOverloaded ? <ShieldAlert size={16} /> : <CheckCircle size={16} />}
-          </span>
-          <div className="text-xs font-semibold">
-            <h5 className="uppercase tracking-wider text-[10px]">{isOverloaded ? 'Alerta de Sobrecarga' : 'Capacidade Normal'}</h5>
-            <p className="opacity-90 font-medium text-[11px] mt-0.5">{totalEstimatedHours.toFixed(1)}h de produção ativa (Máx: 44h/semana)</p>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          {isAdmin && (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileImport}
+                accept=".xlsx, .xls"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                Importar Planilha Excel (.xlsx)
+              </button>
+            </>
+          )}
+
+          {/* Overload status banner */}
+          <div className={`px-4 py-2.5 rounded-lg border flex items-center gap-2.5 w-fit ${
+            isOverloaded 
+              ? 'bg-[#FEE2E2] text-rose-600 border-rose-100' 
+              : 'bg-[#ECFDF5] text-[#0F766E] border-emerald-100'
+          }`}>
+            <span>
+              {isOverloaded ? <ShieldAlert size={16} /> : <CheckCircle size={16} />}
+            </span>
+            <div className="text-xs font-semibold">
+              <h5 className="uppercase tracking-wider text-[10px]">{isOverloaded ? 'Alerta de Sobrecarga' : 'Capacidade Normal'}</h5>
+              <p className="opacity-90 font-medium text-[11px] mt-0.5">{totalEstimatedHours.toFixed(1)}h de produção ativa (Máx: 44h/semana)</p>
+            </div>
           </div>
         </div>
       </div>

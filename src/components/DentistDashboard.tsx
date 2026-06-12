@@ -99,9 +99,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       });
 
       const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
-      const sanitizedDentist = encodeURIComponent('Dr_' + (user.full_name || 'Sem_Nome').trim().replace(/\s+/g, '_'));
-      const sanitizedPatient = encodeURIComponent('Caso_' + patientName.trim().replace(/\s+/g, '_') + '_' + caseId);
-      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing&subfolder=${sanitizedDentist}/${sanitizedPatient}`;
+      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing`;
 
       const payload: Case = {
         id: caseId,
@@ -481,7 +479,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
 
       {activeTab === 'new-case' && (
         /* SOLICITAR NOVO TRABALHO TAB */
-        <div className="glass-panel p-5 max-w-2xl animate-fade-in space-y-5">
+        <div className="glass-panel p-5 max-w-5xl animate-fade-in space-y-5">
           <div>
             <h3 className="text-base font-bold text-slate-900">
               {editingCase ? 'Editar Solicitação' : 'Nova Solicitação de Serviço'}

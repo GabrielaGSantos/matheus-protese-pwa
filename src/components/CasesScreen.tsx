@@ -58,6 +58,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   // History log
   const [historyLogs, setHistoryLogs] = useState<CaseHistory[]>([]);
 
+  // File Upload states
+  const [photoFiles, setPhotoFiles] = useState<{ name: string; size: number }[]>([]);
+  const [scanFiles, setScanFiles] = useState<{ name: string; size: number }[]>([]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -121,6 +125,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       setPaidValue('0');
       setCaseServicesSelected({});
       setHistoryLogs([]);
+      setPhotoFiles([]);
+      setScanFiles([]);
       return;
     }
 
@@ -136,6 +142,23 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     setInternalNotes(editingCase.internal_notes || '');
     setHasPhoto(editingCase.has_photo);
     setHasFile(editingCase.has_file);
+    setPhotoFiles([]);
+    setScanFiles([]);
+
+    // Populate selected services
+    const servicesMap: Record<string, { selected: boolean; quantity: number }> = {};
+    if (editingCase.selected_services) {
+      editingCase.selected_services.forEach(id => {
+        servicesMap[id] = { selected: true, quantity: 1 };
+      });
+    } else {
+      // Fallback match by value or if we don't have selected_services
+      const matched = services.find(s => s.default_value === editingCase.total_value);
+      if (matched) {
+        servicesMap[matched.id] = { selected: true, quantity: 1 };
+      }
+    }
+    setCaseServicesSelected(servicesMap);
 
     // Overrides
     setOverrideValueMatheus(editingCase.value_matheus === 0 ? '' : String(editingCase.value_matheus));
@@ -147,7 +170,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
     // Retrieve history
     api.history.list(editingCase.id).then(setHistoryLogs);
-  }, [editingCase, dentists]);
+  }, [editingCase, dentists, services]);
 
   // Recalculates default values based on selected services and elements
   const calculateDerivedValues = () => {
@@ -197,13 +220,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
     try {
       const calculated = calculateDerivedValues();
-      const dentist = dentists.find(d => d.id === selectedDentistId);
-      const dentistName = dentist ? dentist.full_name : 'Sem_Dentista';
       const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
       
-      const sanitizedDentist = encodeURIComponent('Dr_' + dentistName.trim().replace(/\s+/g, '_'));
-      const sanitizedPatient = encodeURIComponent('Caso_' + patientName.trim().replace(/\s+/g, '_') + '_' + caseId);
-      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing&subfolder=${sanitizedDentist}/${sanitizedPatient}`;
+      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing`;
 
       const payload: Case = {
         id: caseId,
@@ -217,8 +236,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         teeth_selection: teethSelection,
         dentist_notes: dentistNotes,
         internal_notes: internalNotes,
-        has_photo: hasPhoto,
-        has_file: hasFile,
+        has_photo: hasPhoto || photoFiles.length > 0,
+        has_file: hasFile || scanFiles.length > 0,
         estimated_hours: calculated.estimated_hours,
         value_matheus: calculated.value_matheus,
         value_planning: 0,
@@ -233,6 +252,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         remaining_value: calculated.total_value - (parseFloat(paidValue) || 0),
         google_drive_folder_id: editingCase?.google_drive_folder_id || `folder-mock-${Date.now()}`,
         google_drive_folder_url: editingCase?.google_drive_folder_url || driveFolderUrl,
+        selected_services: Object.keys(caseServicesSelected).filter(id => caseServicesSelected[id]?.selected),
         updated_at: new Date().toISOString()
       };
 
@@ -342,8 +362,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       </div>
       {/* Editor Modal Overlay */}
       {showEditor && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
-          <div className="w-full max-w-4xl bg-white border-l border-[#E2E8F0] h-screen overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex justify-end animate-fade-in">
+          <div className="w-full max-w-5xl bg-white border-l border-[#E2E8F0] h-screen overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
             <button
               onClick={() => {
                 setShowEditor(false);
@@ -484,30 +504,96 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         </select>
                       </div>
 
-                      <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-xl border border-[#E2E8F0]">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="photo_check"
-                            checked={hasPhoto}
-                            onChange={(e) => setHasPhoto(e.target.checked)}
-                            className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
-                          />
-                          <label htmlFor="photo_check" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                            Enviou Foto?
-                          </label>
+                      <div className="space-y-4 col-span-full">
+                        <div className="p-3.5 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] font-medium flex items-center gap-2">
+                          <FolderOpen size={16} className="text-[#0F766E] shrink-0" />
+                          <span>
+                            Os arquivos enviados serão salvos na pasta correspondente no Google Drive: <strong>Fotos</strong> para imagens e <strong>Escaneamento</strong> para arquivos 3D.
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="file_check"
-                            checked={hasFile}
-                            onChange={(e) => setHasFile(e.target.checked)}
-                            className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
-                          />
-                          <label htmlFor="file_check" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                            Enviou Arquivo?
-                          </label>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Fotos Clínicas zone */}
+                          <div className="p-4 rounded-lg border border-dashed border-[#E2E8F0] bg-slate-50 space-y-3">
+                            <div className="flex items-center gap-2 text-[#0F766E] font-bold text-[10px] uppercase tracking-wider">
+                              <FolderOpen size={14} />
+                              Enviar Fotos Clínicas
+                            </div>
+                            <p className="text-[10px] text-slate-400">Arraste ou clique para enviar fotos clínicas (JPG, PNG).</p>
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                const mapped = files.map(f => ({ name: f.name, size: f.size }));
+                                setPhotoFiles(prev => [...prev, ...mapped]);
+                                setHasPhoto(true);
+                              }}
+                              className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-200 file:text-[10px] file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 file:cursor-pointer"
+                            />
+                            {photoFiles.length > 0 && (
+                              <div className="space-y-1 pt-1.5">
+                                {photoFiles.map((f, i) => (
+                                  <div key={i} className="flex justify-between items-center bg-white p-2.5 rounded-lg text-[10px] border border-[#E2E8F0]">
+                                    <span className="truncate max-w-[150px] text-slate-800 font-semibold">{f.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = photoFiles.filter((_, idx) => idx !== i);
+                                        setPhotoFiles(updated);
+                                        if (updated.length === 0) setHasPhoto(false);
+                                      }}
+                                      className="text-rose-600 hover:text-rose-700 font-semibold px-1.5 cursor-pointer"
+                                    >
+                                      Remover
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Escaneamentos 3D zone */}
+                          <div className="p-4 rounded-lg border border-dashed border-[#E2E8F0] bg-slate-50 space-y-3">
+                            <div className="flex items-center gap-2 text-[#0F766E] font-bold text-[10px] uppercase tracking-wider">
+                              <FolderOpen size={14} />
+                              Enviar Escaneamento (3D)
+                            </div>
+                            <p className="text-[10px] text-slate-400">Arraste ou clique para enviar escaneamentos (STL, OBJ, ZIP).</p>
+                            <input
+                              type="file"
+                              multiple
+                              accept=".stl,.obj,.ply,.zip,.rar"
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                const mapped = files.map(f => ({ name: f.name, size: f.size }));
+                                setScanFiles(prev => [...prev, ...mapped]);
+                                setHasFile(true);
+                              }}
+                              className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-200 file:text-[10px] file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 file:cursor-pointer"
+                            />
+                            {scanFiles.length > 0 && (
+                              <div className="space-y-1 pt-1.5">
+                                {scanFiles.map((f, i) => (
+                                  <div key={i} className="flex justify-between items-center bg-white p-2.5 rounded-lg text-[10px] border border-[#E2E8F0]">
+                                    <span className="truncate max-w-[150px] text-slate-800 font-semibold">{f.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = scanFiles.filter((_, idx) => idx !== i);
+                                        setScanFiles(updated);
+                                        if (updated.length === 0) setHasFile(false);
+                                      }}
+                                      className="text-rose-600 hover:text-rose-700 font-semibold px-1.5 cursor-pointer"
+                                    >
+                                      Remover
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

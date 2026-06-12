@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -12,7 +13,8 @@ import {
   X, 
   User,
   PlusCircle,
-  FileText
+  FileText,
+  KeyRound
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -24,6 +26,12 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrentTab }) => {
   const { user, logout, isAdmin } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   if (!user) return <>{children}</>;
 
@@ -73,9 +81,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
             M
           </div>
           <div>
-            <h1 className="font-semibold text-xs leading-tight text-[#0F172A]">
+            <div className="font-semibold text-[20px] leading-tight text-[#0F172A]">
               {user.role === 'secretary' ? 'Secretária' : 'Dr. Matheus'}
-            </h1>
+            </div>
             <p className="text-[9px] text-slate-400 uppercase tracking-wider font-medium">
               Odontologia Digital
             </p>
@@ -118,10 +126,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
         </nav>
 
         {/* Footer / Logout */}
-        <div className="pt-4 border-t border-[#E2E8F0]">
+        <div className="pt-4 border-t border-[#E2E8F0] space-y-1">
+          {(user.role === 'admin' || user.role === 'secretary') && (
+            <button 
+              onClick={() => setIsPasswordModalOpen(true)}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-[#0F172A] transition-all duration-200 cursor-pointer"
+            >
+              <KeyRound size={16} className="text-slate-400" />
+              Alterar Senha
+            </button>
+          )}
           <button 
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 transition-all duration-200 cursor-pointer"
           >
             <LogOut size={16} />
             Sair da Conta
@@ -195,6 +212,122 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
           {children}
         </div>
       </main>
+      {/* Password Change Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative text-slate-900 animate-fade-in">
+            <button
+              onClick={() => {
+                setIsPasswordModalOpen(false);
+                setNewPassword('');
+                setConfirmPassword('');
+                setPassError('');
+                setPassSuccess('');
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Alterar Senha</h3>
+            <p className="text-[11px] text-slate-500 mb-4">
+              Defina sua nova senha de acesso ao painel do Iorc Lab.
+            </p>
+
+            {passError && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium mb-4">
+                {passError}
+              </div>
+            )}
+
+            {passSuccess && (
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-medium mb-4">
+                {passSuccess}
+              </div>
+            )}
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setPassError('');
+              setPassSuccess('');
+              if (!newPassword) {
+                setPassError('Por favor, insira uma nova senha.');
+                return;
+              }
+              if (newPassword !== confirmPassword) {
+                setPassError('As senhas não coincidem.');
+                return;
+              }
+              setSubmitting(true);
+              try {
+                await api.auth.updatePassword(newPassword);
+                setPassSuccess('Senha atualizada com sucesso!');
+                setNewPassword('');
+                setConfirmPassword('');
+                setTimeout(() => {
+                  setIsPasswordModalOpen(false);
+                  setPassSuccess('');
+                }, 1500);
+              } catch (err: any) {
+                setPassError('Erro ao atualizar a senha.');
+              } finally {
+                setSubmitting(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                  Nova Senha
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Insira a nova senha"
+                  className="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                  Confirmar Nova Senha
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirme a nova senha"
+                  className="w-full px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] focus:border-[#0F766E] transition-all"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasswordModalOpen(false);
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setPassError('');
+                    setPassSuccess('');
+                  }}
+                  className="px-4 py-2 bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? 'Atualizando...' : 'Atualizar Senha'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

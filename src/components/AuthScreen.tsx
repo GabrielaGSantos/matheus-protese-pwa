@@ -81,7 +81,7 @@ export const AuthScreen: React.FC = () => {
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="matheus, secretaria ou seu usuário"
+                placeholder="seu usuário"
                 className="w-full pl-10 pr-4 py-2.5 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all text-xs font-medium"
               />
             </div>
