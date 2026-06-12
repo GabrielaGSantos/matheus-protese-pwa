@@ -205,7 +205,18 @@ function seedMockDatabase() {
       }
     ];
 
-    const combinedCases = [...defaultCases, ...(importedCases as Case[])];
+    const combinedCases = [...defaultCases, ...(importedCases as Case[])].map(c => {
+      const year = new Date(c.created_at).getFullYear();
+      if (year < 2026) {
+        return {
+          ...c,
+          financial_status: 'pago' as const,
+          paid_value: c.total_value,
+          remaining_value: 0
+        };
+      }
+      return c;
+    });
     localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify(combinedCases));
   }
 }

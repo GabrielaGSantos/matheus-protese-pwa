@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { Case, Profile } from '../types';
 import { 
   DollarSign, Briefcase, Clock, AlertTriangle, 
-  CheckCircle, ShieldAlert, TrendingUp
+  CheckCircle, ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import * as XLSX from 'xlsx';
@@ -108,8 +108,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
             const calculatedTotal = valueMatheus + valuePlanning + valuePaschoal;
             const statusText = String(row['Status'] || 'Aguardando Pagamento').toLowerCase();
 
+            const caseYear = new Date(isoDateStr).getFullYear();
             let financialStatus: 'pago' | 'isento' | 'aguardando_pagamento' = 'aguardando_pagamento';
-            if (statusText.includes('pago')) {
+            if (caseYear < 2026) {
+              financialStatus = 'pago';
+            } else if (statusText.includes('pago')) {
               financialStatus = 'pago';
             } else if (statusText.includes('isento')) {
               financialStatus = 'isento';
@@ -183,55 +186,75 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   const todayStr = new Date().toISOString().split('T')[0];
   const currentMonthStr = new Date().toISOString().slice(0, 7); // YYYY-MM
 
-  // KPI Calculations
-  const totalInOpen = cases
-    .filter(c => c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.status !== 'cancelado')
-    .reduce((sum, c) => sum + c.remaining_value, 0);
+  // Currency format helper
+  const formatCurrency = (val: number) => {
+    return 'R$ ' + val.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
 
-  const totalPaidMonth = cases
-    .filter(c => c.financial_status === 'pago' || c.financial_status === 'pago_parcial')
-    .filter(c => c.created_at.startsWith(currentMonthStr))
-    .reduce((sum, c) => sum + c.paid_value, 0);
+  // KPI Calculations (ignoring cases before 2026 for faturamento and balances)
+  const monthlyGrossBilled = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
+    })
+    .reduce((sum, c) => sum + c.total_value, 0);
 
-  const matheusRendimento = cases
-    .filter(c => c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado')
-    .reduce((sum, c) => sum + c.value_matheus, 0);
 
-  const activeCasesCount = cases.filter(c => 
-    !['finalizado', 'entregue', 'cancelado'].includes(c.status)
-  ).length;
 
-  const finishedCasesCount = cases.filter(c => c.status === 'finalizado').length;
-  const awaitingPaymentCount = cases.filter(c => c.financial_status === 'aguardando_pagamento').length;
+  const activeCasesCount = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status);
+  }).length;
 
-  const isUnapproved = (c: Case) => 
-    (c.status === 'em_analise' || c.status === 'recebido') && 
-    c.dentist_id !== 'admin-1' && 
-    c.dentist_id !== 'sec-1';
+  const finishedCasesCount = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    return year >= 2026 && c.status === 'finalizado';
+  }).length;
+
+  const awaitingPaymentCount = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    return year >= 2026 && c.financial_status === 'aguardando_pagamento';
+  }).length;
+
+  const isUnapproved = (c: Case) => {
+    const year = new Date(c.created_at).getFullYear();
+    return year >= 2026 && 
+      (c.status === 'em_analise' || c.status === 'recebido') && 
+      c.dentist_id !== 'admin-1' && 
+      c.dentist_id !== 'sec-1';
+  };
 
   const unapprovedCases = cases.filter(isUnapproved);
   const awaitingAnalysisCount = unapprovedCases.length;
 
-  // Delayed cases
-  const delayedCases = cases.filter(c => 
-    c.final_delivery_date && 
-    c.final_delivery_date < todayStr && 
-    !['finalizado', 'entregue', 'cancelado'].includes(c.status) &&
-    !isUnapproved(c)
-  );
+  // Delayed cases (only 2026 onwards)
+  const delayedCases = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    return year >= 2026 &&
+      c.final_delivery_date && 
+      c.final_delivery_date < todayStr && 
+      !['finalizado', 'entregue', 'cancelado'].includes(c.status) &&
+      !isUnapproved(c);
+  });
 
-  // Production queue: active cases sorted by final delivery date
+  // Production queue: active cases (only 2026 onwards) sorted by final delivery date
   const productionQueue = cases
-    .filter(c => !['finalizado', 'entregue', 'cancelado'].includes(c.status) && !isUnapproved(c))
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status) && !isUnapproved(c);
+    })
     .sort((a, b) => {
       if (!a.final_delivery_date) return 1;
       if (!b.final_delivery_date) return -1;
       return a.final_delivery_date.localeCompare(b.final_delivery_date);
     });
 
-  // Capacity calculations: sum estimated hours of active cases
+  // Capacity calculations: sum estimated hours of active cases (only 2026 onwards)
   const totalEstimatedHours = cases
-    .filter(c => !['finalizado', 'entregue', 'cancelado'].includes(c.status) && !isUnapproved(c))
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status) && !isUnapproved(c);
+    })
     .reduce((sum, c) => sum + c.estimated_hours, 0);
 
   const isOverloaded = totalEstimatedHours > 44;
@@ -327,15 +350,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
-        {/* KPI: Total em Aberto */}
+        {/* KPI: Rendimento Bruto Mensal */}
         <div className="glass-panel p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total em Aberto</span>
-            <h3 className="text-xl font-bold text-slate-900">R$ {totalInOpen.toFixed(2)}</h3>
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Bruto Mensal</span>
+            <h3 className="text-xl font-bold text-slate-900">{formatCurrency(monthlyGrossBilled)}</h3>
             <p className="text-[10px] text-slate-400 font-medium mt-1">
-              Faturamento pendente ativo
+              Faturamento bruto de {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
             </p>
           </div>
           <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
@@ -343,31 +366,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
           </div>
         </div>
 
-        {/* KPI: Pago no Mês */}
-        <div className="glass-panel p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Recebido (Mês)</span>
-            <h3 className="text-xl font-bold text-emerald-600">R$ {totalPaidMonth.toFixed(2)}</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">Faturamento quitado</p>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-emerald-600">
-            <DollarSign size={16} />
-          </div>
-        </div>
-
-        {/* KPI: Rendimento Matheus */}
-        <div className="glass-panel p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Fração Dr. Matheus</span>
-            <h3 className="text-xl font-bold text-[#0F766E]">R$ {matheusRendimento.toFixed(2)}</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">Rendimento bruto</p>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
-            <TrendingUp size={16} />
-          </div>
-        </div>
-
-        {/* KPI: Casos Ativos */}
+        {/* KPI: Casos em Execução */}
         <div className="glass-panel p-5 flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Casos em Execução</span>

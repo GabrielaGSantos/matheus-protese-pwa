@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import type { Case, Profile } from '../types';
+import type { Case, Profile, Service } from '../types';
 import { 
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
   TrendingUp, ShieldCheck, X, Download 
@@ -9,8 +9,8 @@ import {
 export const FinanceScreen: React.FC = () => {
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
 
-  
   const [activeTab, setActiveTab] = useState<'billing' | 'reports'>('billing');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [expandedDentistId, setExpandedDentistId] = useState<string | null>(null);
@@ -32,11 +32,30 @@ export const FinanceScreen: React.FC = () => {
     try {
       const c = await api.cases.list('admin', 'admin-1');
       const p = await api.profiles.list();
+      const s = await api.services.list();
       setCases(c);
       setDentists(p.filter(x => x.role === 'dentist'));
+      setServices(s);
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const getServiceNames = (caseItem: Case) => {
+    if (!caseItem.selected_services || caseItem.selected_services.length === 0) {
+      const matched = services.find(s => s.default_value === caseItem.total_value);
+      return matched ? matched.name : 'Outro';
+    }
+    return caseItem.selected_services
+      .map(id => services.find(s => s.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const getFeitoPor = (internalNotes?: string) => {
+    if (!internalNotes) return '';
+    const match = internalNotes.match(/Feito por:\s*(.*)/i);
+    return match ? match[1].trim() : '';
   };
 
   const handleRegisterPayment = async (e: React.FormEvent) => {
@@ -185,35 +204,29 @@ export const FinanceScreen: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const summary = getReportSummary();
     const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado');
     
     let csvContent = '\uFEFF'; // UTF-8 BOM
-    csvContent += `MÉTRICAS DO MÊS;${selectedMonth}\n`;
-    csvContent += `Faturamento Bruto;R$ ${summary.billedTotal.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `Arrecadado (Quitado);R$ ${summary.paidTotal.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `A Receber;R$ ${summary.openTotal.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `Fração Dr. Matheus;R$ ${summary.matheusBillings.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `Fração Dr. Paschoal;R$ ${summary.paschoalBillings.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `Repasse Andrey;R$ ${summary.costAndreyTotal.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `Outros Custos Internos;R$ ${summary.otherCostsTotal.toFixed(2).replace('.', ',')}\n`;
-    csvContent += `Lucro Líquido Real (Dr. Matheus);R$ ${summary.netProfit.toFixed(2).replace('.', ',')}\n\n`;
-
-    csvContent += `DETALHAMENTO DE CASOS DA COMPETÊNCIA\n`;
-    csvContent += `ID Caso;Paciente;Dentista;Data de Criação;Valor Total;Fração Matheus;Fração Paschoal;Custo Andrey;Outros Custos;Status;Status Financeiro\n`;
+    csvContent += `Data Recebido;Data Entrega;Feito por;Cliente;Paciente;Tipo;Valor Matheus;Valor Planning;Valor Paschoal;Allan/Matheus;Andrey;Valor Total;Status;Elementos;Observações\n`;
 
     monthCases.forEach(c => {
-      const dentistName = dentists.find(d => d.id === c.dentist_id)?.full_name || 'Desconhecido';
-      const creationDate = new Date(c.created_at).toLocaleDateString('pt-BR');
-      const totalVal = c.total_value.toFixed(2).replace('.', ',');
+      const dataRecebido = new Date(c.created_at).toLocaleDateString('pt-BR');
+      const dataEntrega = c.final_delivery_date ? new Date(c.final_delivery_date + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+      const feitoPor = getFeitoPor(c.internal_notes);
+      const cliente = dentists.find(d => d.id === c.dentist_id)?.full_name || 'Desconhecido';
+      const paciente = c.patient_name;
+      const tipo = getServiceNames(c);
       const valMatheus = c.value_matheus.toFixed(2).replace('.', ',');
+      const valPlanning = c.value_planning.toFixed(2).replace('.', ',');
       const valPaschoal = c.value_paschoal.toFixed(2).replace('.', ',');
-      const costAndrey = (c.cost_andrey || 0).toFixed(2).replace('.', ',');
-      const otherCosts = (c.other_internal_costs || []).reduce((sum, o) => sum + (o.value || 0), 0).toFixed(2).replace('.', ',');
+      const allanMatheus = c.cost_allan_matheus.toFixed(2).replace('.', ',');
+      const andrey = c.cost_andrey.toFixed(2).replace('.', ',');
+      const valTotal = c.total_value.toFixed(2).replace('.', ',');
       const statusText = c.status === 'em_analise' ? 'Aguardando Análise' : c.status;
-      const finStatusText = c.financial_status === 'pago' ? 'Pago' : c.financial_status === 'pago_parcial' ? 'Parcial' : 'Aguardando';
+      const elementos = c.teeth_selection.teeth.join(', ');
+      const observacoes = c.dentist_notes || '';
 
-      csvContent += `${c.id};${c.patient_name};${dentistName};${creationDate};R$ ${totalVal};R$ ${valMatheus};R$ ${valPaschoal};R$ ${costAndrey};R$ ${otherCosts};${statusText};${finStatusText}\n`;
+      csvContent += `${dataRecebido};${dataEntrega};${feitoPor};${cliente};${paciente};${tipo};${valMatheus};${valPlanning};${valPaschoal};${allanMatheus};${andrey};${valTotal};${statusText};${elementos};${observacoes}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
