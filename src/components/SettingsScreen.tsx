@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  Search
+  Search,
+  X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -41,7 +42,14 @@ export const SettingsScreen: React.FC = () => {
   const [driveTestResult, setDriveTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [driveLoading, setDriveLoading] = useState(false);
   const [serviceAccountJson, setServiceAccountJson] = useState('');
-  const driveConnected = !!serviceAccountJson && !!driveRootLink;
+  const [clientEmail, setClientEmail] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [dbDriveConnected, setDbDriveConnected] = useState(false);
+  const [showJsonInput, setShowJsonInput] = useState(true);
+  const [driveStructure, setDriveStructure] = useState<{ root_folder: { id: string; name: string }; dentist_folders: { id: string; name: string; cases_count: number }[] } | null>(null);
+  const [showStructureModal, setShowStructureModal] = useState(false);
+  const [loadingStructure, setLoadingStructure] = useState(false);
+  const driveConnected = dbDriveConnected || (!!serviceAccountJson && !!driveRootLink);
 
   // Telegram/Notification States
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(notificationService.getSettings());
@@ -61,31 +69,40 @@ export const SettingsScreen: React.FC = () => {
     setExtractedFolderId(id);
   }, [driveRootLink]);
 
+  // Carregar configurações do Google Drive compartilhadas do banco de dados
+  const fetchGDriveSettings = async () => {
+    try {
+      const settings = await api.gdrive.getSettings();
+      if (settings) {
+        if (settings.root_folder_url) {
+          setDriveRootLink(settings.root_folder_url);
+          const id = extractFolderId(settings.root_folder_url);
+          setExtractedFolderId(id);
+        }
+        if (settings.client_email) {
+          setClientEmail(settings.client_email);
+        }
+        if (settings.project_id) {
+          setProjectId(settings.project_id);
+        }
+        
+        setDbDriveConnected(!!settings.drive_connected);
+        setShowJsonInput(!settings.drive_connected);
+      } else {
+        setShowJsonInput(true);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar configurações do Google Drive no banco:', err);
+      setShowJsonInput(true);
+    }
+  };
+
   useEffect(() => {
     setNotifications(notificationService.list());
     if ('Notification' in window) {
       setPushPermission(Notification.permission);
     }
     fetchLogs();
-
-    // Carregar configurações do Google Drive compartilhadas do banco de dados
-    const fetchGDriveSettings = async () => {
-      try {
-        const settings = await api.gdrive.getSettings();
-        if (settings) {
-          if (settings.root_folder_url) {
-            setDriveRootLink(settings.root_folder_url);
-            const id = extractFolderId(settings.root_folder_url);
-            setExtractedFolderId(id);
-          }
-          if (settings.service_account_json) {
-            setServiceAccountJson(settings.service_account_json);
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao buscar configurações do Google Drive no banco:', err);
-      }
-    };
     fetchGDriveSettings();
   }, []);
 
@@ -128,7 +145,6 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  // Google Drive Handlers
   const handleSaveDriveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     const folderId = extractFolderId(driveRootLink);
@@ -137,7 +153,7 @@ export const SettingsScreen: React.FC = () => {
       return;
     }
     
-    if (!serviceAccountJson) {
+    if (showJsonInput && !serviceAccountJson) {
       alert('Por favor, insira as credenciais JSON da Conta de Serviço.');
       return;
     }
@@ -145,10 +161,12 @@ export const SettingsScreen: React.FC = () => {
     try {
       setDriveLoading(true);
       await api.gdrive.saveSettings({
-        service_account_json: serviceAccountJson,
+        service_account_json: showJsonInput ? serviceAccountJson : '********',
         root_folder_url: driveRootLink
       });
       alert('Configurações do Google Drive salvas com sucesso!');
+      setServiceAccountJson('');
+      await fetchGDriveSettings();
     } catch (err: any) {
       alert('Erro ao salvar configurações no banco: ' + err.message);
     } finally {
@@ -164,10 +182,16 @@ export const SettingsScreen: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          service_account_json: serviceAccountJson,
+          service_account_json: showJsonInput ? serviceAccountJson : '',
           root_folder_url: driveRootLink
         })
       });
+      
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Resposta não-JSON do servidor: ${text.substring(0, 200)}`);
+      }
       
       const resJson = await res.json();
       if (resJson.success) {
@@ -175,6 +199,7 @@ export const SettingsScreen: React.FC = () => {
           success: true,
           message: resJson.message || '✅ Conexão estabelecida com sucesso!',
         });
+        setDbDriveConnected(true);
       } else {
         setDriveTestResult({
           success: false,
@@ -185,6 +210,32 @@ export const SettingsScreen: React.FC = () => {
       setDriveTestResult({ success: false, message: `❌ ${err.message}` });
     } finally {
       setDriveLoading(false);
+    }
+  };
+
+  const handleViewStructure = async () => {
+    setLoadingStructure(true);
+    setDriveStructure(null);
+    setShowStructureModal(true);
+    try {
+      const res = await fetch('api.php?action=view_drive_structure');
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Resposta não-JSON do servidor: ${text.substring(0, 200)}`);
+      }
+      const resJson = await res.json();
+      if (resJson.success) {
+        setDriveStructure(resJson);
+      } else {
+        alert(`❌ Erro ao ler estrutura: ${resJson.error}`);
+        setShowStructureModal(false);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro: ${err.message}`);
+      setShowStructureModal(false);
+    } finally {
+      setLoadingStructure(false);
     }
   };
 
@@ -706,41 +757,92 @@ export const SettingsScreen: React.FC = () => {
             )}
 
             {/* Test connection & results */}
-            <div className="space-y-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleTestConnection}
                 disabled={driveLoading}
-                className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-[#0F766E] bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 text-xs font-bold text-[#0F766E] bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
               >
                 {driveLoading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
                 Testar Sincronização e Conexão
               </button>
+
+              {driveConnected && (
+                <button
+                  type="button"
+                  onClick={handleViewStructure}
+                  disabled={loadingStructure}
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                >
+                  {loadingStructure ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
+                  Visualizar Estrutura do Drive
+                </button>
+              )}
             </div>
+
+            {/* Service Account Email Card */}
+            {clientEmail && (
+              <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-2">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Conta de Serviço:</div>
+                <div className="font-mono text-xs font-bold text-teal-800 break-all select-all">{clientEmail}</div>
+                <p className="text-[10px] text-teal-600 font-medium leading-relaxed">
+                  Compartilhe a pasta raiz do Google Drive com este e-mail como <strong>Editor</strong>. O sistema precisa dessa permissão para criar pastas de dentistas/casos e enviar arquivos automaticamente.
+                </p>
+              </div>
+            )}
 
             {/* General Settings Form */}
             <form onSubmit={handleSaveDriveConfig} className="space-y-4 pt-4 border-t border-[#E2E8F0]">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex flex-col gap-1">
-                  <span>Credenciais JSON da Conta de Serviço (Google Service Account)</span>
-                  <span className="text-slate-400 font-normal normal-case">
-                    Cole o conteúdo completo do arquivo JSON gerado no Google Cloud Console. Lembre-se de compartilhar sua pasta raiz do Drive com o e-mail da Service Account com permissão de <b>Editor</b>.
+              {showJsonInput ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Credenciais JSON da Conta de Serviço (Google Service Account)
+                    </label>
+                    {dbDriveConnected && (
+                      <button
+                        type="button"
+                        onClick={() => setShowJsonInput(false)}
+                        className="text-[10px] text-[#0F766E] font-bold hover:underline"
+                      >
+                        Cancelar alteração
+                      </button>
+                    )}
+                  </div>
+                  <span className="block text-[10px] text-slate-400 font-normal mb-1">
+                    Cole o conteúdo completo do arquivo JSON gerado no Google Cloud Console.
                   </span>
-                </label>
-                <textarea
-                  rows={8}
-                  required
-                  value={serviceAccountJson}
-                  onChange={(e) => setServiceAccountJson(e.target.value)}
-                  placeholder='{
+                  <textarea
+                    rows={8}
+                    required
+                    value={serviceAccountJson}
+                    onChange={(e) => setServiceAccountJson(e.target.value)}
+                    placeholder='{
   "type": "service_account",
   "project_id": "...",
   "private_key_id": "...",
   ...
 }'
-                  className="w-full px-3.5 py-2.5 rounded-[10px] bg-slate-50 border border-[#E2E8F0] font-mono text-[10px] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
-                />
-              </div>
+                    className="w-full px-3.5 py-2.5 rounded-[10px] bg-slate-50 border border-[#E2E8F0] font-mono text-[10px] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
+                  />
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-50 border border-[#E2E8F0] rounded-xl space-y-2">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Credenciais Ativas</div>
+                  <div className="text-xs font-semibold text-slate-700">Projeto: <span className="font-bold text-slate-900">{projectId || 'N/A'}</span></div>
+                  <div className="text-xs font-semibold text-slate-700">E-mail: <span className="font-bold text-slate-900">{clientEmail || 'N/A'}</span></div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowJsonInput(true)}
+                      className="text-xs text-[#0F766E] hover:underline font-bold cursor-pointer"
+                    >
+                      Substituir credencial (Colar novo JSON)
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
@@ -1130,6 +1232,93 @@ export const SettingsScreen: React.FC = () => {
         )}
 
       </div>
+
+      {/* Modal Estrutura do Drive */}
+      {showStructureModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[85vh] flex flex-col animate-scale-up">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <FolderOpen className="text-[#0F766E]" size={18} />
+                Estrutura de Pastas no Google Drive
+              </h4>
+              <button
+                onClick={() => setShowStructureModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {loadingStructure ? (
+                <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                  <Loader2 className="animate-spin text-[#0F766E]" size={32} />
+                  <span className="text-xs text-slate-500 font-medium">Buscando pastas no Google Drive...</span>
+                </div>
+              ) : driveStructure ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Pasta Raiz</div>
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                      <FolderOpen className="text-teal-600" size={14} />
+                      {driveStructure.root_folder.name}
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-mono select-all truncate mt-1">
+                      ID: {driveStructure.root_folder.id}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+                      Pastas de Dentistas ({driveStructure.dentist_folders.length})
+                    </div>
+                    {driveStructure.dentist_folders.length === 0 ? (
+                      <div className="text-center py-6 text-xs text-slate-400 font-medium">
+                        Nenhuma pasta de dentista encontrada sob a pasta raiz.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1 border border-slate-100 rounded-xl">
+                        {driveStructure.dentist_folders.map((folder, index) => (
+                          <div key={index} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-all">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <FolderOpen className="text-amber-500 flex-shrink-0" size={16} />
+                              <span className="text-xs font-semibold text-slate-700 truncate" title={folder.name}>
+                                {folder.name}
+                              </span>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold ${
+                              folder.cases_count > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {folder.cases_count} {folder.cases_count === 1 ? 'caso' : 'casos'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-xs text-slate-500 font-medium">
+                  Falha ao recuperar a estrutura do Drive.
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end rounded-b-2xl">
+              <button
+                onClick={() => setShowStructureModal(false)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold rounded-lg text-xs transition-all cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

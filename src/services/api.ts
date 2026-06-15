@@ -329,24 +329,36 @@ export const api = {
   // =======================================================================
   auth: {
     async getCurrentUser(): Promise<Profile | null> {
+      let profile: Profile | null = null;
       if (useMockData) {
         const u = localStorage.getItem(MOCK_STORAGE_KEYS.CURRENT_USER);
-        return u ? JSON.parse(u) : null;
+        profile = u ? JSON.parse(u) : null;
+      } else {
+        const { data: { user } } = await supabase!.auth.getUser();
+        if (user) {
+          const { data: prof } = await supabase!
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          profile = prof;
+        }
       }
 
-      const { data: { user } } = await supabase!.auth.getUser();
-      if (!user) return null;
-
-      const { data: profile } = await supabase!
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      if (profile) {
+        // Sync PHP session
+        await fetch('api.php?action=login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profile)
+        }).catch(err => console.warn('Erro ao sincronizar sessão no backend:', err));
+      }
 
       return profile;
     },
 
     async login(email: string): Promise<Profile> {
+      let profile: Profile;
       if (useMockData) {
         const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
         const query = email.toLowerCase().trim();
@@ -365,12 +377,8 @@ export const api = {
             profiles.push(admin);
             saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
           }
-          localStorage.setItem(MOCK_STORAGE_KEYS.CURRENT_USER, JSON.stringify(admin));
-          return admin;
-        }
-
-        // Secretary Login mock: "secretaria", "secretária" or "sec"
-        if (query.includes('secretar') || query === 'secretaria' || query === 'sec' || query === 'sec-1') {
+          profile = admin;
+        } else if (query.includes('secretar') || query === 'secretaria' || query === 'sec' || query === 'sec-1') {
           let sec = profiles.find(p => p.role === 'secretary');
           if (!sec) {
             sec = {
@@ -383,35 +391,44 @@ export const api = {
             profiles.push(sec);
             saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
           }
-          localStorage.setItem(MOCK_STORAGE_KEYS.CURRENT_USER, JSON.stringify(sec));
-          return sec;
+          profile = sec;
+        } else {
+          const nameQuery = query.split('@')[0];
+          let match = profiles.find(p => 
+            p.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(nameQuery)
+          );
+          if (!match) {
+            match = profiles.find(p => p.role === 'dentist')!;
+          }
+          profile = match;
         }
-
-        // Dentist Login mock: find matching email slug, or default to Dr. Allan
-        const nameQuery = query.split('@')[0];
-        let match = profiles.find(p => 
-          p.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(nameQuery)
-        );
-
-        if (!match) {
-          // fallback to first dentist
-          match = profiles.find(p => p.role === 'dentist')!;
-        }
-
-        localStorage.setItem(MOCK_STORAGE_KEYS.CURRENT_USER, JSON.stringify(match));
-        return match;
+        localStorage.setItem(MOCK_STORAGE_KEYS.CURRENT_USER, JSON.stringify(profile));
+      } else {
+        const formattedEmail = email.includes('@') ? email : `${email.trim().toLowerCase()}@iorclab.com`;
+        const { error } = await supabase!.auth.signInWithPassword({
+          email: formattedEmail,
+          password: 'Password123'
+        });
+        if (error) throw error;
+        
+        const { data: { user } } = await supabase!.auth.getUser();
+        if (!user) throw new Error('Usuário não encontrado após login no Supabase.');
+        const { data: prof } = await supabase!
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (!prof) throw new Error('Perfil do Supabase não encontrado.');
+        profile = prof;
       }
 
-      // Supabase logic: in actual Supabase we login using email & password.
-      const formattedEmail = email.includes('@') ? email : `${email.trim().toLowerCase()}@iorclab.com`;
-      const { error } = await supabase!.auth.signInWithPassword({
-        email: formattedEmail,
-        password: 'Password123'
-      });
+      // Sync PHP session
+      await fetch('api.php?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile)
+      }).catch(err => console.warn('Erro ao sincronizar login no backend:', err));
 
-      if (error) throw error;
-      const profile = await this.getCurrentUser();
-      if (!profile) throw new Error('Perfil não encontrado no Supabase.');
       return profile;
     },
 
@@ -427,9 +444,11 @@ export const api = {
     async logout(): Promise<void> {
       if (useMockData) {
         localStorage.removeItem(MOCK_STORAGE_KEYS.CURRENT_USER);
-        return;
+      } else {
+        await supabase!.auth.signOut();
       }
-      await supabase!.auth.signOut();
+      // Sync PHP session
+      await fetch('api.php?action=logout').catch(err => console.warn('Erro ao limpar sessão de logout no backend:', err));
     }
   },
 
@@ -897,32 +916,29 @@ export const api = {
       caseId: string,
       patientName: string,
       dentistName: string,
-      category: 'imagens' | 'escaneamento' | 'resultado',
+      category: 'imagens' | 'escaneamento' | 'enceramento_digital' | 'resultado',
       uploadedBy: string
     ): Promise<{ success: boolean; attachment: FileAttachment; case?: Case }> {
+      console.debug(`[Upload File] Case ID: ${caseId}, Patient: ${patientName}, Dentist: ${dentistName}, Category: ${category}, Uploaded By: ${uploadedBy}`);
       const formData = new FormData();
       formData.append('file', file);
       formData.append('case_id', caseId);
-      formData.append('patient_name', patientName);
-      formData.append('dentist_name', dentistName);
-      formData.append('category', category);
-      formData.append('uploaded_by', uploadedBy);
 
       const res = await fetch('api.php?action=upload_file', {
         method: 'POST',
         body: formData
       });
 
-      if (!res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
         const errText = await res.text();
-        let errMsg = 'Erro desconhecido no servidor';
-        try {
-          const errData = JSON.parse(errText);
-          if (errData.error) errMsg = errData.error;
-        } catch {
-          errMsg = errText || `HTTP ${res.status}`;
-        }
-        throw new Error(errMsg);
+        console.error('Resposta não-JSON do servidor:', errText);
+        throw new Error(`Resposta inválida do servidor: ${errText.substring(0, 200)}`);
+      }
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || `HTTP ${res.status}`);
       }
 
       const resJson = await res.json();
