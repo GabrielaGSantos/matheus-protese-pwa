@@ -45,6 +45,8 @@ export const SettingsScreen: React.FC = () => {
   const [clientEmail, setClientEmail] = useState('');
   const [projectId, setProjectId] = useState('');
   const [dbDriveConnected, setDbDriveConnected] = useState(false);
+  const [isOAuthUser, setIsOAuthUser] = useState(false);
+  const [oauthClientId, setOauthClientId] = useState('');
   const [showJsonInput, setShowJsonInput] = useState(true);
   const [driveStructure, setDriveStructure] = useState<{ root_folder: { id: string; name: string }; dentist_folders: { id: string; name: string; cases_count: number }[] } | null>(null);
   const [showStructureModal, setShowStructureModal] = useState(false);
@@ -86,6 +88,8 @@ export const SettingsScreen: React.FC = () => {
           setProjectId(settings.project_id);
         }
         
+        setIsOAuthUser(!!settings.is_oauth_user);
+        setOauthClientId(settings.oauth_client_id || '');
         setDbDriveConnected(!!settings.drive_connected);
         setShowJsonInput(!settings.drive_connected);
       } else {
@@ -218,7 +222,15 @@ export const SettingsScreen: React.FC = () => {
     setDriveStructure(null);
     setShowStructureModal(true);
     try {
-      const res = await fetch('api.php?action=view_drive_structure');
+      const headers: Record<string, string> = {};
+      let userIdQuery = '';
+      if (user && user.id) {
+        headers['X-User-Id'] = user.id;
+        userIdQuery = `&user_id=${encodeURIComponent(user.id)}`;
+      }
+      const res = await fetch(`api.php?action=view_drive_structure${userIdQuery}`, {
+        headers
+      });
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         const text = await res.text();
@@ -736,7 +748,9 @@ export const SettingsScreen: React.FC = () => {
                 )}
                 <div>
                   <div className={`text-xs font-bold ${driveConnected ? 'text-emerald-700' : 'text-rose-700'}`}>
-                    {driveConnected ? 'Google Drive Ativo (Service Account)' : 'Google Drive Pendente'}
+                    {driveConnected 
+                      ? (isOAuthUser ? 'Google Drive Ativo (OAuth de Usuário)' : 'Google Drive Ativo (Service Account)') 
+                      : 'Google Drive Pendente'}
                   </div>
                   {driveConnected && (
                     <div className="text-[10px] text-emerald-600 truncate mt-0.5">
@@ -781,8 +795,25 @@ export const SettingsScreen: React.FC = () => {
               )}
             </div>
 
+            {/* Quota Warning Card */}
+            {driveConnected && !isOAuthUser && (
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-amber-800 font-bold">
+                  <AlertTriangle size={16} />
+                  Aviso de Quota do Google Drive (Service Account)
+                </div>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  As Contas de Serviço (Service Accounts) da Google possuem quota de armazenamento de <strong>0 bytes</strong> por padrão.
+                </p>
+                <div className="text-[11px] text-amber-700 space-y-1 pl-4 list-disc">
+                  <div>• <strong>Se você usa Google Workspace:</strong> A pasta raiz no Drive configurada abaixo deve ser um <strong>Drive Compartilhado (Shared Drive)</strong>, onde os arquivos pertencem à organização e não à Conta de Serviço.</div>
+                  <div>• <strong>Se você usa Gmail pessoal (@gmail.com):</strong> O Google impede o upload de arquivos via Conta de Serviço em pastas pessoais (erro de quota excedida). Nesse caso, altere suas credenciais para usar o formato <strong>OAuth 2.0 de Usuário</strong> (contendo <code>client_id</code>, <code>client_secret</code> e <code>refresh_token</code>) para que os uploads consumam a sua quota pessoal de 15GB+.</div>
+                </div>
+              </div>
+            )}
+
             {/* Service Account Email Card */}
-            {clientEmail && (
+            {clientEmail && !isOAuthUser && (
               <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-2">
                 <div className="text-[10px] uppercase font-bold text-slate-400">Conta de Serviço:</div>
                 <div className="font-mono text-xs font-bold text-teal-800 break-all select-all">{clientEmail}</div>
@@ -798,7 +829,7 @@ export const SettingsScreen: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Credenciais JSON da Conta de Serviço (Google Service Account)
+                      Credenciais JSON da Conta de Serviço ou OAuth2 do Usuário
                     </label>
                     {dbDriveConnected && (
                       <button
@@ -811,7 +842,7 @@ export const SettingsScreen: React.FC = () => {
                     )}
                   </div>
                   <span className="block text-[10px] text-slate-400 font-normal mb-1">
-                    Cole o conteúdo completo do arquivo JSON gerado no Google Cloud Console.
+                    Cole o conteúdo completo do arquivo JSON de Conta de Serviço OU de Credenciais de Aplicativo OAuth2 (com client_id, client_secret e refresh_token).
                   </span>
                   <textarea
                     rows={8}
@@ -821,8 +852,16 @@ export const SettingsScreen: React.FC = () => {
                     placeholder='{
   "type": "service_account",
   "project_id": "...",
-  "private_key_id": "...",
+  "private_key": "...",
   ...
+}
+
+OU
+
+{
+  "client_id": "...",
+  "client_secret": "...",
+  "refresh_token": "..."
 }'
                     className="w-full px-3.5 py-2.5 rounded-[10px] bg-slate-50 border border-[#E2E8F0] font-mono text-[10px] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
                   />
@@ -830,8 +869,17 @@ export const SettingsScreen: React.FC = () => {
               ) : (
                 <div className="p-4 bg-slate-50 border border-[#E2E8F0] rounded-xl space-y-2">
                   <div className="text-[10px] uppercase font-bold text-slate-400">Credenciais Ativas</div>
-                  <div className="text-xs font-semibold text-slate-700">Projeto: <span className="font-bold text-slate-900">{projectId || 'N/A'}</span></div>
-                  <div className="text-xs font-semibold text-slate-700">E-mail: <span className="font-bold text-slate-900">{clientEmail || 'N/A'}</span></div>
+                  {isOAuthUser ? (
+                    <>
+                      <div className="text-xs font-semibold text-slate-700">Tipo: <span className="font-bold text-slate-900">OAuth 2.0 (Usuário Pessoal)</span></div>
+                      <div className="text-xs font-semibold text-slate-700">Client ID: <span className="font-bold text-slate-900 break-all">{oauthClientId || 'N/A'}</span></div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xs font-semibold text-slate-700">Projeto: <span className="font-bold text-slate-900">{projectId || 'N/A'}</span></div>
+                      <div className="text-xs font-semibold text-slate-700">E-mail: <span className="font-bold text-slate-900">{clientEmail || 'N/A'}</span></div>
+                    </>
+                  )}
                   <div className="pt-2">
                     <button
                       type="button"

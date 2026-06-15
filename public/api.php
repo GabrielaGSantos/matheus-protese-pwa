@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-Id');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -51,6 +51,48 @@ function getGoogleCredentials() {
     return null;
 }
 
+// Helper to resolve authenticated user from session or header
+function getAuthenticatedUser($dataDir) {
+    // 1. Check PHP Session first
+    if (isset($_SESSION['user']) && isset($_SESSION['user']['id'])) {
+        return $_SESSION['user'];
+    }
+    
+    // 2. Check HTTP headers (case-insensitive)
+    $userId = '';
+    if (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        if ($headers) {
+            foreach ($headers as $name => $value) {
+                if (strcasecmp($name, 'X-User-Id') === 0) {
+                    $userId = $value;
+                    break;
+                }
+            }
+        }
+    }
+    if (empty($userId) && isset($_SERVER['HTTP_X_USER_ID'])) {
+        $userId = $_SERVER['HTTP_X_USER_ID'];
+    }
+    if (empty($userId)) {
+        $userId = $_GET['user_id'] ?? $_POST['user_id'] ?? '';
+    }
+    
+    if (!empty($userId)) {
+        $profilesFile = $dataDir . '/matheus_protese_profiles.json';
+        if (file_exists($profilesFile)) {
+            $profiles = json_decode(file_get_contents($profilesFile), true) ?: [];
+            foreach ($profiles as $p) {
+                if ($p['id'] === $userId) {
+                    return $p;
+                }
+            }
+        }
+    }
+    
+    return null;
+}
+
 // Helper to get public settings
 function getGDrivePublicSettings($dataDir) {
     $settingsFile = $dataDir . '/gdrive_shared_settings.json';
@@ -62,15 +104,21 @@ function getGDrivePublicSettings($dataDir) {
     // Ensure credentials keys are completely removed
     unset($settings['service_account_json']);
     unset($settings['private_key']);
+    unset($settings['client_secret']);
+    unset($settings['refresh_token']);
     
     $creds = getGoogleCredentials();
     if ($creds) {
         $settings['client_email'] = $creds['client_email'] ?? '';
         $settings['project_id'] = $creds['project_id'] ?? '';
+        $settings['is_oauth_user'] = isset($creds['refresh_token']);
+        $settings['oauth_client_id'] = $creds['client_id'] ?? '';
         $settings['drive_connected'] = true;
     } else {
         $settings['client_email'] = '';
         $settings['project_id'] = '';
+        $settings['is_oauth_user'] = false;
+        $settings['oauth_client_id'] = '';
         $settings['drive_connected'] = false;
     }
     return $settings;
@@ -91,15 +139,22 @@ function getFolderIdFromUrl($url) {
     return $url;
 }
 
-// Google Drive Service Account Handler
+// Google Drive Service Account or User OAuth2 Handler
 class GoogleDriveServiceAccount {
     private $credentials;
     private $accessToken;
 
     public function __construct($credentialsJson) {
         $this->credentials = json_decode($credentialsJson, true);
-        if (!$this->credentials || !isset($this->credentials['private_key']) || !isset($this->credentials['client_email'])) {
-            throw new Exception('Credenciais da Service Account inválidas. Verifique o JSON colado.');
+        if (!$this->credentials) {
+            throw new Exception('JSON de credenciais do Google Drive inválido.');
+        }
+
+        $isServiceAccount = isset($this->credentials['private_key']) && isset($this->credentials['client_email']);
+        $isUserOAuth = isset($this->credentials['client_id']) && isset($this->credentials['client_secret']) && isset($this->credentials['refresh_token']);
+
+        if (!$isServiceAccount && !$isUserOAuth) {
+            throw new Exception('Credenciais do Google Drive inválidas. O JSON deve conter as chaves de Conta de Serviço (private_key, client_email) OU chaves de aplicativo OAuth2 do Usuário (client_id, client_secret, refresh_token).');
         }
     }
 
@@ -112,6 +167,46 @@ class GoogleDriveServiceAccount {
             return $this->accessToken;
         }
 
+        // Se for OAuth 2.0 do Usuário (Refresh Token)
+        if (isset($this->credentials['refresh_token'])) {
+            $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+                'client_id' => $this->credentials['client_id'],
+                'client_secret' => $this->credentials['client_secret'],
+                'refresh_token' => $this->credentials['refresh_token'],
+                'grant_type' => 'refresh_token'
+            ]));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/x-www-form-urlencoded'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                $error = curl_error($ch);
+                curl_close($ch);
+                throw new Exception('Erro de rede (cURL) ao autenticar via OAuth de Usuário com o Google: ' . $error);
+            }
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                throw new Exception('Google Auth (OAuth User) retornou HTTP ' . $httpCode . ': ' . $response);
+            }
+
+            $data = json_decode($response, true);
+            if (!isset($data['access_token'])) {
+                throw new Exception('Token de acesso do Google não encontrado na resposta do fluxo de Usuário.');
+            }
+
+            $this->accessToken = $data['access_token'];
+            return $this->accessToken;
+        }
+
+        // Se for Service Account (JWT Assertion)
         $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
         $now = time();
         $payload = json_encode([
@@ -243,7 +338,8 @@ class GoogleDriveServiceAccount {
         ];
         
         $boundary = 'foo_bar_baz_boundary';
-        $delimiter = "\r\n--" . $boundary . "\r\n";
+        $startBoundary = "--" . $boundary . "\r\n";
+        $partBoundary = "\r\n--" . $boundary . "\r\n";
         $closeDelimiter = "\r\n--" . $boundary . "--";
         
         $fileData = file_get_contents($filePath);
@@ -251,10 +347,10 @@ class GoogleDriveServiceAccount {
             throw new Exception('Não foi possível ler o arquivo temporário ' . $filePath);
         }
         
-        $body = $delimiter
+        $body = $startBoundary
               . "Content-Type: application/json; charset=UTF-8\r\n\r\n"
               . json_encode($metadata)
-              . $delimiter
+              . $partBoundary
               . "Content-Type: " . ($mimeType ?: 'application/octet-stream') . "\r\n\r\n"
               . $fileData
               . $closeDelimiter;
@@ -306,7 +402,8 @@ if ($action === 'get_session') {
 // GOOGLE DRIVE ACTION ENDPOINTS
 // -------------------------------------------------------------------------
 if ($action === 'create_folders') {
-    if (!isset($_SESSION['user'])) {
+    $sessionUser = getAuthenticatedUser($dataDir);
+    if (!$sessionUser) {
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Sessão expirada ou não autenticado.']);
         exit;
@@ -483,7 +580,8 @@ if ($action === 'test_drive') {
 }
 
 if ($action === 'view_drive_structure') {
-    if (!isset($_SESSION['user'])) {
+    $sessionUser = getAuthenticatedUser($dataDir);
+    if (!$sessionUser) {
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Sessão expirada ou não autenticado.']);
         exit;
@@ -665,15 +763,21 @@ if ($action === 'upload_file') {
         exit;
     }
     
-    // Validar Sessão de Usuário
-    if (!isset($_SESSION['user']) || !isset($_SESSION['user']['id'])) {
-        logBackendError("Upload negado: sessão expirada ou usuário não autenticado.");
+    // Validar Sessão de Usuário ou Header
+    $sessionUser = getAuthenticatedUser($dataDir);
+    if (!$sessionUser || !isset($sessionUser['id'])) {
+        // Collect debug info
+        $headersInfo = function_exists('getallheaders') ? getallheaders() : [];
+        $serverUserId = $_SERVER['HTTP_X_USER_ID'] ?? 'not set';
+        $postUserId = $_POST['user_id'] ?? 'not set';
+        $getUserId = $_GET['user_id'] ?? 'not set';
+        $sessInfo = isset($_SESSION['user']) ? json_encode($_SESSION['user']) : 'not set';
+        logBackendError("Upload negado: sessão expirada ou usuário não autenticado. Debug - Headers: " . json_encode($headersInfo) . " | Server X-User-Id: " . $serverUserId . " | GET User-Id: " . $getUserId . " | POST User-Id: " . $postUserId . " | Session User: " . $sessInfo);
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Sessão expirada. Por favor, faça login novamente.']);
         exit;
     }
     
-    $sessionUser = $_SESSION['user'];
     $userId = $sessionUser['id'];
     $userRole = $sessionUser['role'] ?? 'dentist';
     $userName = $sessionUser['full_name'] ?? 'Desconhecido';

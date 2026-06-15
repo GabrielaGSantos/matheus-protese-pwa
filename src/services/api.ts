@@ -923,9 +923,13 @@ export const api = {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('case_id', caseId);
+      formData.append('user_id', uploadedBy);
 
-      const res = await fetch('api.php?action=upload_file', {
+      const res = await fetch(`api.php?action=upload_file&user_id=${encodeURIComponent(uploadedBy)}`, {
         method: 'POST',
+        headers: {
+          'X-User-Id': uploadedBy
+        },
         body: formData
       });
 
@@ -1034,7 +1038,18 @@ export const api = {
       case?: Case;
       error?: string;
     }> {
-      const res = await fetch(`api.php?action=create_folders&case_id=${encodeURIComponent(caseId)}&patient_name=${encodeURIComponent(patientName)}&dentist_name=${encodeURIComponent(dentistName)}`);
+      const currentUserStr = localStorage.getItem(MOCK_STORAGE_KEYS.CURRENT_USER);
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+      const headers: Record<string, string> = {};
+      let userIdQuery = '';
+      if (currentUser && currentUser.id) {
+        headers['X-User-Id'] = currentUser.id;
+        userIdQuery = `&user_id=${encodeURIComponent(currentUser.id)}`;
+      }
+
+      const res = await fetch(`api.php?action=create_folders&case_id=${encodeURIComponent(caseId)}&patient_name=${encodeURIComponent(patientName)}&dentist_name=${encodeURIComponent(dentistName)}${userIdQuery}`, {
+        headers
+      });
       if (!res.ok) {
         const errText = await res.text();
         let errMsg = 'Erro desconhecido ao criar pastas no backend';
