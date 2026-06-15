@@ -404,5 +404,55 @@
         "file_category": "imagens",
         "id": "att-1781532672083-x97aff8hm",
         "created_at": "2026-06-15T14:11:12.083Z"
+    },
+    {
+        "case_id": "CASE-202606-0003",
+        "google_drive_file_id": "gfile-error-1781549444766",
+        "file_name": "1.png (Falha no envio: Erro de rede (cURL) na chamada do Google Drive: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 2580107,
+        "mime_type": "image\/jpeg",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549444766-rj2w5jc6l",
+        "created_at": "2026-06-15T18:50:44.766Z"
+    },
+    {
+        "case_id": "CASE-202606-0003",
+        "google_drive_file_id": "gfile-error-1781549455162",
+        "file_name": "PM Peixoto de Azevedo - Materiais (Inscrições).zip (Falha no envio: Erro de rede (cURL) na chamada do Google Drive: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 1123784,
+        "mime_type": "application\/octet-stream",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549455162-dxt5z9vz6",
+        "created_at": "2026-06-15T18:50:55.162Z"
+    },
+    {
+        "case_id": "CASE-202606-0003",
+        "google_drive_file_id": "gfile-error-1781549517408",
+        "file_name": "2.png (Falha no envio: Erro de rede (cURL) na chamada do Google Drive: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 2566883,
+        "mime_type": "image\/jpeg",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549517408-xis2j60ul",
+        "created_at": "2026-06-15T18:51:57.408Z"
+    },
+    {
+        "case_id": "CASE-202606-0003",
+        "google_drive_file_id": "gfile-error-1781549530550",
+        "file_name": "CONSPREV - Materiais (Inscrições).zip (Falha no envio: Erro de rede (cURL) na chamada do Google Drive: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 674276,
+        "mime_type": "application\/octet-stream",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549530550-2b4h0obpf",
+        "created_at": "2026-06-15T18:52:10.550Z"
+    },
+    {
+        "case_id": "CASE-202606-0004",
+        "google_drive_file_id": "gfile-error-1781549558268",
+        "file_name": "1078216.zip (Falha no envio: Failed to fetch)",
+        "file_size": 96268630,
+        "mime_type": "application\/octet-stream",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549558268-q1yljsjyp",
+        "created_at": "2026-06-15T18:52:38.268Z"
     }
 ]

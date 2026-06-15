@@ -268,16 +268,39 @@ class GoogleDriveServiceAccount {
         $url = 'https://www.googleapis.com' . $endpoint;
         $ch = curl_init($url);
         
-        $defaultHeaders = [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json'
+        $headerMap = [
+            'Authorization' => 'Bearer ' . $token,
+            'Content-Type' => 'application/json'
         ];
         
-        $mergedHeaders = array_merge($defaultHeaders, $headers);
+        foreach ($headers as $h) {
+            $parts = explode(':', $h, 2);
+            if (count($parts) === 2) {
+                $name = trim($parts[0]);
+                $val = trim($parts[1]);
+                $found = false;
+                foreach ($headerMap as $k => $v) {
+                    if (strcasecmp($k, $name) === 0) {
+                        unset($headerMap[$k]);
+                        $headerMap[$name] = $val;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $headerMap[$name] = $val;
+                }
+            }
+        }
+        
+        $finalHeaders = [];
+        foreach ($headerMap as $name => $val) {
+            $finalHeaders[] = "$name: $val";
+        }
         
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $mergedHeaders);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $finalHeaders);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         
         if ($body !== null) {
@@ -286,11 +309,14 @@ class GoogleDriveServiceAccount {
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_errno($ch) ? curl_error($ch) : null;
         
-        if (curl_errno($ch)) {
-            $error = curl_error($ch);
+        // Logar resposta bruta do Google Drive
+        logBackendAudit("Chamada Google Drive: $method $endpoint | HTTP Status: $httpCode | cURL Error: " . ($curlError ?: 'Nenhum') . " | Body: " . $response);
+        
+        if ($curlError) {
             curl_close($ch);
-            throw new Exception('Erro de rede (cURL) na chamada do Google Drive: ' . $error);
+            throw new Exception('Erro de rede (cURL) na chamada do Google Drive: ' . $curlError);
         }
         
         curl_close($ch);
@@ -865,7 +891,7 @@ if ($action === 'upload_file') {
     if (!file_exists($settingsFile) || !$creds) {
         logBackendError("Google Drive não configurado no servidor.");
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Integração com o Google Drive não está configurada no servidor.']);
+        echo json_encode(['success' => false, 'stage' => 'validation', 'error' => 'Integração com o Google Drive não está configurada no servidor.']);
         exit;
     }
     
@@ -876,13 +902,15 @@ if ($action === 'upload_file') {
     if (empty($rootFolderId)) {
         logBackendError("Pasta raiz do Drive não configurada.");
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Pasta raiz do Google Drive não configurada.']);
+        echo json_encode(['success' => false, 'stage' => 'validation', 'error' => 'Pasta raiz do Google Drive não configurada.']);
         exit;
     }
     
+    $stage = 'validation';
     try {
         $driver = new GoogleDriveServiceAccount(json_encode($creds));
         
+        $stage = 'folder_verification';
         // Criar pastas do dentista e do caso caso não existam
         $driveStatus = $caseObj['drive_status'] ?? 'not_created';
         $driveDentistFolderId = $caseObj['drive_dentist_folder_id'] ?? null;
@@ -929,7 +957,9 @@ if ($action === 'upload_file') {
                 $cases[$caseIndex]['google_drive_folder_id'] = $driveCaseFolderId;
                 $cases[$caseIndex]['updated_at'] = gmdate('Y-m-d\TH:i:s') . '.000Z';
                 
-                file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                if (file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) === false) {
+                    throw new Exception("Falha ao salvar as informações das pastas do caso no banco local.");
+                }
             }
         }
         
@@ -939,7 +969,9 @@ if ($action === 'upload_file') {
             $driveRealResultFolderId = $realResultFolder['id'];
             if ($caseIndex >= 0) {
                 $cases[$caseIndex]['drive_real_result_folder_id'] = $driveRealResultFolderId;
-                file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                if (file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) === false) {
+                    throw new Exception("Falha ao salvar a pasta de resultado no banco local.");
+                }
             }
         }
         
@@ -961,9 +993,51 @@ if ($action === 'upload_file') {
         }
         
         if (empty($targetFolderId)) {
-            throw new Exception("Pasta de destino do Google Drive inválida para a categoria calculada: $category");
+            // Se o ID da pasta estiver vazio, cria no Drive e atualiza o JSON local
+            $subFolder = $driver->findOrCreateFolder($targetFolderName, $driveCaseFolderId);
+            $targetFolderId = $subFolder['id'];
+            if ($caseIndex >= 0) {
+                if ($category === 'imagens') $cases[$caseIndex]['drive_images_folder_id'] = $targetFolderId;
+                else if ($category === 'escaneamento') $cases[$caseIndex]['drive_scan_folder_id'] = $targetFolderId;
+                else if ($category === 'enceramento_digital') $cases[$caseIndex]['drive_result_folder_id'] = $targetFolderId;
+                else if ($category === 'resultado') $cases[$caseIndex]['drive_real_result_folder_id'] = $targetFolderId;
+                file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            }
+        } else {
+            // Validar se o ID da subpasta realmente existe e não está na lixeira
+            try {
+                $checkFolderRes = $driver->request('/drive/v3/files/' . $targetFolderId . '?fields=id,name,trashed', 'GET');
+                if ($checkFolderRes['status'] !== 200 || !empty($checkFolderRes['data']['trashed'])) {
+                    // Pasta foi excluída ou está na lixeira. Vamos recriá-la!
+                    $subFolder = $driver->findOrCreateFolder($targetFolderName, $driveCaseFolderId);
+                    $targetFolderId = $subFolder['id'];
+                    
+                    if ($caseIndex >= 0) {
+                        if ($category === 'imagens') $cases[$caseIndex]['drive_images_folder_id'] = $targetFolderId;
+                        else if ($category === 'escaneamento') $cases[$caseIndex]['drive_scan_folder_id'] = $targetFolderId;
+                        else if ($category === 'enceramento_digital') $cases[$caseIndex]['drive_result_folder_id'] = $targetFolderId;
+                        else if ($category === 'resultado') $cases[$caseIndex]['drive_real_result_folder_id'] = $targetFolderId;
+                        file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                    }
+                }
+            } catch (Exception $e) {
+                // Em caso de erro na validação, buscamos ou criamos para garantir a integridade
+                $subFolder = $driver->findOrCreateFolder($targetFolderName, $driveCaseFolderId);
+                $targetFolderId = $subFolder['id'];
+            }
         }
         
+        // Antes de chamar o Google Drive, gravar log com informações detalhadas
+        logBackendAudit("Iniciando upload para o Google Drive.", [
+            'original_file_name' => $fileName,
+            'file_size' => $fileSize,
+            'tmp_name' => $tmpName,
+            'case_id' => $caseId,
+            'target_folder_id' => $targetFolderId,
+            'resolved_category' => $category
+        ]);
+        
+        $stage = 'drive_upload';
         // Enviar arquivo para o Google Drive
         $driveFile = $driver->uploadFile(
             $tmpName,
@@ -972,6 +1046,7 @@ if ($action === 'upload_file') {
             $targetFolderId
         );
         
+        $stage = 'database_save';
         // Salvar metadados no arquivo JSON de anexos local
         $attachmentsFile = $dataDir . '/matheus_protese_attachments.json';
         $attachments = [];
@@ -1000,7 +1075,9 @@ if ($action === 'upload_file') {
         ];
         
         $attachments[] = $newAttachment;
-        file_put_contents($attachmentsFile, json_encode($attachments, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        if (file_put_contents($attachmentsFile, json_encode($attachments, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) === false) {
+            throw new Exception("Falha ao salvar anexo no banco de dados local.");
+        }
         
         // Registrar atividade no log de auditoria do sistema
         logBackendAudit("Arquivo enviado com sucesso.", [
@@ -1032,7 +1109,9 @@ if ($action === 'upload_file') {
             ],
             'created_at' => gmdate('Y-m-d\TH:i:s') . '.000Z'
         ];
-        file_put_contents($historyFile, json_encode($historyLogs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        if (file_put_contents($historyFile, json_encode($historyLogs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) === false) {
+            throw new Exception("Falha ao gravar registro no histórico local do caso.");
+        }
         
         // Recarregar caso atualizado
         $updatedCaseObj = null;
@@ -1050,7 +1129,7 @@ if ($action === 'upload_file') {
                 'id' => $driveFile['id'],
                 'name' => $driveFile['name'] ?? $fileName,
                 'mimeType' => $driveFile['mimeType'] ?? $mimeType,
-                'size' => $fileSize,
+                'size' => $driveFile['size'] ?? $fileSize,
                 'webViewLink' => $driveFile['webViewLink'] ?? null
             ],
             'attachment' => $newAttachment,
@@ -1058,13 +1137,18 @@ if ($action === 'upload_file') {
         ]);
         
     } catch (Exception $e) {
-        logBackendError("Erro no upload do Google Drive: " . $e->getMessage(), [
+        logBackendError("Erro no upload do Google Drive (estágio: $stage): " . $e->getMessage(), [
             'user' => $userId,
             'case_id' => $caseId,
             'file_name' => $fileName
         ]);
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        echo json_encode([
+            'success' => false,
+            'stage' => $stage,
+            'error' => $e->getMessage(),
+            'google_response' => ($stage === 'drive_upload' ? $e->getMessage() : null)
+        ]);
     }
     exit;
 }
