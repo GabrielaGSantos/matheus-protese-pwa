@@ -41,17 +41,15 @@ export const SettingsScreen: React.FC = () => {
   const [extractedFolderId, setExtractedFolderId] = useState('');
   const [driveTestResult, setDriveTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [driveLoading, setDriveLoading] = useState(false);
-  const [serviceAccountJson, setServiceAccountJson] = useState('');
   const [clientEmail, setClientEmail] = useState('');
-  const [projectId, setProjectId] = useState('');
   const [dbDriveConnected, setDbDriveConnected] = useState(false);
-  const [isOAuthUser, setIsOAuthUser] = useState(false);
   const [oauthClientId, setOauthClientId] = useState('');
-  const [showJsonInput, setShowJsonInput] = useState(true);
+  const [oauthClientSecret, setOauthClientSecret] = useState('');
+  const [isExchangingCode, setIsExchangingCode] = useState(false);
   const [driveStructure, setDriveStructure] = useState<{ root_folder: { id: string; name: string }; dentist_folders: { id: string; name: string; cases_count: number }[] } | null>(null);
   const [showStructureModal, setShowStructureModal] = useState(false);
   const [loadingStructure, setLoadingStructure] = useState(false);
-  const driveConnected = dbDriveConnected || (!!serviceAccountJson && !!driveRootLink);
+  const driveConnected = dbDriveConnected;
 
   // Telegram/Notification States
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(notificationService.getSettings());
@@ -84,20 +82,17 @@ export const SettingsScreen: React.FC = () => {
         if (settings.client_email) {
           setClientEmail(settings.client_email);
         }
-        if (settings.project_id) {
-          setProjectId(settings.project_id);
-        }
         
-        setIsOAuthUser(!!settings.is_oauth_user);
         setOauthClientId(settings.oauth_client_id || '');
         setDbDriveConnected(!!settings.drive_connected);
-        setShowJsonInput(!settings.drive_connected);
-      } else {
-        setShowJsonInput(true);
+        if (settings.drive_connected || settings.oauth_client_id) {
+          setOauthClientSecret('********');
+        } else {
+          setOauthClientSecret('');
+        }
       }
     } catch (err) {
       console.error('Erro ao buscar configurações do Google Drive no banco:', err);
-      setShowJsonInput(true);
     }
   };
 
@@ -108,6 +103,36 @@ export const SettingsScreen: React.FC = () => {
     }
     fetchLogs();
     fetchGDriveSettings();
+
+    // Lógica para detectar código de autorização do Google Drive OAuth 2.0
+    const checkOAuthCode = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      if (code && state === 'settings') {
+        setIsExchangingCode(true);
+        try {
+          const redirectUri = window.location.origin + '/settings';
+          const updatedSettings = await api.gdrive.exchangeCode(code, redirectUri);
+          alert('✅ Conta Google conectada com sucesso ao Google Drive!');
+          
+          // Limpar a URL do navegador removendo os parâmetros do OAuth
+          window.history.replaceState({}, '', window.location.origin + window.location.pathname);
+          
+          if (updatedSettings) {
+            setClientEmail(updatedSettings.client_email || '');
+            setOauthClientId(updatedSettings.oauth_client_id || '');
+            setDbDriveConnected(!!updatedSettings.drive_connected);
+            setOauthClientSecret('********');
+          }
+        } catch (err: any) {
+          alert('❌ Erro ao autorizar conta Google: ' + err.message);
+        } finally {
+          setIsExchangingCode(false);
+        }
+      }
+    };
+    checkOAuthCode();
   }, []);
 
   const extractFolderId = (url: string) => {
@@ -149,32 +174,68 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleSaveDriveConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveDriveConfig = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const folderId = extractFolderId(driveRootLink);
     if (!folderId) {
       alert('Por favor, insira um link válido do Google Drive contendo o ID da pasta.');
-      return;
+      return false;
     }
     
-    if (showJsonInput && !serviceAccountJson) {
-      alert('Por favor, insira as credenciais JSON da Conta de Serviço.');
-      return;
+    if (!oauthClientId.trim()) {
+      alert('Por favor, insira o Client ID.');
+      return false;
+    }
+
+    if (!oauthClientSecret.trim()) {
+      alert('Por favor, insira o Client Secret.');
+      return false;
     }
 
     try {
       setDriveLoading(true);
-      await api.gdrive.saveSettings({
-        service_account_json: showJsonInput ? serviceAccountJson : '********',
-        root_folder_url: driveRootLink
-      });
+      await api.gdrive.saveOauthConfig(
+        oauthClientId.trim(),
+        oauthClientSecret.trim(),
+        driveRootLink
+      );
       alert('Configurações do Google Drive salvas com sucesso!');
-      setServiceAccountJson('');
       await fetchGDriveSettings();
+      return true;
     } catch (err: any) {
       alert('Erro ao salvar configurações no banco: ' + err.message);
+      return false;
     } finally {
       setDriveLoading(false);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    const saved = await handleSaveDriveConfig();
+    if (!saved) return;
+
+    const redirectUri = encodeURIComponent(window.location.origin + '/settings');
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${oauthClientId.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=settings`;
+    
+    window.location.href = authUrl;
+  };
+
+  const handleDisconnectDrive = async () => {
+    if (window.confirm('Tem certeza de que deseja desconectar a conta do Google Drive?')) {
+      setDriveLoading(true);
+      try {
+        await api.gdrive.disconnect();
+        alert('Conta Google desconectada com sucesso.');
+        setOauthClientId('');
+        setOauthClientSecret('');
+        setClientEmail('');
+        setDbDriveConnected(false);
+      } catch (err: any) {
+        alert('Erro ao desconectar: ' + err.message);
+      } finally {
+        setDriveLoading(false);
+      }
     }
   };
 
@@ -186,7 +247,6 @@ export const SettingsScreen: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          service_account_json: showJsonInput ? serviceAccountJson : '',
           root_folder_url: driveRootLink
         })
       });
@@ -734,7 +794,15 @@ export const SettingsScreen: React.FC = () => {
         {/* GOOGLE DRIVE CONFIG TAB */}
         {activeTab === 'gdrive' && (
           <div className="space-y-6 max-w-2xl animate-fade-in">
-            <h3 className="text-sm font-bold text-slate-900">Integração do Google Drive</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold text-slate-900">Integração do Google Drive via OAuth de Usuário</h3>
+              {isExchangingCode && (
+                <div className="flex items-center gap-1.5 text-xs text-[#0F766E] font-semibold">
+                  <Loader2 className="animate-spin" size={14} />
+                  Conectando conta Google...
+                </div>
+              )}
+            </div>
             
             {/* Connection Status Card */}
             <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
@@ -749,19 +817,29 @@ export const SettingsScreen: React.FC = () => {
                 <div>
                   <div className={`text-xs font-bold ${driveConnected ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {driveConnected 
-                      ? (isOAuthUser ? 'Google Drive Ativo (OAuth de Usuário)' : 'Google Drive Ativo (Service Account)') 
-                      : 'Google Drive Pendente'}
+                      ? `Google Drive Conectado como [${clientEmail}]`
+                      : 'Google Drive Pendente de Conexão'}
                   </div>
-                  {driveConnected && (
-                    <div className="text-[10px] text-emerald-600 truncate mt-0.5">
-                      Pronto para upload seguro pelo backend.
-                    </div>
-                  )}
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {driveConnected 
+                      ? 'Os uploads de arquivos consumirão a quota de armazenamento desta conta.'
+                      : 'Salve suas credenciais abaixo e conecte sua conta Google para ativar a sincronização.'}
+                  </div>
                 </div>
               </div>
+              {driveConnected && (
+                <button
+                  type="button"
+                  onClick={handleDisconnectDrive}
+                  disabled={driveLoading}
+                  className="px-3 py-1.5 text-[10px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all cursor-pointer border border-rose-200"
+                >
+                  Desconectar Conta
+                </button>
+              )}
             </div>
 
-            {/* Mensagens de Feedback de Conexão ou Erro */}
+            {/* Connection Feedback / Results */}
             {driveTestResult && (
               <div className={`p-3 rounded-lg border text-[11px] font-semibold ${
                 driveTestResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'
@@ -770,23 +848,33 @@ export const SettingsScreen: React.FC = () => {
               </div>
             )}
 
-            {/* Test connection & results */}
+            {/* Actions block */}
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={handleTestConnection}
-                disabled={driveLoading}
-                className="px-4 py-2 text-xs font-bold text-[#0F766E] bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                onClick={handleConnectGoogle}
+                disabled={driveLoading || isExchangingCode}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#0F766E] rounded-lg hover:bg-[#115E59] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
               >
                 {driveLoading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
-                Testar Sincronização e Conexão
+                Conectar conta Google
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={driveLoading || !driveConnected || isExchangingCode}
+                className="px-4 py-2 text-xs font-bold text-[#0F766E] bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {driveLoading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
+                Testar Upload
               </button>
 
               {driveConnected && (
                 <button
                   type="button"
                   onClick={handleViewStructure}
-                  disabled={loadingStructure}
+                  disabled={loadingStructure || isExchangingCode}
                   className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
                   {loadingStructure ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
@@ -795,102 +883,37 @@ export const SettingsScreen: React.FC = () => {
               )}
             </div>
 
-            {/* Quota Warning Card */}
-            {driveConnected && !isOAuthUser && (
-              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-amber-800 font-bold">
-                  <AlertTriangle size={16} />
-                  Aviso de Quota do Google Drive (Service Account)
-                </div>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  As Contas de Serviço (Service Accounts) da Google possuem quota de armazenamento de <strong>0 bytes</strong> por padrão.
-                </p>
-                <div className="text-[11px] text-amber-700 space-y-1 pl-4 list-disc">
-                  <div>• <strong>Se você usa Google Workspace:</strong> A pasta raiz no Drive configurada abaixo deve ser um <strong>Drive Compartilhado (Shared Drive)</strong>, onde os arquivos pertencem à organização e não à Conta de Serviço.</div>
-                  <div>• <strong>Se você usa Gmail pessoal (@gmail.com):</strong> O Google impede o upload de arquivos via Conta de Serviço em pastas pessoais (erro de quota excedida). Nesse caso, altere suas credenciais para usar o formato <strong>OAuth 2.0 de Usuário</strong> (contendo <code>client_id</code>, <code>client_secret</code> e <code>refresh_token</code>) para que os uploads consumam a sua quota pessoal de 15GB+.</div>
-                </div>
-              </div>
-            )}
-
-            {/* Service Account Email Card */}
-            {clientEmail && !isOAuthUser && (
-              <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-2">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Conta de Serviço:</div>
-                <div className="font-mono text-xs font-bold text-teal-800 break-all select-all">{clientEmail}</div>
-                <p className="text-[10px] text-teal-600 font-medium leading-relaxed">
-                  Compartilhe a pasta raiz do Google Drive com este e-mail como <strong>Editor</strong>. O sistema precisa dessa permissão para criar pastas de dentistas/casos e enviar arquivos automaticamente.
-                </p>
-              </div>
-            )}
-
             {/* General Settings Form */}
             <form onSubmit={handleSaveDriveConfig} className="space-y-4 pt-4 border-t border-[#E2E8F0]">
-              {showJsonInput ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Credenciais JSON da Conta de Serviço ou OAuth2 do Usuário
-                    </label>
-                    {dbDriveConnected && (
-                      <button
-                        type="button"
-                        onClick={() => setShowJsonInput(false)}
-                        className="text-[10px] text-[#0F766E] font-bold hover:underline"
-                      >
-                        Cancelar alteração
-                      </button>
-                    )}
-                  </div>
-                  <span className="block text-[10px] text-slate-400 font-normal mb-1">
-                    Cole o conteúdo completo do arquivo JSON de Conta de Serviço OU de Credenciais de Aplicativo OAuth2 (com client_id, client_secret e refresh_token).
-                  </span>
-                  <textarea
-                    rows={8}
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Client ID
+                  </label>
+                  <input
+                    type="text"
                     required
-                    value={serviceAccountJson}
-                    onChange={(e) => setServiceAccountJson(e.target.value)}
-                    placeholder='{
-  "type": "service_account",
-  "project_id": "...",
-  "private_key": "...",
-  ...
-}
-
-OU
-
-{
-  "client_id": "...",
-  "client_secret": "...",
-  "refresh_token": "..."
-}'
-                    className="w-full px-3.5 py-2.5 rounded-[10px] bg-slate-50 border border-[#E2E8F0] font-mono text-[10px] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
+                    value={oauthClientId}
+                    onChange={(e) => setOauthClientId(e.target.value)}
+                    placeholder="Cole seu Google OAuth Client ID"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
                   />
                 </div>
-              ) : (
-                <div className="p-4 bg-slate-50 border border-[#E2E8F0] rounded-xl space-y-2">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Credenciais Ativas</div>
-                  {isOAuthUser ? (
-                    <>
-                      <div className="text-xs font-semibold text-slate-700">Tipo: <span className="font-bold text-slate-900">OAuth 2.0 (Usuário Pessoal)</span></div>
-                      <div className="text-xs font-semibold text-slate-700">Client ID: <span className="font-bold text-slate-900 break-all">{oauthClientId || 'N/A'}</span></div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-xs font-semibold text-slate-700">Projeto: <span className="font-bold text-slate-900">{projectId || 'N/A'}</span></div>
-                      <div className="text-xs font-semibold text-slate-700">E-mail: <span className="font-bold text-slate-900">{clientEmail || 'N/A'}</span></div>
-                    </>
-                  )}
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowJsonInput(true)}
-                      className="text-xs text-[#0F766E] hover:underline font-bold cursor-pointer"
-                    >
-                      Substituir credencial (Colar novo JSON)
-                    </button>
-                  </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Client Secret
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={oauthClientSecret}
+                    onChange={(e) => setOauthClientSecret(e.target.value)}
+                    placeholder="Cole seu Google OAuth Client Secret"
+                    className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
+                  />
                 </div>
-              )}
+              </div>
 
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">

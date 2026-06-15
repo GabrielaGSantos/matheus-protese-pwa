@@ -17,7 +17,13 @@ import { api } from './services/api';
 
 const AppContent: React.FC = () => {
   const { user, loading, isAdmin } = useAuth();
-  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [currentTab, setCurrentTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname === '/settings' || (params.has('code') && params.get('state') === 'settings')) {
+      return 'settings';
+    }
+    return 'dashboard';
+  });
   const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
 
   // Sincroniza dados com o servidor local centralizado e inicializa defaults do Drive
@@ -42,7 +48,12 @@ const AppContent: React.FC = () => {
   // Sync default tab when user profile loads
   useEffect(() => {
     if (user) {
-      setCurrentTab(isAdmin ? 'dashboard' : 'dentist-cases');
+      const params = new URLSearchParams(window.location.search);
+      if (window.location.pathname === '/settings' || (params.has('code') && params.get('state') === 'settings')) {
+        setCurrentTab('settings');
+      } else {
+        setCurrentTab(isAdmin ? 'dashboard' : 'dentist-cases');
+      }
     }
   }, [user, isAdmin]);
 

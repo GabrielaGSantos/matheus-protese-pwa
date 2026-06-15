@@ -988,6 +988,16 @@ export const api = {
   gdrive: {
     async getSettings(): Promise<any> {
       if (useMockData) {
+        try {
+          const res = await fetch('api.php?action=get&key=gdrive_shared_settings');
+          const data = await res.json();
+          if (data.success && data.data) {
+            localStorage.setItem('gdrive_shared_settings', JSON.stringify(data.data));
+            return data.data;
+          }
+        } catch (e) {
+          console.warn('Erro ao carregar configurações do Drive do backend:', e);
+        }
         const settings = localStorage.getItem('gdrive_shared_settings');
         return settings ? JSON.parse(settings) : null;
       }
@@ -1021,6 +1031,75 @@ export const api = {
           updated_at: new Date().toISOString()
         });
       if (error) throw error;
+    },
+
+    async saveOauthConfig(
+      clientId: string,
+      clientSecret: string,
+      rootFolderUrl: string
+    ): Promise<any> {
+      if (useMockData) {
+        const res = await fetch('api.php?action=save_oauth_config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            root_folder_url: rootFolderUrl
+          })
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || `HTTP ${res.status}`);
+        }
+        const resJson = await res.json();
+        if (!resJson.success) {
+          throw new Error(resJson.error || 'Erro ao salvar configuração.');
+        }
+        localStorage.setItem('gdrive_shared_settings', JSON.stringify(resJson.data));
+        return resJson.data;
+      }
+      return null;
+    },
+
+    async exchangeCode(code: string, redirectUri: string): Promise<any> {
+      if (useMockData) {
+        const res = await fetch('api.php?action=exchange_code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, redirect_uri: redirectUri })
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || `HTTP ${res.status}`);
+        }
+        const resJson = await res.json();
+        if (!resJson.success) {
+          throw new Error(resJson.error || 'Erro na troca de código.');
+        }
+        localStorage.setItem('gdrive_shared_settings', JSON.stringify(resJson.data));
+        return resJson.data;
+      }
+      return null;
+    },
+
+    async disconnect(): Promise<any> {
+      if (useMockData) {
+        const res = await fetch('api.php?action=disconnect_drive', {
+          method: 'POST'
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || `HTTP ${res.status}`);
+        }
+        const resJson = await res.json();
+        if (!resJson.success) {
+          throw new Error(resJson.error || 'Erro ao desconectar.');
+        }
+        localStorage.setItem('gdrive_shared_settings', JSON.stringify(resJson.data));
+        return resJson.data;
+      }
+      return null;
     },
 
     async createCaseFolders(

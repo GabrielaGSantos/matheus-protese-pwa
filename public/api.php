@@ -111,9 +111,9 @@ function getGDrivePublicSettings($dataDir) {
     if ($creds) {
         $settings['client_email'] = $creds['client_email'] ?? '';
         $settings['project_id'] = $creds['project_id'] ?? '';
-        $settings['is_oauth_user'] = isset($creds['refresh_token']);
+        $settings['is_oauth_user'] = isset($creds['client_id']);
         $settings['oauth_client_id'] = $creds['client_id'] ?? '';
-        $settings['drive_connected'] = true;
+        $settings['drive_connected'] = (isset($creds['refresh_token']) || isset($creds['private_key']));
     } else {
         $settings['client_email'] = '';
         $settings['project_id'] = '';
@@ -575,25 +575,34 @@ if ($action === 'test_drive') {
             exit;
         }
         
-        // Test Write Permission (Create temporary folder)
-        $tempFolderName = 'temp_test_' . uniqid();
-        $body = [
-            'name' => $tempFolderName,
-            'mimeType' => 'application/vnd.google-apps.folder',
-            'parents' => [$rootFolderId]
-        ];
+        // Test Write Permission (Create and upload small temporary file)
+        $tempFile = tempnam(sys_get_temp_dir(), 'test');
+        file_put_contents($tempFile, 'Arquivo de teste de sincronização do Google Drive do painel Matheus Prótese.');
         
-        $createRes = $driver->request('/drive/v3/files?fields=id,name&supportsAllDrives=true', 'POST', $body);
-        if ($createRes['status'] !== 200 || empty($createRes['data']['id'])) {
-            logBackendError("Sem permissão de escrita na pasta raiz do Drive: HTTP " . $createRes['status'] . " - " . $createRes['body']);
-            echo json_encode(['success' => false, 'error' => 'Sem permissão na pasta raiz']);
+        try {
+            $driveFile = $driver->uploadFile(
+                $tempFile,
+                'teste_conexao_' . time() . '.txt',
+                'text/plain',
+                $rootFolderId
+            );
+        } catch (Exception $e) {
+            @unlink($tempFile);
+            throw $e;
+        }
+        
+        @unlink($tempFile);
+        
+        if (empty($driveFile['id'])) {
+            logBackendError("Sem permissão de escrita ou falha no upload de teste no Drive: " . json_encode($driveFile));
+            echo json_encode(['success' => false, 'error' => 'Sem permissão de escrita ou falha no upload de teste.']);
             exit;
         }
         
-        $tempFolderId = $createRes['data']['id'];
+        $tempFileId = $driveFile['id'];
         
-        // Delete temporary folder
-        $driver->request('/drive/v3/files/' . $tempFolderId . '?supportsAllDrives=true', 'DELETE');
+        // Delete temporary file from Drive
+        $driver->request('/drive/v3/files/' . $tempFileId . '?supportsAllDrives=true', 'DELETE');
         
         echo json_encode([
             'success' => true,
@@ -1153,6 +1162,267 @@ if ($action === 'upload_file') {
             'google_response' => ($stage === 'drive_upload' ? $e->getMessage() : null)
         ]);
     }
+    exit;
+}
+
+// -------------------------------------------------------------------------
+// GOOGLE DRIVE OAUTH 2.0 ACTIONS
+// -------------------------------------------------------------------------
+if ($action === 'save_oauth_config') {
+    $sessionUser = getAuthenticatedUser($dataDir);
+    if (!$sessionUser || ($sessionUser['role'] ?? '') !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Acesso negado: apenas o administrador pode configurar o Google Drive.']);
+        exit;
+    }
+
+    $postData = file_get_contents('php://input');
+    $jsonData = json_decode($postData, true);
+    if ($jsonData === null) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'JSON inválido']);
+        exit;
+    }
+
+    $clientId = trim($jsonData['client_id'] ?? '');
+    $clientSecret = trim($jsonData['client_secret'] ?? '');
+    $rootFolderUrl = trim($jsonData['root_folder_url'] ?? '');
+
+    if (empty($clientId) || empty($rootFolderUrl)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Client ID e Link da Pasta Raiz são obrigatórios.']);
+        exit;
+    }
+
+    $privateFile = __DIR__ . '/../database/gdrive_private_credentials.json';
+    if (!file_exists(dirname($privateFile))) {
+        mkdir(dirname($privateFile), 0777, true);
+    }
+
+    $existingCreds = [];
+    if (file_exists($privateFile)) {
+        $existingCreds = json_decode(file_get_contents($privateFile), true) ?: [];
+    }
+
+    // Se o Client Secret vier mascarado ou vazio, mantemos o existente
+    if ($clientSecret === '********' || empty($clientSecret)) {
+        $clientSecret = $existingCreds['client_secret'] ?? '';
+        if (empty($clientSecret)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Client Secret é obrigatório.']);
+            exit;
+        }
+    }
+
+    // Criar/atualizar credenciais privadas
+    $newCreds = [
+        'client_id' => $clientId,
+        'client_secret' => $clientSecret,
+        'refresh_token' => $existingCreds['refresh_token'] ?? null,
+        'client_email' => $existingCreds['client_email'] ?? null,
+        'token_uri' => 'https://oauth2.googleapis.com/token'
+    ];
+
+    file_put_contents($privateFile, json_encode($newCreds, JSON_PRETTY_PRINT));
+
+    // Salvar configurações públicas
+    $publicSettings = [
+        'root_folder_url' => $rootFolderUrl,
+        'client_email' => $existingCreds['client_email'] ?? '',
+        'project_id' => '',
+        'is_oauth_user' => true,
+        'oauth_client_id' => $clientId,
+        'drive_connected' => !empty($existingCreds['refresh_token'])
+    ];
+
+    $settingsFile = $dataDir . '/gdrive_shared_settings.json';
+    file_put_contents($settingsFile, json_encode($publicSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    logBackendAudit("Configurações do OAuth do Google Drive salvas pelo administrador.");
+
+    echo json_encode([
+        'success' => true,
+        'data' => getGDrivePublicSettings($dataDir)
+    ]);
+    exit;
+}
+
+if ($action === 'exchange_code') {
+    $sessionUser = getAuthenticatedUser($dataDir);
+    if (!$sessionUser || ($sessionUser['role'] ?? '') !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Acesso negado: apenas o administrador pode autorizar o Google Drive.']);
+        exit;
+    }
+
+    $postData = file_get_contents('php://input');
+    $jsonData = json_decode($postData, true);
+    if ($jsonData === null) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'JSON inválido']);
+        exit;
+    }
+
+    $code = trim($jsonData['code'] ?? '');
+    $redirectUri = trim($jsonData['redirect_uri'] ?? '');
+
+    if (empty($code) || empty($redirectUri)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Parâmetros code e redirect_uri são obrigatórios.']);
+        exit;
+    }
+
+    $privateFile = __DIR__ . '/../database/gdrive_private_credentials.json';
+    if (!file_exists($privateFile)) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Configurações de Client ID/Secret não encontradas. Salve primeiro.']);
+        exit;
+    }
+
+    $creds = json_decode(file_get_contents($privateFile), true) ?: [];
+    $clientId = $creds['client_id'] ?? '';
+    $clientSecret = $creds['client_secret'] ?? '';
+
+    if (empty($clientId) || empty($clientSecret)) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Client ID ou Client Secret ausente nas credenciais configuradas.']);
+        exit;
+    }
+
+    // Fazer a chamada de troca do code por token
+    $ch = curl_init('https://oauth2.googleapis.com/token');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'code' => $code,
+        'client_id' => $clientId,
+        'client_secret' => $clientSecret,
+        'redirect_uri' => $redirectUri,
+        'grant_type' => 'authorization_code'
+    ]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/x-www-form-urlencoded'
+    ]);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if (curl_errno($ch)) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        logBackendError("Erro cURL no token exchange: " . $error);
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Erro de rede ao falar com o Google: ' . $error]);
+        exit;
+    }
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        logBackendError("Google Token Exchange falhou com HTTP $httpCode: $response");
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Google retornou erro na troca de código: HTTP ' . $httpCode, 'details' => json_decode($response, true)]);
+        exit;
+    }
+
+    $tokenData = json_decode($response, true);
+    $accessToken = $tokenData['access_token'] ?? '';
+    $refreshToken = $tokenData['refresh_token'] ?? '';
+
+    // Lógica crucial do refresh_token: se o Google não retornou, manter o anterior
+    $existingRefreshToken = $creds['refresh_token'] ?? '';
+    if (empty($refreshToken)) {
+        if (!empty($existingRefreshToken)) {
+            $refreshToken = $existingRefreshToken;
+            logBackendAudit("Google OAuth reconnect não retornou refresh_token. Mantendo o anterior já cadastrado.");
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false, 
+                'error' => 'Google não retornou o refresh_token e não há um token anterior salvo. Por favor, remova a permissão do aplicativo em sua conta Google e conecte novamente.'
+            ]);
+            exit;
+        }
+    }
+
+    // Obter o e-mail do usuário conectado via Google API
+    $chUserInfo = curl_init('https://www.googleapis.com/oauth2/v2/userinfo');
+    curl_setopt($chUserInfo, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($chUserInfo, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $accessToken
+    ]);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
+    $userInfoResponse = curl_exec($chUserInfo);
+    $userInfoCode = curl_getinfo($chUserInfo, CURLINFO_HTTP_CODE);
+    curl_close($chUserInfo);
+
+    $email = '';
+    if ($userInfoCode === 200) {
+        $userInfo = json_decode($userInfoResponse, true);
+        $email = $userInfo['email'] ?? '';
+    }
+
+    if (empty($email)) {
+        $email = 'conta-google@conectada.com';
+    }
+
+    // Atualizar credenciais privadas
+    $creds['refresh_token'] = $refreshToken;
+    $creds['client_email'] = $email;
+    file_put_contents($privateFile, json_encode($creds, JSON_PRETTY_PRINT));
+
+    // Atualizar configurações públicas
+    $settingsFile = $dataDir . '/gdrive_shared_settings.json';
+    $settings = [];
+    if (file_exists($settingsFile)) {
+        $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+    }
+    $settings['client_email'] = $email;
+    $settings['is_oauth_user'] = true;
+    $settings['oauth_client_id'] = $clientId;
+    file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    logBackendAudit("OAuth do Google Drive autorizado com sucesso para: " . $email);
+
+    echo json_encode([
+        'success' => true,
+        'data' => getGDrivePublicSettings($dataDir)
+    ]);
+    exit;
+}
+
+if ($action === 'disconnect_drive') {
+    $sessionUser = getAuthenticatedUser($dataDir);
+    if (!$sessionUser || ($sessionUser['role'] ?? '') !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Acesso negado: apenas o administrador pode desconectar o Google Drive.']);
+        exit;
+    }
+
+    $privateFile = __DIR__ . '/../database/gdrive_private_credentials.json';
+    if (file_exists($privateFile)) {
+        @unlink($privateFile);
+    }
+
+    $settingsFile = $dataDir . '/gdrive_shared_settings.json';
+    $settings = [];
+    if (file_exists($settingsFile)) {
+        $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+    }
+    $settings['client_email'] = '';
+    $settings['project_id'] = '';
+    $settings['is_oauth_user'] = false;
+    $settings['oauth_client_id'] = '';
+    file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    logBackendAudit("Integração do Google Drive desconectada pelo administrador.");
+
+    echo json_encode([
+        'success' => true,
+        'data' => getGDrivePublicSettings($dataDir)
+    ]);
     exit;
 }
 
