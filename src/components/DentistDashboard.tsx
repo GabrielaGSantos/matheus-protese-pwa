@@ -4,20 +4,59 @@ import type { Case, Service, OdontogramSelection, CaseStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
 import { 
-  AlertCircle, DollarSign, 
-  Clock, CheckCircle, FolderOpen, Send, Paperclip 
+  AlertCircle, AlertTriangle, DollarSign, 
+  Clock, CheckCircle, FolderOpen, Send, Paperclip,
+  Search, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
+// Google Drive is now managed by the backend
+import { notificationService } from '../services/notifications';
+
+const isDriveFolderValid = (c: Case) => {
+  if (c.drive_status !== 'created' || !c.google_drive_folder_url) return false;
+  const rootId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
+  try {
+    const url = new URL(c.google_drive_folder_url);
+    const pathParts = url.pathname.split('/');
+    const folderIdIndex = pathParts.indexOf('folders');
+    if (folderIdIndex !== -1 && pathParts[folderIdIndex + 1]) {
+      const folderId = pathParts[folderIdIndex + 1].split('?')[0];
+      if (folderId === rootId) {
+        return false;
+      }
+    }
+  } catch {
+    if (c.google_drive_folder_url === rootId) return false;
+  }
+  return true;
+};
 
 interface DentistDashboardProps {
-  initialTab?: 'my-cases' | 'new-case';
+  currentTab: string;
+  setCurrentTab: (tab: string) => void;
 }
 
-export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab = 'my-cases' }) => {
+export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, setCurrentTab }) => {
   const { user } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [activeTab, setActiveTab] = useState<'my-cases' | 'new-case' | 'change-password'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'my-cases' | 'new-case' | 'change-password'>(
+    currentTab === 'dentist-new-case' ? 'new-case' : 'my-cases'
+  );
+
+  useEffect(() => {
+    if (currentTab === 'dentist-new-case') {
+      setActiveTab('new-case');
+    } else if (currentTab === 'dentist-cases') {
+      setActiveTab('my-cases');
+    }
+  }, [currentTab]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [finalizedPage, setFinalizedPage] = useState(1);
+
+  useEffect(() => {
+    setFinalizedPage(1);
+  }, [searchQuery]);
   
   // Change Password states
   const [newPassword, setNewPassword] = useState('');
@@ -33,12 +72,15 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
   const [selectedServices, setSelectedServices] = useState<Record<string, boolean>>({});
   const [hasPhoto, setHasPhoto] = useState(false);
   const [hasFile, setHasFile] = useState(false);
-  const [photoFiles, setPhotoFiles] = useState<{ name: string; size: number }[]>([]);
-  const [scanFiles, setScanFiles] = useState<{ name: string; size: number }[]>([]);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [scanFiles, setScanFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   // Editing state for Dentist
   const [editingCase, setEditingCase] = useState<Case | null>(null);
+  const [caseResults, setCaseResults] = useState<Record<string, any[]>>({});
+  const [viewingResultsFiles, setViewingResultsFiles] = useState<any[] | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -54,6 +96,22 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       const s = await api.services.list();
       setCases(c);
       setServices(s);
+
+      // Fetch result attachments
+      const resultsMap: Record<string, any[]> = {};
+      for (const caseItem of c) {
+        try {
+          const attachments = await api.attachments.list(caseItem.id);
+          const results = attachments.filter(a => a.file_category === 'resultado' || a.file_category === 'enceramento_digital');
+          if (results.length > 0) {
+            resultsMap[caseItem.id] = results;
+          }
+        } catch (err) {
+          console.error(`Erro ao carregar anexos para o caso ${caseItem.id}:`, err);
+        }
+      }
+      setCaseResults(resultsMap);
+
       // Set default requested date (7 days from now)
       setRequestedDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     } catch (err) {
@@ -99,7 +157,19 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       });
 
       const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
-      const driveFolderUrl = `https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing`;
+      const rootFolderId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
+      const dentistName = user?.full_name || 'Dentista';
+      const driveFolderUrl = `https://drive.google.com/drive/folders/${rootFolderId}/${encodeURIComponent(dentistName)}/${encodeURIComponent(patientName)} - ${caseId}`;
+
+      let driveStatus: 'not_created' | 'created' | 'error' = editingCase?.drive_status || 'not_created';
+      let driveDentistFolderId = editingCase?.drive_dentist_folder_id;
+      let driveCaseFolderId = editingCase?.drive_case_folder_id;
+      let driveImagesFolderId = editingCase?.drive_images_folder_id;
+      let driveScanFolderId = editingCase?.drive_scan_folder_id;
+      let driveCaseFolderUrl = editingCase?.drive_case_folder_url;
+      let driveErrorMessage = editingCase?.drive_error_message;
+
+      // Google Drive folders are now created automatically on the backend during upload
 
       const payload: Case = {
         id: caseId,
@@ -108,7 +178,9 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         created_at: editingCase?.created_at || new Date().toISOString(),
         requested_delivery_date: requestedDate,
         final_delivery_date: editingCase?.final_delivery_date, // Admin sets this
-        status: 'em_analise', // Forcing status to "Aguardando análise" when client submits/edits
+        status: (photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
+          ? 'aguardando_arquivos'
+          : 'em_analise',
         financial_status: editingCase?.financial_status || 'aguardando_pagamento',
         teeth_selection: teethSelection,
         dentist_notes: dentistNotes,
@@ -125,13 +197,86 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         total_value: computedTotalValue,
         paid_value: editingCase?.paid_value || 0,
         remaining_value: computedTotalValue - (editingCase?.paid_value || 0),
-        google_drive_folder_id: editingCase?.google_drive_folder_id || `folder-mock-${Date.now()}`,
-        google_drive_folder_url: editingCase?.google_drive_folder_url || driveFolderUrl,
+        google_drive_folder_id: driveCaseFolderId || editingCase?.google_drive_folder_id || `${rootFolderId}/${dentistName}/${patientName} - ${caseId}`,
+        google_drive_folder_url: driveCaseFolderUrl || editingCase?.google_drive_folder_url || driveFolderUrl,
+        drive_status: driveStatus,
+        drive_dentist_folder_id: driveDentistFolderId,
+        drive_case_folder_id: driveCaseFolderId,
+        drive_images_folder_id: driveImagesFolderId,
+        drive_scan_folder_id: driveScanFolderId,
+        drive_case_folder_url: driveCaseFolderUrl,
+        drive_error_message: driveErrorMessage,
+        financial_released: editingCase ? editingCase.financial_released : false,
         selected_services: selectedIds,
         updated_at: new Date().toISOString()
       };
 
       await api.cases.save(payload, user.id);
+
+      // Upload photos clinical to backend Google Drive integration
+      for (const f of photoFiles) {
+        try {
+          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', user.id);
+          notificationService.add(
+            'Novo Arquivo Enviado',
+            `O dentista "${dentistName}" enviou a foto "${f.name}" para o caso ${caseId}.`,
+            'file_uploaded',
+            caseId
+          );
+        } catch (err: any) {
+          console.error('Erro ao enviar foto para o Google Drive:', err);
+          // Fallback mock so we don't block workflow
+          await api.attachments.upload({
+            case_id: caseId,
+            google_drive_file_id: `gfile-error-${Date.now()}`,
+            file_name: `${f.name} (Falha no envio: ${err.message})`,
+            file_size: f.size,
+            mime_type: 'image/jpeg',
+            uploaded_by: user.id
+          });
+        }
+      }
+
+      // Upload scans 3D to backend Google Drive integration
+      for (const f of scanFiles) {
+        try {
+          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'escaneamento', user.id);
+          notificationService.add(
+            'Novo Arquivo Enviado',
+            `O dentista "${dentistName}" enviou o escaneamento "${f.name}" para o caso ${caseId}.`,
+            'file_uploaded',
+            caseId
+          );
+        } catch (err: any) {
+          console.error('Erro ao enviar escaneamento para o Google Drive:', err);
+          // Fallback mock so we don't block workflow
+          await api.attachments.upload({
+            case_id: caseId,
+            google_drive_file_id: `gfile-error-${Date.now()}`,
+            file_name: `${f.name} (Falha no envio: ${err.message})`,
+            file_size: f.size,
+            mime_type: 'application/octet-stream',
+            uploaded_by: user.id
+          });
+        }
+      }
+      
+      // Trigger notifications for new/modified cases
+      if (editingCase) {
+        notificationService.add(
+          'Solicitação de Caso Editada',
+          `O dentista "${dentistName}" atualizou a solicitação do caso ${caseId} (${patientName}).`,
+          'case_modified',
+          caseId
+        );
+      } else {
+        notificationService.add(
+          'Novo Caso Solicitado',
+          `O dentista "${dentistName}" solicitou um novo caso para o paciente "${patientName}".`,
+          'new_case',
+          caseId
+        );
+      }
       
       // Reset form
       setPatientName('');
@@ -143,9 +288,10 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       setScanFiles([]);
       setSelectedServices({});
       setEditingCase(null);
-      setActiveTab('my-cases');
+      setCurrentTab('dentist-cases');
       
       fetchData();
+      setShowSuccessPopup(true);
     } catch (err) {
       console.error(err);
     } finally {
@@ -178,7 +324,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
     setSelectedServices(servicesMap);
     setPhotoFiles([]);
     setScanFiles([]);
-    setActiveTab('new-case');
+    setCurrentTab('dentist-new-case');
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -206,13 +352,9 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
     }
   };
 
-  // Separations
-  const activeCases = cases.filter(c => !['finalizado', 'entregue', 'cancelado'].includes(c.status));
-  const finalizedCases = cases.filter(c => ['finalizado', 'entregue'].includes(c.status));
-
   // Financial totals
   const totalOwed = cases
-    .filter(c => c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.status !== 'cancelado')
+    .filter(c => c.financial_released && c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.status !== 'cancelado')
     .reduce((sum, c) => sum + c.remaining_value, 0);
 
   const getStatusBadge = (status: CaseStatus) => {
@@ -220,7 +362,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       recebido: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
       em_analise: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
       aguardando_aprovacao: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-      aguardando_arquivos: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+      aguardando_arquivos: 'bg-rose-600 text-white border-rose-700 animate-pulse font-black shadow-xs shadow-rose-200',
       em_execucao: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
       finalizado: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
       entregue: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
@@ -228,7 +370,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
     };
     return (
       <span className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide rounded-full border ${styles[status]}`}>
-        {status === 'em_analise' ? 'Aguardando Análise' : status.replace('_', ' ')}
+        {status === 'em_analise' ? 'Aguardando Análise' : status === 'aguardando_arquivos' ? 'Pendente Envio de Arquivo' : status.replace('_', ' ')}
       </span>
     );
   };
@@ -258,6 +400,31 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       .join(', ');
   };
 
+  const filteredActiveCases = cases.filter(c => {
+    const isMatchedStatus = !['finalizado', 'entregue', 'cancelado'].includes(c.status);
+    const matchesSearch = searchQuery.trim() === '' || 
+      c.patient_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getServiceNames(c).toLowerCase().includes(searchQuery.toLowerCase());
+    return isMatchedStatus && matchesSearch;
+  });
+
+  const filteredFinalizedCases = cases.filter(c => {
+    const isMatchedStatus = ['finalizado', 'entregue'].includes(c.status);
+    const matchesSearch = searchQuery.trim() === '' || 
+      c.patient_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getServiceNames(c).toLowerCase().includes(searchQuery.toLowerCase());
+    return isMatchedStatus && matchesSearch;
+  });
+
+  const itemsPerFinalizedPage = 10;
+  const totalFinalizedPages = Math.max(1, Math.ceil(filteredFinalizedCases.length / itemsPerFinalizedPage));
+  const paginatedFinalizedCases = filteredFinalizedCases.slice(
+    (finalizedPage - 1) * itemsPerFinalizedPage,
+    finalizedPage * itemsPerFinalizedPage
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -281,11 +448,10 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-[#E2E8F0] w-full gap-6 mb-2 pb-px">
         <button
           onClick={() => {
-            setActiveTab('my-cases');
+            setCurrentTab('dentist-cases');
             setEditingCase(null);
           }}
           className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
@@ -297,7 +463,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
           Meus Casos
         </button>
         <button
-          onClick={() => setActiveTab('new-case')}
+          onClick={() => setCurrentTab('dentist-new-case')}
           className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
             activeTab === 'new-case'
               ? 'border-[#0F766E] text-[#0F766E]'
@@ -326,6 +492,20 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
           ) : (
             <div className="space-y-6">
               
+              {/* Search Bar */}
+              <div className="relative max-w-md">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                  <Search size={15} />
+                </span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar casos por paciente, ID ou procedimento..."
+                  className="w-full pl-10 pr-4 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
+                />
+              </div>
+
               {/* Active Cases Table */}
               <div className="glass-panel p-5 space-y-4">
                 <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-3.5">
@@ -339,11 +519,11 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                     </p>
                   </div>
                   <span className="text-[10px] font-bold bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 px-2 py-0.5 rounded-md">
-                    {activeCases.length} Ativo{activeCases.length > 1 ? 's' : ''}
+                    {filteredActiveCases.length} Ativo{filteredActiveCases.length > 1 ? 's' : ''}
                   </span>
                 </div>
 
-                {activeCases.length === 0 ? (
+                {filteredActiveCases.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 bg-slate-50 rounded-lg">
                     Nenhum pedido ativo no momento.
                   </div>
@@ -362,7 +542,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#E2E8F0]">
-                        {activeCases.map(c => (
+                        {filteredActiveCases.map(c => (
                           <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
                             <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
                             <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
@@ -371,16 +551,26 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                             <td className="p-3 text-slate-500 font-medium font-mono">
                               {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                             </td>
-                            <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
+                            <td className="p-3 font-semibold text-slate-700">
+                              {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
+                            </td>
                             <td className="p-3 text-right">
-                              <div className="inline-flex items-center gap-1.5">
+                              <div className="inline-flex items-center gap-1.5 justify-end">
+                                {caseResults[c.id] && (
+                                  <button
+                                    onClick={() => setViewingResultsFiles(caseResults[c.id])}
+                                    className="inline-flex items-center gap-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-md transition-all cursor-pointer shadow-xs animate-fade-in"
+                                  >
+                                    Acessar Resultado
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => startEdit(c)}
                                   className="inline-flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all cursor-pointer"
                                 >
                                   Editar
                                 </button>
-                                {c.google_drive_folder_url && (
+                                {isDriveFolderValid(c) && (
                                   <a
                                     href={c.google_drive_folder_url}
                                     target="_blank"
@@ -414,60 +604,107 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                     </p>
                   </div>
                   <span className="text-[10px] font-bold bg-[#ECFDF5] text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-md">
-                    {finalizedCases.length} Concluído{finalizedCases.length > 1 ? 's' : ''}
+                    {filteredFinalizedCases.length} Concluído{filteredFinalizedCases.length > 1 ? 's' : ''}
                   </span>
                 </div>
 
-                {finalizedCases.length === 0 ? (
+                {filteredFinalizedCases.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 bg-slate-50 rounded-lg">
                     Nenhum trabalho concluído ainda.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <tr>
-                          <th className="p-3">ID do Caso</th>
-                          <th className="p-3">Paciente</th>
-                          <th className="p-3">Procedimento(s)</th>
-                          <th className="p-3">Status</th>
-                          <th className="p-3">Valor Total</th>
-                          <th className="p-3">Pago</th>
-                          <th className="p-3">Aberto</th>
-                          <th className="p-3 text-right">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#E2E8F0]">
-                        {finalizedCases.map(c => (
-                          <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
-                            <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
-                            <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
-                            <td className="p-3 text-slate-600 font-medium">{getServiceNames(c)}</td>
-                            <td className="p-3">
-                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-extrabold uppercase tracking-wide">
-                                {c.status === 'entregue' ? 'Entregue' : 'Finalizado'}
-                              </span>
-                            </td>
-                            <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
-                            <td className="p-3 font-semibold text-emerald-600">R$ {c.paid_value.toFixed(2)}</td>
-                            <td className="p-3 font-semibold text-slate-700">R$ {c.remaining_value.toFixed(2)}</td>
-                            <td className="p-3 text-right">
-                              {c.google_drive_folder_url && (
-                                <a
-                                  href={c.google_drive_folder_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center p-1.5 rounded-md bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 hover:bg-[#ECFDF5]/80 transition-all cursor-pointer"
-                                  title="Google Drive"
-                                >
-                                  <FolderOpen size={13} />
-                                </a>
-                              )}
-                            </td>
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <tr>
+                            <th className="p-3">ID do Caso</th>
+                            <th className="p-3">Paciente</th>
+                            <th className="p-3">Procedimento(s)</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3">Valor Total</th>
+                            <th className="p-3">Pago</th>
+                            <th className="p-3">Aberto</th>
+                            <th className="p-3 text-right">Ações</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-[#E2E8F0]">
+                          {paginatedFinalizedCases.map(c => (
+                            <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                              <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                              <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
+                              <td className="p-3 text-slate-600 font-medium">{getServiceNames(c)}</td>
+                              <td className="p-3">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-extrabold uppercase tracking-wide">
+                                  {c.status === 'entregue' ? 'Entregue' : 'Finalizado'}
+                                </span>
+                              </td>
+                              <td className="p-3 font-semibold text-slate-900">
+                                {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
+                              </td>
+                              <td className="p-3 font-semibold text-emerald-600">
+                                {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.paid_value.toFixed(2)}` : '—'}
+                              </td>
+                              <td className="p-3 font-semibold text-slate-700">
+                                {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.remaining_value.toFixed(2)}` : '—'}
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="inline-flex items-center gap-1.5 justify-end">
+                                  {caseResults[c.id] && (
+                                    <button
+                                      onClick={() => setViewingResultsFiles(caseResults[c.id])}
+                                      className="inline-flex items-center gap-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-md transition-all cursor-pointer shadow-xs animate-fade-in"
+                                    >
+                                      Acessar Resultado
+                                    </button>
+                                  )}
+                                  {isDriveFolderValid(c) && (
+                                    <a
+                                      href={c.google_drive_folder_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center p-1.5 rounded-md bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 hover:bg-[#ECFDF5]/80 transition-all cursor-pointer"
+                                      title="Google Drive"
+                                    >
+                                      <FolderOpen size={13} />
+                                    </a>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {totalFinalizedPages > 1 && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-[#E2E8F0] gap-4 text-xs font-medium text-slate-500">
+                        <div>
+                          Exibindo {Math.min(filteredFinalizedCases.length, (finalizedPage - 1) * itemsPerFinalizedPage + 1)} a {Math.min(filteredFinalizedCases.length, finalizedPage * itemsPerFinalizedPage)} de {filteredFinalizedCases.length} casos concluídos
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            disabled={finalizedPage === 1}
+                            onClick={() => setFinalizedPage(prev => Math.max(1, prev - 1))}
+                            className="p-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                            title="Anterior"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <span className="font-semibold text-slate-700">Página {finalizedPage} de {totalFinalizedPages}</span>
+                          <button
+                            type="button"
+                            disabled={finalizedPage === totalFinalizedPages}
+                            onClick={() => setFinalizedPage(prev => Math.min(totalFinalizedPages, prev + 1))}
+                            className="p-2 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                            title="Próximo"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -478,8 +715,28 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
       )}
 
       {activeTab === 'new-case' && (
-        /* SOLICITAR NOVO TRABALHO TAB */
-        <div className="glass-panel p-5 max-w-5xl animate-fade-in space-y-5">
+        editingCase && editingCase.dentist_id !== user?.id ? (
+          <div className="glass-panel p-8 max-w-xl mx-auto text-center space-y-4 animate-fade-in my-8">
+            <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Acesso Bloqueado</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Você não tem permissão para acessar esta pasta.
+            </p>
+            <button
+              onClick={() => {
+                setEditingCase(null);
+                setCurrentTab('dentist-cases');
+              }}
+              className="px-4 py-2 bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold rounded-lg transition-all cursor-pointer font-bold"
+            >
+              Voltar para Meus Casos
+            </button>
+          </div>
+        ) : (
+          /* SOLICITAR NOVO TRABALHO TAB */
+          <div className="glass-panel p-5 max-w-5xl animate-fade-in space-y-5">
           <div>
             <h3 className="text-base font-bold text-slate-900">
               {editingCase ? 'Editar Solicitação' : 'Nova Solicitação de Serviço'}
@@ -604,8 +861,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                   accept="image/*"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
-                    const mapped = files.map(f => ({ name: f.name, size: f.size }));
-                    setPhotoFiles(prev => [...prev, ...mapped]);
+                    setPhotoFiles(prev => [...prev, ...files]);
                     setHasPhoto(true);
                   }}
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-200 file:text-[10px] file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 file:cursor-pointer"
@@ -645,8 +901,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                   accept=".stl,.obj,.ply,.zip,.rar"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
-                    const mapped = files.map(f => ({ name: f.name, size: f.size }));
-                    setScanFiles(prev => [...prev, ...mapped]);
+                    setScanFiles(prev => [...prev, ...files]);
                     setHasFile(true);
                   }}
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-200 file:text-[10px] file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 file:cursor-pointer"
@@ -679,7 +934,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
                 type="button"
                 onClick={() => {
                   setEditingCase(null);
-                  setActiveTab('my-cases');
+                  setCurrentTab('dentist-cases');
                 }}
                 className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 border border-transparent transition-all"
               >
@@ -698,6 +953,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
           </form>
 
         </div>
+        )
       )}
 
       {activeTab === 'change-password' && (
@@ -761,6 +1017,86 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ initialTab =
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Case submitted successfully popup modal */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
+            <div className="w-12 h-12 rounded-full bg-[#ECFDF5] border border-emerald-100 flex items-center justify-center mx-auto mb-4 text-[#0F766E]">
+              <CheckCircle size={24} />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Caso Enviado com Sucesso!</h3>
+            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+              Sua solicitação de caso foi registrada e os arquivos foram processados com sucesso.
+            </p>
+            <button
+              onClick={() => setShowSuccessPopup(false)}
+              className="w-full py-2 bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold rounded-lg text-xs transition-all cursor-pointer"
+            >
+              OK, fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Result Files Modal */}
+      {viewingResultsFiles && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
+            <button
+              onClick={() => setViewingResultsFiles(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <FolderOpen size={16} className="text-[#0F766E]" />
+              Arquivos de Resultado Disponíveis
+            </h3>
+            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+              Dr. Matheus disponibilizou os seguintes arquivos de resultado para este caso:
+            </p>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {viewingResultsFiles.map(att => (
+                <div key={att.id} className="flex items-center justify-between p-3 bg-slate-50 border border-[#E2E8F0] rounded-xl shadow-2xs hover:bg-slate-100/50 transition-all text-left">
+                  <div className="min-w-0 flex-1 pr-3">
+                    <h5 className="text-xs font-semibold text-slate-800 truncate" title={att.file_name}>
+                      {att.file_name}
+                    </h5>
+                    <div className="flex items-center gap-2 mt-1 text-[9px] text-slate-400 font-medium">
+                      <span>{att.file_category === 'enceramento_digital' ? 'Enceramento Digital' : 'Resultado Final'}</span>
+                      {att.file_size && (
+                        <span>· {(att.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                      )}
+                    </div>
+                  </div>
+                  {att.web_view_link && (
+                    <a
+                      href={att.web_view_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-3 bg-white hover:bg-slate-50 text-[#0F766E] border border-[#E2E8F0] text-center rounded-lg text-[10px] font-bold transition-all whitespace-nowrap shadow-3xs cursor-pointer"
+                    >
+                      Visualizar/Baixar
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-4 mt-4 border-t border-[#E2E8F0]">
+              <button
+                onClick={() => setViewingResultsFiles(null)}
+                className="px-4 py-2 bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold rounded-lg text-xs transition-all cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

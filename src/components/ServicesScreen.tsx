@@ -23,6 +23,7 @@ export const ServicesScreen: React.FC = () => {
   const [estMinutes, setEstMinutes] = useState('0');
   const [entersMatheus, setEntersMatheus] = useState(true);
   const [entersPaschoal, setEntersPaschoal] = useState(false);
+  const [entersAndrey, setEntersAndrey] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
   
   // Custom pricing state
@@ -85,6 +86,7 @@ export const ServicesScreen: React.FC = () => {
         default_estimated_time: finalEstTime,
         enters_matheus_value: entersMatheus,
         enters_paschoal_value: entersPaschoal,
+        enters_andrey_value: entersAndrey,
         is_internal_cost: isInternal,
         is_active: editingService ? editingService.is_active : true,
         created_at: editingService?.created_at || new Date().toISOString()
@@ -101,6 +103,7 @@ export const ServicesScreen: React.FC = () => {
       setEstMinutes('0');
       setEntersMatheus(true);
       setEntersPaschoal(false);
+      setEntersAndrey(false);
       setIsInternal(false);
       fetchData();
     } catch (err) {
@@ -123,6 +126,7 @@ export const ServicesScreen: React.FC = () => {
 
     setEntersMatheus(s.enters_matheus_value);
     setEntersPaschoal(s.enters_paschoal_value);
+    setEntersAndrey(!!s.enters_andrey_value);
     setIsInternal(s.is_internal_cost);
     setShowForm(true);
   };
@@ -227,7 +231,7 @@ export const ServicesScreen: React.FC = () => {
 
           {/* Form Dialog */}
           {showForm && (
-            <div className="fixed inset-0 bg-slate-900/40 z-50 flex justify-center items-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
               <div className="w-full max-w-2xl bg-white border border-[#E2E8F0] rounded-2xl overflow-y-auto p-6 md:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative max-h-[90vh]">
                 <button
                   type="button"
@@ -359,6 +363,18 @@ export const ServicesScreen: React.FC = () => {
                       />
                       <label htmlFor="entersPaschoal" className="text-[11px] font-medium text-slate-700 cursor-pointer">
                         Entra no faturamento do Dr. Paschoal? (Ex: Parcerias/Terceirização)
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="entersAndrey"
+                        checked={entersAndrey}
+                        onChange={(e) => setEntersAndrey(e.target.checked)}
+                        className="w-4 h-4 rounded text-primary focus:ring-primary"
+                      />
+                      <label htmlFor="entersAndrey" className="text-[11px] font-medium text-slate-700 cursor-pointer">
+                        Entra no faturamento do Dr. Andrey? (Ex: Repasse Andrey)
                       </label>
                     </div>
                     <div className="flex items-center gap-3">

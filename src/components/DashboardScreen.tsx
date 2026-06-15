@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { api, recordActivity } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import type { Case, Profile } from '../types';
 import { 
   DollarSign, Briefcase, Clock, AlertTriangle, 
   CheckCircle, ShieldAlert
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import * as XLSX from 'xlsx';
+
 
 interface DashboardScreenProps {
   onSelectCase?: (caseId: string) => void;
@@ -16,156 +15,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  // Unused useAuth isAdmin removed
   useEffect(() => {
     fetchData();
   }, []);
-
-  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const fileData = evt.target?.result;
-        if (!fileData) return;
-
-        const workbook = XLSX.read(fileData, { type: 'array' });
-        const targetSheets = [
-          'Maio26', 'Abril26', 'Março26', 'Fevereiro26', 'Janeiro26',
-          'Dezembro25', 'Novembro25', 'Outubro25', 'Setembro25', 'Agosto25',
-          'Junho e Julho25', 'Abril25', 'Março25'
-        ];
-
-        const getJsDate = (excelSerial: any) => {
-          if (!excelSerial) return new Date().toISOString();
-          if (typeof excelSerial === 'string') {
-            const d = new Date(excelSerial);
-            return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-          }
-          // Convert serial to JS date
-          const date = new Date(Math.round((excelSerial - 25569) * 86400 * 1000));
-          return date.toISOString();
-        };
-
-        const profiles: Profile[] = JSON.parse(localStorage.getItem('matheus_protese_profiles') || '[]');
-        const dentistNameMap: Record<string, string> = {};
-
-        // Seed name mapping from existing profiles
-        profiles.forEach(p => {
-          if (p.role === 'dentist') {
-            const norm = p.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-            dentistNameMap[norm] = p.id;
-          }
-        });
-
-        const allCases: Case[] = [];
-        let caseCount = 1;
-
-        workbook.SheetNames.forEach(sheetName => {
-          if (!targetSheets.includes(sheetName)) return;
-          const worksheet = workbook.Sheets[sheetName];
-          const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
-
-          rows.forEach((row, idx) => {
-            const clientName = String(row['Cliente'] || '').trim();
-            if (!clientName) return;
-
-            const normClient = clientName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-            let dentistId = dentistNameMap[normClient];
-
-            if (!dentistId) {
-              // Create dynamic dentist
-              dentistId = `dentist-dynamic-${normClient || 'unknown'}`;
-              const newProfile: Profile = {
-                id: dentistId,
-                role: 'dentist',
-                full_name: clientName,
-                whatsapp: '',
-                created_at: new Date().toISOString()
-              };
-              profiles.push(newProfile);
-              dentistNameMap[normClient] = dentistId;
-            }
-
-            const rawDate = row['Data Recebido'] || row['Data'] || row['data'] || row['Data recebido'];
-            const isoDateStr = getJsDate(rawDate);
-            const datePart = isoDateStr.split('T')[0];
-            const yearMonth = datePart.slice(0, 7).replace('-', '');
-
-            const caseId = `CASE-${yearMonth}-${String(caseCount++).padStart(4, '0')}`;
-
-            const valueMatheus = parseFloat(row['Valor Matheus']) || 0;
-            const valuePlanning = parseFloat(row['Valor Planning']) || 0;
-            const valuePaschoal = parseFloat(row['Valor Paschoal']) || 0;
-            const costAllanMatheus = parseFloat(row['Allan/Matheus']) || 0;
-            const costAllanSolo = parseFloat(row['Allan Solo']) || 0;
-            const costAndrey = parseFloat(row['Andrey']) || 0;
-
-            const calculatedTotal = valueMatheus + valuePlanning + valuePaschoal;
-            const statusText = String(row['Status'] || 'Aguardando Pagamento').toLowerCase();
-
-            const caseYear = new Date(isoDateStr).getFullYear();
-            let financialStatus: 'pago' | 'isento' | 'aguardando_pagamento' = 'aguardando_pagamento';
-            if (caseYear < 2026) {
-              financialStatus = 'pago';
-            } else if (statusText.includes('pago')) {
-              financialStatus = 'pago';
-            } else if (statusText.includes('isento')) {
-              financialStatus = 'isento';
-            }
-
-            allCases.push({
-              id: caseId,
-              dentist_id: dentistId,
-              patient_name: String(row['Paciente'] || 'Sem Nome'),
-              created_at: isoDateStr,
-              requested_delivery_date: datePart,
-              final_delivery_date: datePart,
-              status: 'finalizado',
-              financial_status: financialStatus,
-              teeth_selection: { teeth: [], type: 'individual' },
-              dentist_notes: String(row['Observações'] || ''),
-              internal_notes: `Feito por: ${row['Feito por'] || 'N/A'}`,
-              has_photo: false,
-              has_file: false,
-              estimated_hours: 0,
-              value_matheus: valueMatheus,
-              value_planning: valuePlanning,
-              value_paschoal: valuePaschoal,
-              cost_allan_matheus: costAllanMatheus,
-              cost_allan_solo: costAllanSolo,
-              cost_andrey: costAndrey,
-              other_internal_costs: [],
-              total_value: calculatedTotal,
-              paid_value: financialStatus === 'pago' ? calculatedTotal : 0,
-              remaining_value: financialStatus === 'pago' ? 0 : calculatedTotal,
-              google_drive_folder_id: `folder-imported-${idx}`,
-              google_drive_folder_url: 'https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing',
-              updated_at: isoDateStr
-            });
-          });
-        });
-
-        // Save to LocalStorage
-        localStorage.setItem('matheus_protese_profiles', JSON.stringify(profiles));
-        localStorage.setItem('matheus_protese_cases', JSON.stringify(allCases));
-
-        await recordActivity('importacao', '', { count: allCases.length });
-
-        alert(`Planilha importada com sucesso! ${allCases.length} casos e novos dentistas foram carregados.`);
-        fetchData();
-      } catch (err) {
-        console.error(evt);
-        console.error(err);
-        alert('Erro ao processar a planilha. Verifique o formato do arquivo.');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -238,7 +91,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
 
   const finishedCasesCount = cases.filter(c => {
     const year = new Date(c.created_at).getFullYear();
-    return year >= 2026 && c.status === 'finalizado';
+    return year >= 2026 && 
+      c.created_at.startsWith(currentMonthStr) && 
+      ['finalizado', 'entregue'].includes(c.status);
   }).length;
 
   const awaitingPaymentCount = cases.filter(c => {
@@ -260,9 +115,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   // Delayed cases (only 2026 onwards)
   const delayedCases = cases.filter(c => {
     const year = new Date(c.created_at).getFullYear();
+    const limitDate = c.final_delivery_date || c.requested_delivery_date;
     return year >= 2026 &&
-      c.final_delivery_date && 
-      c.final_delivery_date < todayStr && 
+      limitDate && 
+      limitDate < todayStr && 
       !['finalizado', 'entregue', 'cancelado'].includes(c.status) &&
       !isUnapproved(c);
   });
@@ -274,16 +130,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
       return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status) && !isUnapproved(c);
     })
     .sort((a, b) => {
-      if (!a.final_delivery_date) return 1;
-      if (!b.final_delivery_date) return -1;
-      return a.final_delivery_date.localeCompare(b.final_delivery_date);
+      const dateA = a.final_delivery_date || a.requested_delivery_date || '';
+      const dateB = b.final_delivery_date || b.requested_delivery_date || '';
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA.localeCompare(dateB);
     });
 
   // Capacity calculations: sum estimated hours of active cases (only 2026 onwards)
   const totalEstimatedHours = cases
     .filter(c => {
       const year = new Date(c.created_at).getFullYear();
-      return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status) && !isUnapproved(c);
+      return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status);
     })
     .reduce((sum, c) => sum + c.estimated_hours, 0);
 
@@ -305,8 +163,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   };
 
   const getPriorityColor = (caseItem: Case) => {
-    if (!caseItem.final_delivery_date) return 'text-slate-400 bg-slate-50 border-slate-100';
-    const diffTime = new Date(caseItem.final_delivery_date).getTime() - new Date(todayStr).getTime();
+    const limitDate = caseItem.final_delivery_date || caseItem.requested_delivery_date;
+    if (!limitDate) return 'text-slate-400 bg-slate-50 border-slate-100';
+    const diffTime = new Date(limitDate + 'T00:00:00').getTime() - new Date(todayStr).getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) return 'text-rose-600 bg-[#FEE2E2] border-rose-100';
@@ -315,8 +174,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   };
 
   const getPriorityText = (caseItem: Case) => {
-    if (!caseItem.final_delivery_date) return 'Sem Prazo';
-    const diffTime = new Date(caseItem.final_delivery_date).getTime() - new Date(todayStr).getTime();
+    const limitDate = caseItem.final_delivery_date || caseItem.requested_delivery_date;
+    if (!limitDate) return 'Sem Prazo';
+    const diffTime = new Date(limitDate + 'T00:00:00').getTime() - new Date(todayStr).getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) return 'Atrasado';
@@ -344,23 +204,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          {isAdmin && (
-            <>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileImport}
-                accept=".xlsx, .xls"
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                Importar Planilha Excel (.xlsx)
-              </button>
-            </>
-          )}
 
           {/* Overload status banner */}
           <div className={`px-4 py-2.5 rounded-lg border flex items-center gap-2.5 w-fit ${
@@ -373,7 +216,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
             </span>
             <div className="text-xs font-semibold">
               <h5 className="uppercase tracking-wider text-[10px]">{isOverloaded ? 'Alerta de Sobrecarga' : 'Capacidade Normal'}</h5>
-              <p className="opacity-90 font-medium text-[11px] mt-0.5">{totalEstimatedHours.toFixed(1)}h de produção ativa (Máx: 44h/semana)</p>
+              <p className="opacity-90 font-medium text-[11px] mt-0.5">{totalEstimatedHours.toFixed(2)}h de produção ativa (Máx: 44h/semana)</p>
             </div>
           </div>
         </div>
@@ -598,7 +441,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
                           {formatEstimatedTime(c.estimated_hours)}
                         </td>
                         <td className="p-3 text-slate-600">
-                          {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
+                          {(() => {
+                            const limitDate = c.final_delivery_date || c.requested_delivery_date;
+                            return limitDate ? new Date(limitDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'A definir';
+                          })()}
                         </td>
                         <td className="p-3 text-right">
                           <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${badgeStyle}`}>

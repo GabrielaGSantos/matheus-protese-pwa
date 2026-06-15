@@ -569,7 +569,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
             <div className="glass-panel p-5 flex flex-col justify-between">
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Horas Comprometidas</span>
-                <h3 className="text-2xl font-bold text-slate-900">{committedHours}h</h3>
+                <h3 className="text-2xl font-bold text-slate-900">{committedHours.toFixed(2)}h</h3>
                 <p className="text-[10px] text-slate-500">Soma estimada de todos os dentes/casos ativos.</p>
               </div>
               
@@ -592,13 +592,13 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
             <div className="glass-panel p-5 flex flex-col justify-between">
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Horas Disponíveis (Semana)</span>
-                <h3 className="text-2xl font-bold text-[#0F766E]">{cap.netAvailableHours}h</h3>
+                <h3 className="text-2xl font-bold text-[#0F766E]">{cap.netAvailableHours.toFixed(2)}h</h3>
                 <p className="text-[10px] text-slate-500">Feriados ou viagens reduzem esse tempo.</p>
               </div>
               
               <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] flex items-center gap-2 text-[10px] text-slate-500 mt-3">
                 <Info size={12} className="text-[#0F766E] shrink-0" />
-                <span>Bloqueios ativos nesta semana: {cap.blockedHours}h</span>
+                <span>Bloqueios ativos nesta semana: {cap.blockedHours.toFixed(2)}h</span>
               </div>
             </div>
 

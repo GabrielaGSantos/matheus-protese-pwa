@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS public.profiles;
 -- =========================================================================
 CREATE TABLE public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  role text NOT NULL CHECK (role IN ('admin', 'dentist')),
+  role text NOT NULL CHECK (role IN ('admin', 'dentist', 'secretary')),
   full_name text NOT NULL,
   whatsapp text,
   pix_key text,
@@ -44,7 +44,7 @@ RETURNS boolean AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.profiles 
-    WHERE id = user_id AND role = 'admin'
+    WHERE id = user_id AND role IN ('admin', 'secretary')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -447,3 +447,58 @@ INSERT INTO public.services (name, billing_type, default_value, default_estimate
 ('Gengiva', 'fixed', 300.00, 3.0, true, false, false),
 ('Finalização', 'fixed', 250.00, 2.5, true, false, false),
 ('Finalização P', 'fixed', 150.00, 1.5, true, false, false);
+
+
+-- =========================================================================
+-- 11. GOOGLE DRIVE SHARED CONFIGURATION
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.gdrive_settings (
+  id text PRIMARY KEY,
+  access_token text,
+  token_expiry bigint,
+  root_folder_id text,
+  root_folder_url text,
+  user_email text,
+  user_name text,
+  refresh_token text,
+  client_secret text,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.gdrive_settings ENABLE ROW LEVEL SECURITY;
+
+-- Allow select by any authenticated user
+CREATE POLICY "Allow select of gdrive settings for authenticated users"
+  ON public.gdrive_settings FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Allow all actions for admin users
+CREATE POLICY "Allow admin full access to gdrive settings"
+  ON public.gdrive_settings FOR ALL
+  USING (public.check_is_admin(auth.uid()));
+
+
+-- =========================================================================
+-- 12. INTERNAL NOTES TABLE (BLOCO DE NOTAS)
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.internal_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  content text NOT NULL,
+  pinned boolean DEFAULT false NOT NULL,
+  important boolean DEFAULT false NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  history jsonb DEFAULT '[]'::jsonb
+);
+
+-- Enable RLS
+ALTER TABLE public.internal_notes ENABLE ROW LEVEL SECURITY;
+
+-- Allow admin and secretary full access to internal_notes
+CREATE POLICY "Allow admin and secretary full access to internal_notes"
+  ON public.internal_notes FOR ALL
+  USING (public.check_is_admin(auth.uid()));
+

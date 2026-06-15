@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
@@ -35,6 +35,20 @@ export const DentistsScreen: React.FC = () => {
       setDentists(all.filter(p => p.role === 'dentist'));
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir permanentemente este dentista?')) return;
+    setLoading(true);
+    try {
+      await api.profiles.delete(id);
+      fetchDentists();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao excluir dentista.');
     } finally {
       setLoading(false);
     }
@@ -121,7 +135,7 @@ export const DentistsScreen: React.FC = () => {
 
       {/* New/Edit Dentist Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex justify-center items-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
           <div className="w-full max-w-lg bg-white border border-[#E2E8F0] rounded-2xl overflow-y-auto p-6 md:p-8 shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative max-h-[90vh]">
             <button
               type="button"
@@ -143,7 +157,7 @@ export const DentistsScreen: React.FC = () => {
                 <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                   <Check size={20} />
                 </div>
-                {editingDentist ? 'Dentista atualizado com sucesso!' : 'Dentista cadastrado com sucesso!'}
+                {editingDentist ? 'Dentista editado com sucesso' : 'Dentista adicionado com sucesso'}
               </div>
             ) : (
               <form onSubmit={handleCreate} className="space-y-4">
@@ -179,10 +193,10 @@ export const DentistsScreen: React.FC = () => {
                       Login
                     </label>
                     <input
-                      type="email"
+                      type="text"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Ex: lucas@dentista.com"
+                      placeholder="dr_fulano"
                       className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                     />
                   </div>
@@ -265,9 +279,6 @@ export const DentistsScreen: React.FC = () => {
                 <div key={d.id} className="glass-panel p-4 flex flex-col justify-between hover:shadow-sm transition-all">
                   <div>
                     <h4 className="font-semibold text-sm text-slate-900">{d.full_name}</h4>
-                    <span className="text-[9px] uppercase font-bold text-[#0F766E] px-1.5 py-px rounded-full bg-[#ECFDF5] border border-emerald-100 inline-block mt-1">
-                      Dentista Parceiro
-                    </span>
                     
                     <div className="space-y-2 mt-3">
                       <div className="flex items-center gap-2 text-[11px] text-slate-500">
@@ -301,10 +312,18 @@ export const DentistsScreen: React.FC = () => {
                     )}
                     <button
                       onClick={() => startEdit(d)}
-                      className="flex-1 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all"
+                      className="py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       <FileText size={11} className="text-slate-400" />
                       Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(d.id)}
+                      className="py-1.5 px-3 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      title="Excluir Dentista"
+                    >
+                      <Trash2 size={11} />
+                      Excluir
                     </button>
                   </div>
                 </div>

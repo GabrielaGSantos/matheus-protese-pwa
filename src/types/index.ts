@@ -21,6 +21,7 @@ export interface Service {
   default_estimated_time: number; // in hours
   enters_matheus_value: boolean;
   enters_paschoal_value: boolean;
+  enters_andrey_value?: boolean;
   is_internal_cost: boolean;
   is_active: boolean;
   created_at: string;
@@ -83,6 +84,15 @@ export interface Case {
   has_file: boolean;
   google_drive_folder_id?: string;
   google_drive_folder_url?: string;
+  // Real Drive integration fields
+  drive_status?: 'not_created' | 'created' | 'error';
+  drive_dentist_folder_id?: string;
+  drive_case_folder_id?: string;
+  drive_images_folder_id?: string;
+  drive_scan_folder_id?: string;
+  drive_result_folder_id?: string;
+  drive_case_folder_url?: string;
+  drive_error_message?: string;
   estimated_hours: number;
   value_matheus: number;
   value_planning: number;
@@ -95,6 +105,7 @@ export interface Case {
   total_value: number;
   paid_value: number;
   remaining_value: number;
+  financial_released?: boolean;
   payment_receipt_url?: string;
   pix_key?: string;
   selected_services?: string[];
@@ -135,4 +146,46 @@ export interface FileAttachment {
   file_size?: number;
   uploaded_by: string;
   created_at: string;
+  // Google Drive integration additions
+  folder_id?: string;
+  web_view_link?: string;
+  file_category?: 'imagens' | 'escaneamento' | 'enceramento_digital' | 'resultado';
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  category: 'new_case' | 'case_modified' | 'file_uploaded' | 'case_approved' | 'case_finished' | 'due_date';
+  case_id?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationSettings {
+  enable_push: boolean;
+  enable_email: boolean;
+  email_destinatario?: string;
+  enable_telegram: boolean;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+}
+
+export interface NoteHistoryEntry {
+  user_name: string;
+  action: string;
+  updated_at: string;
+}
+
+export interface InternalNote {
+  id: string;
+  title: string;
+  content: string;
+  pinned: boolean;
+  important: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  created_by_name?: string;
+  history: NoteHistoryEntry[];
 }

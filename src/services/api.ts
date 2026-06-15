@@ -6,7 +6,9 @@ import type {
   Case, 
   CalendarEvent, 
   CaseHistory,
-  UserRole
+  UserRole,
+  FileAttachment,
+  InternalNote
 } from '../types';
 import importedCases from './imported_cases.json';
 
@@ -32,7 +34,9 @@ const MOCK_STORAGE_KEYS = {
   CALENDAR_EVENTS: 'matheus_protese_calendar_events',
   HISTORY: 'matheus_protese_history',
   ATTACHMENTS: 'matheus_protese_attachments',
-  CURRENT_USER: 'matheus_protese_current_user'
+  CURRENT_USER: 'matheus_protese_current_user',
+  NOTES: 'matheus_protese_notes',
+  GDRIVE_SETTINGS: 'gdrive_shared_settings'
 };
 
 const defaultServices: Service[] = [
@@ -234,6 +238,14 @@ const getMockData = <T>(key: string): T[] => {
 
 const saveMockData = <T>(key: string, data: T[]): void => {
   localStorage.setItem(key, JSON.stringify(data));
+  // Envia em segundo plano para o api.php para sincronização centralizada
+  fetch(`api.php?action=set&key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).catch(err => {
+    console.warn(`Falha ao salvar dados de ${key} no servidor central:`, err);
+  });
 };
 
 export const recordActivity = async (action: string, caseId: string = '', newData: any = null, prevData: any = null) => {
@@ -282,6 +294,35 @@ export const recordActivity = async (action: string, caseId: string = '', newDat
 // =========================================================================
 export const api = {
   isMock: useMockData,
+
+  async syncWithServer(): Promise<void> {
+    if (!useMockData) return;
+    const keys = Object.values(MOCK_STORAGE_KEYS);
+    for (const key of keys) {
+      try {
+        const res = await fetch(`api.php?action=get&key=${key}`);
+        if (res.ok) {
+          const resJson = await res.json();
+          if (resJson && resJson.success && resJson.data !== null) {
+            localStorage.setItem(key, JSON.stringify(resJson.data));
+          } else {
+            // Se o arquivo não existir no servidor (ex: primeiro carregamento),
+            // e tivermos dados semeados no LocalStorage, salvamos no servidor para subir os dados padrões!
+            const localData = localStorage.getItem(key);
+            if (localData) {
+              await fetch(`api.php?action=set&key=${key}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: localData
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`Erro de sincronização para a chave ${key}:`, err);
+      }
+    }
+  },
 
   // =======================================================================
   // AUTHENTICATION
@@ -398,7 +439,8 @@ export const api = {
   profiles: {
     async list(): Promise<Profile[]> {
       if (useMockData) {
-        return getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
+        const list = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
+        return list.sort((a, b) => a.full_name.localeCompare(b.full_name, 'pt-BR'));
       }
       const { data, error } = await supabase!
         .from('profiles')
@@ -454,6 +496,21 @@ export const api = {
         .single();
       if (error) throw error;
       return data;
+    },
+
+    async delete(id: string): Promise<void> {
+      if (useMockData) {
+        const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
+        const filtered = profiles.filter(p => p.id !== id);
+        saveMockData(MOCK_STORAGE_KEYS.PROFILES, filtered);
+        recordActivity('delete_dentist', id);
+        return;
+      }
+      const { error } = await supabase!
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
     }
   },
 
@@ -463,7 +520,8 @@ export const api = {
   services: {
     async list(): Promise<Service[]> {
       if (useMockData) {
-        return getMockData<Service>(MOCK_STORAGE_KEYS.SERVICES);
+        const list = getMockData<Service>(MOCK_STORAGE_KEYS.SERVICES);
+        return list.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       }
       const { data, error } = await supabase!
         .from('services')
@@ -571,16 +629,51 @@ export const api = {
     },
 
     async get(id: string): Promise<Case | null> {
+      let currentUser: Profile | null = null;
+      if (useMockData) {
+        const userStr = localStorage.getItem(MOCK_STORAGE_KEYS.CURRENT_USER);
+        currentUser = userStr ? JSON.parse(userStr) : null;
+      } else {
+        try {
+          const { data: { user } } = await supabase!.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase!
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+            currentUser = profile;
+          }
+        } catch (err) {
+          console.error('Erro ao buscar perfil para validacao de acesso:', err);
+        }
+      }
+
       if (useMockData) {
         const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
-        return cases.find(c => c.id === id) || null;
+        const caseItem = cases.find(c => c.id === id) || null;
+        if (caseItem && currentUser) {
+          const isAllowed = currentUser.role === 'admin' || currentUser.role === 'secretary' || caseItem.dentist_id === currentUser.id;
+          if (!isAllowed) {
+            throw new Error('Você não tem permissão para acessar esta pasta.');
+          }
+        }
+        return caseItem;
       }
+
       const { data, error } = await supabase!
         .from('cases')
         .select('*')
         .eq('id', id)
         .single();
       if (error) return null;
+
+      if (data && currentUser) {
+        const isAllowed = currentUser.role === 'admin' || currentUser.role === 'secretary' || data.dentist_id === currentUser.id;
+        if (!isAllowed) {
+          throw new Error('Você não tem permissão para acessar esta pasta.');
+        }
+      }
       return data;
     },
 
@@ -761,10 +854,308 @@ export const api = {
         user_name: d.profiles?.full_name || 'Desconhecido'
       }));
     }
+  },
+
+  attachments: {
+    async list(caseId: string): Promise<FileAttachment[]> {
+      if (useMockData) {
+        const list = getMockData<FileAttachment>(MOCK_STORAGE_KEYS.ATTACHMENTS);
+        return list.filter(a => a.case_id === caseId);
+      }
+      const { data, error } = await supabase!
+        .from('file_attachments')
+        .select('*')
+        .eq('case_id', caseId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+
+    async upload(attachment: Omit<FileAttachment, 'id' | 'created_at'>): Promise<FileAttachment> {
+      if (useMockData) {
+        const list = getMockData<FileAttachment>(MOCK_STORAGE_KEYS.ATTACHMENTS);
+        const newAttachment: FileAttachment = {
+          ...attachment,
+          id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString()
+        };
+        list.push(newAttachment);
+        saveMockData(MOCK_STORAGE_KEYS.ATTACHMENTS, list);
+        return newAttachment;
+      }
+      const { data, error } = await supabase!
+        .from('file_attachments')
+        .insert([{ ...attachment, id: genUUID() }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+
+    async uploadFile(
+      file: File,
+      caseId: string,
+      patientName: string,
+      dentistName: string,
+      category: 'imagens' | 'escaneamento' | 'resultado',
+      uploadedBy: string
+    ): Promise<{ success: boolean; attachment: FileAttachment; case?: Case }> {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('case_id', caseId);
+      formData.append('patient_name', patientName);
+      formData.append('dentist_name', dentistName);
+      formData.append('category', category);
+      formData.append('uploaded_by', uploadedBy);
+
+      const res = await fetch('api.php?action=upload_file', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        let errMsg = 'Erro desconhecido no servidor';
+        try {
+          const errData = JSON.parse(errText);
+          if (errData.error) errMsg = errData.error;
+        } catch {
+          errMsg = errText || `HTTP ${res.status}`;
+        }
+        throw new Error(errMsg);
+      }
+
+      const resJson = await res.json();
+      
+      if (useMockData) {
+        if (resJson.attachment) {
+          const list = getMockData<FileAttachment>(MOCK_STORAGE_KEYS.ATTACHMENTS);
+          if (!list.some(a => a.id === resJson.attachment.id)) {
+            list.push(resJson.attachment);
+            localStorage.setItem(MOCK_STORAGE_KEYS.ATTACHMENTS, JSON.stringify(list));
+          }
+        }
+        if (resJson.case) {
+          const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
+          const idx = cases.findIndex(c => c.id === resJson.case.id);
+          if (idx >= 0) {
+            cases[idx] = resJson.case;
+          } else {
+            cases.push(resJson.case);
+          }
+          localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify(cases));
+        }
+      }
+
+      return resJson;
+    },
+
+    async delete(id: string): Promise<void> {
+      if (useMockData) {
+        const list = getMockData<FileAttachment>(MOCK_STORAGE_KEYS.ATTACHMENTS);
+        const filtered = list.filter(a => a.id !== id);
+        saveMockData(MOCK_STORAGE_KEYS.ATTACHMENTS, filtered);
+        return;
+      }
+      const { error } = await supabase!
+        .from('file_attachments')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  gdrive: {
+    async getSettings(): Promise<any> {
+      if (useMockData) {
+        const settings = localStorage.getItem('gdrive_shared_settings');
+        return settings ? JSON.parse(settings) : null;
+      }
+      const { data, error } = await supabase!
+        .from('gdrive_settings')
+        .select('*')
+        .eq('id', 'default')
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+
+    async saveSettings(settings: {
+      service_account_json: string;
+      root_folder_url: string;
+    }): Promise<void> {
+      if (useMockData) {
+        localStorage.setItem('gdrive_shared_settings', JSON.stringify(settings));
+        await fetch(`api.php?action=set&key=gdrive_shared_settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+        return;
+      }
+      const { error } = await supabase!
+        .from('gdrive_settings')
+        .upsert({
+          id: 'default',
+          ...settings,
+          updated_at: new Date().toISOString()
+        });
+      if (error) throw error;
+    },
+
+    async createCaseFolders(
+      caseId: string,
+      patientName: string,
+      dentistName: string
+    ): Promise<{
+      success: boolean;
+      dentistFolderId?: string;
+      caseFolderId?: string;
+      imagesFolderId?: string;
+      scanFolderId?: string;
+      resultFolderId?: string;
+      caseFolderUrl?: string;
+      case?: Case;
+      error?: string;
+    }> {
+      const res = await fetch(`api.php?action=create_folders&case_id=${encodeURIComponent(caseId)}&patient_name=${encodeURIComponent(patientName)}&dentist_name=${encodeURIComponent(dentistName)}`);
+      if (!res.ok) {
+        const errText = await res.text();
+        let errMsg = 'Erro desconhecido ao criar pastas no backend';
+        try {
+          const errData = JSON.parse(errText);
+          if (errData.error) errMsg = errData.error;
+        } catch {
+          errMsg = errText || `HTTP ${res.status}`;
+        }
+        throw new Error(errMsg);
+      }
+      const resJson = await res.json();
+      
+      if (useMockData && resJson.success && resJson.case) {
+        const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
+        const idx = cases.findIndex(c => c.id === resJson.case.id);
+        if (idx >= 0) {
+          cases[idx] = resJson.case;
+          localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify(cases));
+        }
+      }
+      
+      return resJson;
+    }
+  },
+
+  notes: {
+    async list(): Promise<InternalNote[]> {
+      if (useMockData) {
+        const notes = getMockData<InternalNote>(MOCK_STORAGE_KEYS.NOTES || 'matheus_protese_notes');
+        const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
+        return notes
+          .map(n => {
+            const creator = profiles.find(p => p.id === n.created_by);
+            return {
+              ...n,
+              created_by_name: creator ? creator.full_name : 'Desconhecido'
+            };
+          })
+          .sort((a, b) => {
+            // Pinned first
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            // Then sort by updated_at or created_at descending
+            const timeA = new Date(a.updated_at || a.created_at).getTime();
+            const timeB = new Date(b.updated_at || b.created_at).getTime();
+            return timeB - timeA;
+          });
+      }
+
+      const { data, error } = await supabase!
+        .from('internal_notes')
+        .select(`
+          *,
+          profiles:created_by (full_name)
+        `);
+      if (error) throw error;
+
+      return (data as any[]).map((d: any) => ({
+        ...d,
+        created_by_name: d.profiles?.full_name || 'Desconhecido'
+      })).sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        const timeA = new Date(a.updated_at || a.created_at).getTime();
+        const timeB = new Date(b.updated_at || b.created_at).getTime();
+        return timeB - timeA;
+      });
+    },
+
+    async save(note: InternalNote, userId: string, userName: string): Promise<InternalNote> {
+      const isEdit = !!note.id;
+      note.updated_at = new Date().toISOString();
+      
+      const newHistoryEntry = {
+        user_name: userName,
+        action: isEdit ? 'Edição da nota' : 'Criação da nota',
+        updated_at: note.updated_at
+      };
+
+      note.history = note.history || [];
+      note.history.push(newHistoryEntry);
+
+      if (useMockData) {
+        const notes = getMockData<InternalNote>(MOCK_STORAGE_KEYS.NOTES || 'matheus_protese_notes');
+        if (isEdit) {
+          const idx = notes.findIndex(n => n.id === note.id);
+          if (idx >= 0) {
+            notes[idx] = note;
+          }
+        } else {
+          note.id = genUUID();
+          note.created_at = note.updated_at;
+          note.created_by = userId;
+          notes.unshift(note);
+        }
+        saveMockData(MOCK_STORAGE_KEYS.NOTES || 'matheus_protese_notes', notes);
+        return note;
+      }
+
+      const payload = {
+        ...note,
+        created_by: isEdit ? note.created_by : userId,
+        created_at: isEdit ? note.created_at : note.updated_at
+      };
+      
+      // Delete client-only field before saving
+      delete (payload as any).created_by_name;
+
+      const { data, error } = await supabase!
+        .from('internal_notes')
+        .upsert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      return {
+        ...data,
+        created_by_name: userName
+      };
+    },
+
+    async delete(id: string): Promise<void> {
+      if (useMockData) {
+        const notes = getMockData<InternalNote>(MOCK_STORAGE_KEYS.NOTES || 'matheus_protese_notes');
+        const filtered = notes.filter(n => n.id !== id);
+        saveMockData(MOCK_STORAGE_KEYS.NOTES || 'matheus_protese_notes', filtered);
+        return;
+      }
+      const { error } = await supabase!
+        .from('internal_notes')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    }
   }
 };
 
-// Simple random UUID generator helper
 function genUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);

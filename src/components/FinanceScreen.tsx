@@ -11,9 +11,11 @@ export const FinanceScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'billing' | 'reports'>('billing');
+  const [activeTab, setActiveTab] = useState<'billing' | 'reports' | 'monthly_status'>('billing');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [expandedDentistId, setExpandedDentistId] = useState<string | null>(null);
+  const [showAllOutstanding, setShowAllOutstanding] = useState(false);
+  const [statusDentistFilter, setStatusDentistFilter] = useState('todos');
 
   // Payment modal state
   const [payingCase, setPayingCase] = useState<Case | null>(null);
@@ -23,6 +25,9 @@ export const FinanceScreen: React.FC = () => {
 
   // Clipboard feedback state
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Selection state for finance batch conciliation
+  const [selectedFinanceCaseIds, setSelectedFinanceCaseIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchData();
@@ -90,6 +95,45 @@ export const FinanceScreen: React.FC = () => {
     }
   };
 
+  const handleBulkPaymentFinance = async (pendingCasesToPay: Case[]) => {
+    if (pendingCasesToPay.length === 0) return;
+    if (!window.confirm(`Deseja dar baixa (quitação total) nos ${pendingCasesToPay.length} caso(s) selecionado(s)?`)) {
+      return;
+    }
+    try {
+      for (const c of pendingCasesToPay) {
+        const updatedCase: Case = {
+          ...c,
+          paid_value: c.total_value,
+          remaining_value: 0,
+          financial_status: 'pago',
+          updated_at: new Date().toISOString()
+        };
+        await api.cases.save(updatedCase, 'admin-1');
+      }
+      alert(`✅ Baixa registrada com sucesso para ${pendingCasesToPay.length} caso(s)!`);
+      setSelectedFinanceCaseIds({});
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao registrar pagamento em lote.');
+    }
+  };
+
+  const handleToggleExpand = (dentistId: string, pendingCases: Case[]) => {
+    if (expandedDentistId === dentistId) {
+      setExpandedDentistId(null);
+    } else {
+      setExpandedDentistId(dentistId);
+      // Marca todos os casos pendentes desse dentista como selecionados por padrão
+      const initialSelection: Record<string, boolean> = {};
+      pendingCases.forEach(c => {
+        initialSelection[c.id] = true;
+      });
+      setSelectedFinanceCaseIds(initialSelection);
+    }
+  };
+
   // Generate WhatsApp Message
   const getWhatsAppText = (dentist: Profile, pendingCases: Case[], andreyDiscountCredit: number = 0) => {
     const monthNames = [
@@ -107,7 +151,11 @@ export const FinanceScreen: React.FC = () => {
       const toothSelection = c.teeth_selection.teeth.length > 0 
         ? ` (Dentes: ${c.teeth_selection.teeth.join(',')})`
         : '';
-      itemsText += `• Paciente: ${c.patient_name}${toothSelection} — R$ ${c.remaining_value.toFixed(2)}\n`;
+      const dateObj = new Date(c.created_at);
+      const formattedDate = !isNaN(dateObj.getTime())
+        ? ` [${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}]`
+        : '';
+      itemsText += `• Paciente: ${c.patient_name}${toothSelection}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n`;
       totalOpen += c.remaining_value;
     });
 
@@ -134,26 +182,35 @@ export const FinanceScreen: React.FC = () => {
   const getDentistsWithBalances = () => {
     return dentists.map(d => {
       // filter cases of this dentist that belong to selected month and are active
-      const dentistCases = cases.filter(c => 
-        c.dentist_id === d.id && 
-        c.created_at.startsWith(selectedMonth) &&
-        c.status !== 'cancelado'
-      );
+      const dentistCases = cases.filter(c => {
+        if (c.dentist_id !== d.id || c.status === 'cancelado') return false;
+        
+        // Include cases of the selected month
+        if (c.created_at.startsWith(selectedMonth)) return true;
+        
+        // Include outstanding cases from other months if enabled
+        if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.remaining_value > 0) {
+          return true;
+        }
+        
+        return false;
+      });
       
       const pendingCases = dentistCases.filter(c => c.financial_status !== 'pago' && c.financial_status !== 'isento');
       const totalPending = pendingCases.reduce((sum, c) => sum + c.remaining_value, 0);
-      const totalBilled = dentistCases.reduce((sum, c) => sum + c.total_value, 0);
+      const totalBilled = dentistCases.filter(c => c.created_at.startsWith(selectedMonth)).reduce((sum, c) => sum + c.total_value, 0);
 
       // Calculate total credit discount for Dr. Andrey
       let andreyDiscountCredit = 0;
       const isAndrey = d.full_name.toLowerCase().includes('andrey');
       if (isAndrey) {
-        // Find all cases of the selected month that have cost_andrey_discounted === true
-        const discountedCases = cases.filter(c => 
-          c.created_at.startsWith(selectedMonth) &&
-          c.status !== 'cancelado' &&
-          c.cost_andrey_discounted === true
-        );
+        // Find all cases that have cost_andrey_discounted === true
+        const discountedCases = cases.filter(c => {
+          if (c.status === 'cancelado' || !c.cost_andrey_discounted) return false;
+          if (c.created_at.startsWith(selectedMonth)) return true;
+          if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
+          return false;
+        });
         andreyDiscountCredit = discountedCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
       }
 
@@ -207,7 +264,7 @@ export const FinanceScreen: React.FC = () => {
     const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado');
     
     let csvContent = '\uFEFF'; // UTF-8 BOM
-    csvContent += `Data Recebido;Data Entrega;Feito por;Cliente;Paciente;Tipo;Valor Matheus;Valor Planning;Valor Paschoal;Allan/Matheus;Andrey;Valor Total;Status;Elementos;Observações\n`;
+    csvContent += `Data Recebido;Data Entrega;Feito por;Cliente;Paciente;Tipo;Valor Matheus;Valor Planning;Valor Paschoal;Valor Total;Status;Elementos;Observações\n`;
 
     monthCases.forEach(c => {
       const dataRecebido = new Date(c.created_at).toLocaleDateString('pt-BR');
@@ -219,14 +276,12 @@ export const FinanceScreen: React.FC = () => {
       const valMatheus = c.value_matheus.toFixed(2).replace('.', ',');
       const valPlanning = c.value_planning.toFixed(2).replace('.', ',');
       const valPaschoal = c.value_paschoal.toFixed(2).replace('.', ',');
-      const allanMatheus = c.cost_allan_matheus.toFixed(2).replace('.', ',');
-      const andrey = c.cost_andrey.toFixed(2).replace('.', ',');
       const valTotal = c.total_value.toFixed(2).replace('.', ',');
       const statusText = c.status === 'em_analise' ? 'Aguardando Análise' : c.status;
       const elementos = c.teeth_selection.teeth.join(', ');
       const observacoes = c.dentist_notes || '';
 
-      csvContent += `${dataRecebido};${dataEntrega};${feitoPor};${cliente};${paciente};${tipo};${valMatheus};${valPlanning};${valPaschoal};${allanMatheus};${andrey};${valTotal};${statusText};${elementos};${observacoes}\n`;
+      csvContent += `${dataRecebido};${dataEntrega};${feitoPor};${cliente};${paciente};${tipo};${valMatheus};${valPlanning};${valPaschoal};${valTotal};${statusText};${elementos};${observacoes}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -254,15 +309,29 @@ export const FinanceScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Month Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Competência:</span>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
-          />
+        {/* Month Selector and Checkbox */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Competência:</span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="show-all-outstanding"
+              checked={showAllOutstanding}
+              onChange={(e) => setShowAllOutstanding(e.target.checked)}
+              className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
+            />
+            <label htmlFor="show-all-outstanding" className="text-[10px] font-semibold text-slate-500 cursor-pointer select-none">
+              Incluir atrasados de outros meses
+            </label>
+          </div>
         </div>
       </div>
 
@@ -288,6 +357,16 @@ export const FinanceScreen: React.FC = () => {
         >
           Relatório Geral do Mês
         </button>
+        <button
+          onClick={() => setActiveTab('monthly_status')}
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'monthly_status'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          Status dos Casos (Pago vs Aberto)
+        </button>
       </div>
 
       {activeTab === 'billing' ? (
@@ -310,7 +389,7 @@ export const FinanceScreen: React.FC = () => {
                     
                     {/* Dentist Header Card */}
                     <div 
-                      onClick={() => setExpandedDentistId(isExpanded ? null : dentist.id)}
+                      onClick={() => handleToggleExpand(dentist.id, pendingCases)}
                       className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-all"
                     >
                       <div className="space-y-0.5">
@@ -343,25 +422,40 @@ export const FinanceScreen: React.FC = () => {
                       <div className="p-4 bg-slate-50 border-t border-[#E2E8F0] space-y-4 animate-fade-in">
                         
                         {/* Action buttons */}
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleCopyText(whatsappText, dentist.id)}
-                            className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-lg flex items-center gap-1.5 transition-all"
-                          >
-                            {copiedId === dentist.id ? <Check size={12} /> : <Copy size={12} />}
-                            {copiedId === dentist.id ? 'Copiado!' : 'Copiar Mensagem'}
-                          </button>
-                          
-                          {dentist.whatsapp && (
-                            <a
-                              href={`https://wa.me/55${dentist.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappText)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                        <div className="flex flex-wrap gap-2 items-center justify-between">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleCopyText(whatsappText, dentist.id)}
                               className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-lg flex items-center gap-1.5 transition-all"
                             >
-                              <MessageSquare size={12} className="text-emerald-500" />
-                              Enviar WhatsApp
-                            </a>
+                              {copiedId === dentist.id ? <Check size={12} /> : <Copy size={12} />}
+                              {copiedId === dentist.id ? 'Copiado!' : 'Copiar Mensagem'}
+                            </button>
+                            
+                            {dentist.whatsapp && (
+                              <a
+                                href={`https://wa.me/55${dentist.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappText)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-lg flex items-center gap-1.5 transition-all"
+                              >
+                                <MessageSquare size={12} className="text-emerald-500" />
+                                Enviar WhatsApp
+                              </a>
+                            )}
+                          </div>
+
+                          {pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length > 0 && (
+                            <button
+                              onClick={() => {
+                                const selectedCases = pendingCases.filter(c => selectedFinanceCaseIds[c.id]);
+                                handleBulkPaymentFinance(selectedCases);
+                              }}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer animate-fade-in"
+                            >
+                              <Check size={12} />
+                              Dar Baixa em Lote ({pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length})
+                            </button>
                           )}
                         </div>
 
@@ -370,6 +464,25 @@ export const FinanceScreen: React.FC = () => {
                           <table className="w-full text-left text-xs">
                             <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
                               <tr>
+                                <th className="p-3 w-8">
+                                  <input
+                                    type="checkbox"
+                                    checked={pendingCases.length > 0 && pendingCases.every(c => selectedFinanceCaseIds[c.id])}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const nextSelection = { ...selectedFinanceCaseIds };
+                                      pendingCases.forEach(c => {
+                                        if (checked) {
+                                          nextSelection[c.id] = true;
+                                        } else {
+                                          delete nextSelection[c.id];
+                                        }
+                                      });
+                                      setSelectedFinanceCaseIds(nextSelection);
+                                    }}
+                                    className="w-3.5 h-3.5 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
+                                  />
+                                </th>
                                 <th className="p-3">ID do Caso</th>
                                 <th className="p-3">Paciente</th>
                                 <th className="p-3">Status</th>
@@ -380,15 +493,33 @@ export const FinanceScreen: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[#E2E8F0]">
-                              {pendingCases.length === 0 ? (
+                               {pendingCases.length === 0 ? (
                                 <tr>
-                                  <td colSpan={7} className="p-4 text-center text-muted-foreground text-xs">
-                                    Todos os casos deste mês já estão quitados!
+                                  <td colSpan={8} className="p-4 text-center text-[#94A3B8] text-xs font-semibold">
+                                    {showAllOutstanding ? 'Todos os casos deste período já estão quitados!' : 'Todos os casos deste mês já estão quitados!'}
                                   </td>
                                 </tr>
                               ) : (
                                 pendingCases.map(c => (
                                   <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                                    <td className="p-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!selectedFinanceCaseIds[c.id]}
+                                        onChange={() => {
+                                          setSelectedFinanceCaseIds(prev => {
+                                            const next = { ...prev };
+                                            if (next[c.id]) {
+                                              delete next[c.id];
+                                            } else {
+                                              next[c.id] = true;
+                                            }
+                                            return next;
+                                          });
+                                        }}
+                                        className="w-3.5 h-3.5 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
+                                      />
+                                    </td>
                                     <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
                                     <td className="p-3 font-semibold text-slate-900">{c.patient_name}</td>
                                     <td className="p-3">
@@ -397,7 +528,7 @@ export const FinanceScreen: React.FC = () => {
                                       </span>
                                     </td>
                                     <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
-                                    <td className="p-3 font-semibold text-emerald-600">R$ {c.paid_value.toFixed(2)}</td>
+                                    <td className={`p-3 font-semibold ${c.paid_value === 0 ? 'text-rose-600' : 'text-emerald-600'}`}>R$ {c.paid_value.toFixed(2)}</td>
                                     <td className="p-3 font-semibold text-amber-600">R$ {c.remaining_value.toFixed(2)}</td>
                                     <td className="p-3 text-center">
                                       <button
@@ -430,7 +561,7 @@ export const FinanceScreen: React.FC = () => {
 
           {/* Payment Conciliation Modal overlay */}
           {payingCase && (
-            <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative">
                 <button
                   onClick={() => setPayingCase(null)}
@@ -535,7 +666,7 @@ export const FinanceScreen: React.FC = () => {
           )}
 
         </div>
-      ) : (
+      ) : activeTab === 'reports' ? (
         /* GENERAL MONTHLY REPORT TAB */
         <div className="space-y-6 animate-fade-in">
           <div className="flex justify-between items-center">
@@ -630,10 +761,134 @@ export const FinanceScreen: React.FC = () => {
                   <span className="font-bold text-sm text-emerald-600">R$ {summary.netProfit.toFixed(2)}</span>
                 </div>
               </div>
-            </div>
-
+             </div>
+ 
+           </div>
+ 
+         </div>
+      ) : (
+        /* MONTHLY STATUS TAB */
+        <div className="space-y-6 animate-fade-in">
+          {/* Filtro de Dentista específico para esta aba */}
+          <div className="flex items-center gap-2 pb-2 bg-slate-50 p-3 rounded-xl border border-slate-200/60 max-w-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Filtrar por Dentista:</span>
+            <select
+              value={statusDentistFilter}
+              onChange={(e) => setStatusDentistFilter(e.target.value)}
+              className="px-2.5 py-1 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all cursor-pointer"
+            >
+              <option value="todos">Todos os Dentistas</option>
+              {dentists.map(d => (
+                <option key={d.id} value={d.id}>{d.full_name}</option>
+              ))}
+            </select>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* PAGOS */}
+            {(() => {
+              const paid = cases.filter(c => {
+                const isMonth = c.created_at.startsWith(selectedMonth);
+                const notCancelled = c.status !== 'cancelado';
+                const isPaid = c.financial_status === 'pago' || c.financial_status === 'isento';
+                const dentistMatch = statusDentistFilter === 'todos' || c.dentist_id === statusDentistFilter;
+                return isMonth && notCancelled && isPaid && dentistMatch;
+              });
+
+              return (
+                <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-3">
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-600 flex items-center gap-2">
+                      <ShieldCheck size={16} />
+                      Casos Pagos / Isentos ({paid.length})
+                    </h3>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                    {paid.length === 0 ? (
+                      <div className="text-center py-12 text-slate-400 text-xs italic">Nenhum caso pago este mês.</div>
+                    ) : (
+                      paid.map(c => {
+                        const dentist = dentists.find(d => d.id === c.dentist_id);
+                        return (
+                          <div key={c.id} className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl flex justify-between items-center text-xs">
+                            <div>
+                              <div className="font-bold text-slate-900">{c.patient_name}</div>
+                              <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                {dentist?.full_name} · <span className="font-mono">{c.id}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-emerald-600 block">R$ {c.total_value.toFixed(2)}</span>
+                              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider bg-slate-100 px-1.5 py-0.5 rounded-md mt-1 inline-block">
+                                {c.financial_status}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* EM ABERTO */}
+            {(() => {
+              const pending = cases.filter(c => {
+                const isMonth = c.created_at.startsWith(selectedMonth);
+                const notCancelled = c.status !== 'cancelado';
+                const isOpen = c.financial_status !== 'pago' && c.financial_status !== 'isento';
+                const dentistMatch = statusDentistFilter === 'todos' || c.dentist_id === statusDentistFilter;
+                return isMonth && notCancelled && isOpen && dentistMatch;
+              });
+
+              return (
+                <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-3">
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-amber-600 flex items-center gap-2">
+                      <TrendingUp size={16} className="text-amber-500" />
+                      Casos em Aberto / Pendentes ({pending.length})
+                    </h3>
+                  </div>
+
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                    {pending.length === 0 ? (
+                      <div className="text-center py-12 text-slate-400 text-xs italic">Nenhum caso em aberto este mês.</div>
+                    ) : (
+                      pending.map(c => {
+                        const dentist = dentists.find(d => d.id === c.dentist_id);
+                        return (
+                          <div key={c.id} className="p-3 bg-white border border-[#E2E8F0] rounded-xl flex justify-between items-center text-xs shadow-2xs hover:shadow-xs transition-all">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <div className="font-bold text-slate-900 truncate">{c.patient_name}</div>
+                              <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                {dentist?.full_name} · <span className="font-mono">{c.id}</span>
+                              </div>
+                              <div className="text-[9px] font-semibold text-slate-500 mt-1">
+                                Pago: R$ {c.paid_value.toFixed(2)} / Resta: <span className="text-rose-600 font-bold">R$ {c.remaining_value.toFixed(2)}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <span className="font-bold text-slate-700">R$ {c.total_value.toFixed(2)}</span>
+                              <button
+                                onClick={() => setPayingCase(c)}
+                                className="px-2 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[9px] font-bold rounded-md transition-all cursor-pointer"
+                              >
+                                Dar Baixa
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+          </div>
         </div>
       )}
     </div>
