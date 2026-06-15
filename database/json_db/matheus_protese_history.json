@@ -42598,98 +42598,9 @@
         "created_at": "2026-06-15T18:27:18.874Z"
     },
     {
-        "id": "h-1781549379777-gi75perjr",
-        "case_id": "CASE-202606-0001",
-        "user_id": "admin-1",
-        "action": "edit",
-        "previous_data": {
-            "id": "CASE-202606-0001",
-            "dentist_id": "dentist-1",
-            "patient_name": "Gabriela S",
-            "created_at": "2026-06-15T11:31:15.975Z",
-            "requested_delivery_date": "2026-06-23",
-            "final_delivery_date": "2026-06-23",
-            "status": "recebido",
-            "financial_status": "pago",
-            "financial_released": false,
-            "teeth_selection": {
-                "teeth": [
-                    17,
-                    18
-                ],
-                "type": "individual"
-            },
-            "dentist_notes": "Observações Clínicas \/ Recomendações",
-            "internal_notes": "",
-            "has_photo": true,
-            "has_file": true,
-            "estimated_hours": 8,
-            "value_matheus": 800,
-            "value_planning": 0,
-            "value_paschoal": 0,
-            "cost_allan_matheus": 0,
-            "cost_allan_solo": 0,
-            "cost_andrey": 0,
-            "cost_andrey_discounted": false,
-            "other_internal_costs": [],
-            "total_value": 800,
-            "paid_value": 800,
-            "remaining_value": 0,
-            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Gabriela S - CASE-202606-0001",
-            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Gabriela%20S - CASE-202606-0001",
-            "drive_status": "not_created",
-            "selected_services": [
-                "s5"
-            ],
-            "updated_at": "2026-06-15T14:09:48.221Z"
-        },
-        "new_data": {
-            "id": "CASE-202606-0001",
-            "dentist_id": "dentist-1",
-            "patient_name": "Gabriela S",
-            "created_at": "2026-06-15T11:31:15.975Z",
-            "requested_delivery_date": "2026-06-23",
-            "final_delivery_date": "2026-06-23",
-            "status": "recebido",
-            "financial_status": "pago",
-            "financial_released": false,
-            "teeth_selection": {
-                "teeth": [
-                    17,
-                    18
-                ],
-                "type": "individual"
-            },
-            "dentist_notes": "Observações Clínicas \/ Recomendações",
-            "internal_notes": "",
-            "has_photo": true,
-            "has_file": true,
-            "estimated_hours": 0,
-            "value_matheus": 800,
-            "value_planning": 0,
-            "value_paschoal": 0,
-            "cost_allan_matheus": 0,
-            "cost_allan_solo": 0,
-            "cost_andrey": 0,
-            "cost_andrey_discounted": false,
-            "other_internal_costs": [],
-            "total_value": 800,
-            "paid_value": 800,
-            "remaining_value": 0,
-            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Gabriela S - CASE-202606-0001",
-            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Gabriela%20S - CASE-202606-0001",
-            "drive_status": "not_created",
-            "selected_services": [
-                "s5"
-            ],
-            "updated_at": "2026-06-15T18:49:39.776Z"
-        },
-        "created_at": "2026-06-15T18:49:39.777Z"
-    },
-    {
-        "id": "h-1781549433520-j1rdrbhc6",
+        "id": "h-1781549847373-xfj6csubj",
         "case_id": "CASE-202606-0003",
-        "user_id": "dentist-1",
+        "user_id": "admin-1",
         "action": "edit",
         "previous_data": {
             "id": "CASE-202606-0003",
@@ -42767,8 +42678,9 @@
             "patient_name": "Test Patient X",
             "created_at": "2026-06-15T14:18:08.780Z",
             "requested_delivery_date": "60630-02-20",
-            "status": "em_analise",
+            "status": "aguardando_arquivos",
             "financial_status": "aguardando_pagamento",
+            "financial_released": false,
             "teeth_selection": {
                 "teeth": [
                     11,
@@ -42804,9 +42716,10 @@
                     47,
                     48
                 ],
-                "type": "todos"
+                "type": "individual"
             },
             "dentist_notes": "",
+            "internal_notes": "",
             "has_photo": true,
             "has_file": true,
             "estimated_hours": 0,
@@ -42816,6 +42729,7 @@
             "cost_allan_matheus": 0,
             "cost_allan_solo": 0,
             "cost_andrey": 0,
+            "cost_andrey_discounted": false,
             "other_internal_costs": [],
             "total_value": 12800,
             "paid_value": 0,
@@ -42823,18 +42737,17 @@
             "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Test Patient X - CASE-202606-0003",
             "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Test%20Patient%20X - CASE-202606-0003",
             "drive_status": "not_created",
-            "financial_released": false,
             "selected_services": [
                 "s5"
             ],
-            "updated_at": "2026-06-15T18:50:33.516Z"
+            "updated_at": "2026-06-15T18:57:27.369Z"
         },
-        "created_at": "2026-06-15T18:50:33.520Z"
+        "created_at": "2026-06-15T18:57:27.373Z"
     },
     {
-        "id": "h-1781549506567-fy632f5lw",
+        "id": "h-1781549999673-0fud8m8bu",
         "case_id": "CASE-202606-0003",
-        "user_id": "dentist-1",
+        "user_id": "admin-1",
         "action": "edit",
         "previous_data": {
             "id": "CASE-202606-0003",
@@ -42842,8 +42755,9 @@
             "patient_name": "Test Patient X",
             "created_at": "2026-06-15T14:18:08.780Z",
             "requested_delivery_date": "60630-02-20",
-            "status": "em_analise",
+            "status": "aguardando_arquivos",
             "financial_status": "aguardando_pagamento",
+            "financial_released": false,
             "teeth_selection": {
                 "teeth": [
                     11,
@@ -42878,145 +42792,103 @@
                     46,
                     47,
                     48
-                ],
-                "type": "todos"
-            },
-            "dentist_notes": "",
-            "has_photo": true,
-            "has_file": true,
-            "estimated_hours": 0,
-            "value_matheus": 12800,
-            "value_planning": 0,
-            "value_paschoal": 0,
-            "cost_allan_matheus": 0,
-            "cost_allan_solo": 0,
-            "cost_andrey": 0,
-            "other_internal_costs": [],
-            "total_value": 12800,
-            "paid_value": 0,
-            "remaining_value": 12800,
-            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Test Patient X - CASE-202606-0003",
-            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Test%20Patient%20X - CASE-202606-0003",
-            "drive_status": "not_created",
-            "financial_released": false,
-            "selected_services": [
-                "s5"
-            ],
-            "updated_at": "2026-06-15T18:50:33.516Z"
-        },
-        "new_data": {
-            "id": "CASE-202606-0003",
-            "dentist_id": "dentist-1",
-            "patient_name": "rebeca",
-            "created_at": "2026-06-15T14:18:08.780Z",
-            "requested_delivery_date": "60630-02-20",
-            "status": "em_analise",
-            "financial_status": "aguardando_pagamento",
-            "teeth_selection": {
-                "teeth": [
-                    11,
-                    12,
-                    13,
-                    14,
-                    15,
-                    16,
-                    17,
-                    18,
-                    21,
-                    22,
-                    23,
-                    24,
-                    25,
-                    26,
-                    27,
-                    28,
-                    31,
-                    32,
-                    33,
-                    34,
-                    35,
-                    36,
-                    37,
-                    38,
-                    41,
-                    42,
-                    43,
-                    44,
-                    45,
-                    46,
-                    47,
-                    48
-                ],
-                "type": "todos"
-            },
-            "dentist_notes": "",
-            "has_photo": true,
-            "has_file": true,
-            "estimated_hours": 0,
-            "value_matheus": 12800,
-            "value_planning": 0,
-            "value_paschoal": 0,
-            "cost_allan_matheus": 0,
-            "cost_allan_solo": 0,
-            "cost_andrey": 0,
-            "other_internal_costs": [],
-            "total_value": 12800,
-            "paid_value": 0,
-            "remaining_value": 12800,
-            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Test Patient X - CASE-202606-0003",
-            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Test%20Patient%20X - CASE-202606-0003",
-            "drive_status": "not_created",
-            "financial_released": false,
-            "selected_services": [
-                "s5"
-            ],
-            "updated_at": "2026-06-15T18:51:46.564Z"
-        },
-        "created_at": "2026-06-15T18:51:46.567Z"
-    },
-    {
-        "id": "h-1781549557428-c9mu3yhus",
-        "case_id": "CASE-202606-0004",
-        "user_id": "dentist-1",
-        "action": "create",
-        "previous_data": null,
-        "new_data": {
-            "id": "CASE-202606-0004",
-            "dentist_id": "dentist-1",
-            "patient_name": "julia",
-            "created_at": "2026-06-15T18:52:37.425Z",
-            "requested_delivery_date": "2026-06-22",
-            "status": "em_analise",
-            "financial_status": "aguardando_pagamento",
-            "teeth_selection": {
-                "teeth": [
-                    16
                 ],
                 "type": "individual"
             },
             "dentist_notes": "",
-            "has_photo": false,
+            "internal_notes": "",
+            "has_photo": true,
             "has_file": true,
             "estimated_hours": 0,
-            "value_matheus": 50,
+            "value_matheus": 12800,
             "value_planning": 0,
             "value_paschoal": 0,
             "cost_allan_matheus": 0,
             "cost_allan_solo": 0,
             "cost_andrey": 0,
+            "cost_andrey_discounted": false,
             "other_internal_costs": [],
-            "total_value": 50,
+            "total_value": 12800,
             "paid_value": 0,
-            "remaining_value": 50,
-            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/julia - CASE-202606-0004",
-            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/julia - CASE-202606-0004",
+            "remaining_value": 12800,
+            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Test Patient X - CASE-202606-0003",
+            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Test%20Patient%20X - CASE-202606-0003",
             "drive_status": "not_created",
-            "financial_released": false,
             "selected_services": [
-                "s2"
+                "s5"
             ],
-            "updated_at": "2026-06-15T18:52:37.425Z"
+            "updated_at": "2026-06-15T18:57:27.369Z"
         },
-        "created_at": "2026-06-15T18:52:37.428Z"
+        "new_data": {
+            "id": "CASE-202606-0003",
+            "dentist_id": "dentist-1",
+            "patient_name": "Test Patient X",
+            "created_at": "2026-06-15T14:18:08.780Z",
+            "requested_delivery_date": "60630-02-20",
+            "status": "aguardando_arquivos",
+            "financial_status": "aguardando_pagamento",
+            "financial_released": false,
+            "teeth_selection": {
+                "teeth": [
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    21,
+                    22,
+                    23,
+                    24,
+                    25,
+                    26,
+                    27,
+                    28,
+                    31,
+                    32,
+                    33,
+                    34,
+                    35,
+                    36,
+                    37,
+                    38,
+                    41,
+                    42,
+                    43,
+                    44,
+                    45,
+                    46,
+                    47,
+                    48
+                ],
+                "type": "individual"
+            },
+            "dentist_notes": "",
+            "internal_notes": "",
+            "has_photo": true,
+            "has_file": true,
+            "estimated_hours": 0,
+            "value_matheus": 12800,
+            "value_planning": 0,
+            "value_paschoal": 0,
+            "cost_allan_matheus": 0,
+            "cost_allan_solo": 0,
+            "cost_andrey": 0,
+            "cost_andrey_discounted": false,
+            "other_internal_costs": [],
+            "total_value": 12800,
+            "paid_value": 0,
+            "remaining_value": 12800,
+            "google_drive_folder_id": "1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr. Allan\/Test Patient X - CASE-202606-0003",
+            "google_drive_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN\/Dr.%20Allan\/Test%20Patient%20X - CASE-202606-0003",
+            "drive_status": "not_created",
+            "selected_services": [
+                "s5"
+            ],
+            "updated_at": "2026-06-15T18:59:59.670Z"
+        },
+        "created_at": "2026-06-15T18:59:59.673Z"
     }
 ]

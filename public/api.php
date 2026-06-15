@@ -181,7 +181,8 @@ class GoogleDriveServiceAccount {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/x-www-form-urlencoded'
             ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -237,7 +238,8 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/x-www-form-urlencoded'
         ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -301,7 +303,8 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $finalHeaders);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, is_string($body) ? $body : json_encode($body));
@@ -330,7 +333,7 @@ class GoogleDriveServiceAccount {
 
     public function findOrCreateFolder($name, $parentId) {
         $query = "name='" . str_replace("'", "\\'", $name) . "' and mimeType='application/vnd.google-apps.folder' and '" . $parentId . "' in parents and trashed=false";
-        $endpoint = '/drive/v3/files?q=' . urlencode($query) . '&fields=files(id,name,webViewLink)&spaces=drive';
+        $endpoint = '/drive/v3/files?q=' . urlencode($query) . '&fields=files(id,name,webViewLink)&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true';
         
         $res = $this->request($endpoint, 'GET');
         
@@ -348,7 +351,7 @@ class GoogleDriveServiceAccount {
             'parents' => [$parentId]
         ];
         
-        $createRes = $this->request('/drive/v3/files?fields=id,name,webViewLink', 'POST', $body);
+        $createRes = $this->request('/drive/v3/files?fields=id,name,webViewLink&supportsAllDrives=true', 'POST', $body);
         
         if ($createRes['status'] !== 200) {
             throw new Exception('Erro ao criar pasta "' . $name . '": HTTP ' . $createRes['status'] . ' - ' . $createRes['body']);
@@ -386,7 +389,7 @@ class GoogleDriveServiceAccount {
             'Content-Length: ' . strlen($body)
         ];
         
-        $res = $this->request('/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink', 'POST', $body, $headers);
+        $res = $this->request('/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink&supportsAllDrives=true', 'POST', $body, $headers);
         
         if ($res['status'] !== 200) {
             throw new Exception('Erro ao enviar arquivo "' . $fileName . '": HTTP ' . $res['status'] . ' - ' . $res['body']);
@@ -565,7 +568,7 @@ if ($action === 'test_drive') {
         }
         
         // Test Root Folder Existence
-        $res = $driver->request('/drive/v3/files/' . $rootFolderId . '?fields=id,name,trashed', 'GET');
+        $res = $driver->request('/drive/v3/files/' . $rootFolderId . '?fields=id,name,trashed&supportsAllDrives=true', 'GET');
         if ($res['status'] !== 200 || !empty($res['data']['trashed'])) {
             logBackendError("Pasta raiz não encontrada no Drive: HTTP " . $res['status'] . " - " . $res['body']);
             echo json_encode(['success' => false, 'error' => 'Pasta raiz não encontrada']);
@@ -580,7 +583,7 @@ if ($action === 'test_drive') {
             'parents' => [$rootFolderId]
         ];
         
-        $createRes = $driver->request('/drive/v3/files?fields=id,name', 'POST', $body);
+        $createRes = $driver->request('/drive/v3/files?fields=id,name&supportsAllDrives=true', 'POST', $body);
         if ($createRes['status'] !== 200 || empty($createRes['data']['id'])) {
             logBackendError("Sem permissão de escrita na pasta raiz do Drive: HTTP " . $createRes['status'] . " - " . $createRes['body']);
             echo json_encode(['success' => false, 'error' => 'Sem permissão na pasta raiz']);
@@ -590,7 +593,7 @@ if ($action === 'test_drive') {
         $tempFolderId = $createRes['data']['id'];
         
         // Delete temporary folder
-        $driver->request('/drive/v3/files/' . $tempFolderId, 'DELETE');
+        $driver->request('/drive/v3/files/' . $tempFolderId . '?supportsAllDrives=true', 'DELETE');
         
         echo json_encode([
             'success' => true,
@@ -638,7 +641,7 @@ if ($action === 'view_drive_structure') {
         $driver = new GoogleDriveServiceAccount(json_encode($creds));
         
         // Obter detalhes da pasta raiz
-        $rootRes = $driver->request('/drive/v3/files/' . $rootFolderId . '?fields=id,name', 'GET');
+        $rootRes = $driver->request('/drive/v3/files/' . $rootFolderId . '?fields=id,name&supportsAllDrives=true', 'GET');
         if ($rootRes['status'] !== 200) {
             echo json_encode(['success' => false, 'error' => 'Não foi possível acessar a pasta raiz.']);
             exit;
@@ -647,7 +650,7 @@ if ($action === 'view_drive_structure') {
         
         // Listar pastas de dentistas na pasta raiz
         $query = "'" . $rootFolderId . "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
-        $listRes = $driver->request('/drive/v3/files?q=' . urlencode($query) . '&fields=files(id,name)&pageSize=100', 'GET');
+        $listRes = $driver->request('/drive/v3/files?q=' . urlencode($query) . '&fields=files(id,name)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true', 'GET');
         
         if ($listRes['status'] !== 200) {
             echo json_encode(['success' => false, 'error' => 'Não foi possível listar as pastas do Google Drive.']);

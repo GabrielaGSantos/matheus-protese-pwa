@@ -454,5 +454,35 @@
         "uploaded_by": "dentist-1",
         "id": "att-1781549558268-q1yljsjyp",
         "created_at": "2026-06-15T18:52:38.268Z"
+    },
+    {
+        "case_id": "CASE-202606-0005",
+        "google_drive_file_id": "gfile-error-1781549923621",
+        "file_name": "screencapture-assessores-academybrasil-br-2026-06-08-17_06_03.png (Falha no envio: Erro de rede (cURL) na chamada do Google Drive: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 6639301,
+        "mime_type": "image\/jpeg",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549923621-xfey9pkdd",
+        "created_at": "2026-06-15T18:58:43.621Z"
+    },
+    {
+        "case_id": "CASE-202606-0005",
+        "google_drive_file_id": "gfile-error-1781549933821",
+        "file_name": "PM Peixoto de Azevedo - Materiais (Inscrições).zip (Falha no envio: Erro de rede (cURL) ao autenticar com o Google: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 1123784,
+        "mime_type": "application\/octet-stream",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549933821-tfqiqzaqu",
+        "created_at": "2026-06-15T18:58:53.821Z"
+    },
+    {
+        "case_id": "CASE-202606-0005",
+        "google_drive_file_id": "gfile-error-1781549998226",
+        "file_name": "screencapture-assessores-academybrasil-br-2026-06-08-17_06_03.png (Falha no envio: Erro de rede (cURL) ao autenticar com o Google: TLS connect error: error:0A000126:SSL routines::unexpected eof while reading)",
+        "file_size": 6639301,
+        "mime_type": "image\/jpeg",
+        "uploaded_by": "dentist-1",
+        "id": "att-1781549998226-o6n7cvkzc",
+        "created_at": "2026-06-15T18:59:58.226Z"
     }
 ]
