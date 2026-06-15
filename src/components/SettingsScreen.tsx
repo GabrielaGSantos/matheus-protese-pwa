@@ -104,7 +104,6 @@ export const SettingsScreen: React.FC = () => {
     fetchLogs();
     fetchGDriveSettings();
 
-    // Lógica para detectar código de autorização do Google Drive OAuth 2.0
     const checkOAuthCode = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
@@ -113,6 +112,7 @@ export const SettingsScreen: React.FC = () => {
         setIsExchangingCode(true);
         try {
           const redirectUri = window.location.origin + '/settings';
+          console.log("[Google Drive OAuth] Trocando código. redirect_uri enviado:", redirectUri);
           const updatedSettings = await api.gdrive.exchangeCode(code, redirectUri);
           alert('✅ Conta Google conectada com sucesso ao Google Drive!');
           
@@ -214,7 +214,9 @@ export const SettingsScreen: React.FC = () => {
     const saved = await handleSaveDriveConfig();
     if (!saved) return;
 
-    const redirectUri = encodeURIComponent(window.location.origin + '/settings');
+    const rawRedirectUri = window.location.origin + '/settings';
+    console.log("[Google Drive OAuth] Redirecionando para login do Google. redirect_uri enviado:", rawRedirectUri);
+    const redirectUri = encodeURIComponent(rawRedirectUri);
     const scope = encodeURIComponent('https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${oauthClientId.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=settings`;
     

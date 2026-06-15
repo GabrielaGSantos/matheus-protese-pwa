@@ -1354,9 +1354,14 @@ if ($action === 'exchange_code') {
     curl_close($ch);
 
     if ($httpCode !== 200) {
-        logBackendError("Google Token Exchange falhou com HTTP $httpCode: $response");
+        logBackendError("Google Token Exchange falhou com HTTP $httpCode: $response | redirect_uri enviado: $redirectUri");
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Google retornou erro na troca de código: HTTP ' . $httpCode, 'details' => json_decode($response, true)]);
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Google retornou erro na troca de código: HTTP ' . $httpCode, 
+            'details' => json_decode($response, true),
+            'sent_redirect_uri' => $redirectUri
+        ]);
         exit;
     }
 
