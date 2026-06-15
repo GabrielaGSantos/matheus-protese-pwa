@@ -209,16 +209,21 @@ class GoogleDriveServiceAccount {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/x-www-form-urlencoded'
             ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErrno = curl_errno($ch);
+            $curlError = $curlErrno ? curl_error($ch) : '';
 
-            if (curl_errno($ch)) {
-                $error = curl_error($ch);
+            // Log de auditoria detalhado da renovação de token
+            logBackendAudit("Chamada Token Refresh | Endpoint: POST " . ($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token') . " | HTTP Status: $httpCode | cURL Errno: $curlErrno | cURL Error: " . ($curlError ?: 'Nenhum') . " | Response: " . $response);
+
+            if ($curlErrno) {
+                logBackendError("Erro cURL ao atualizar token: $curlError ($curlErrno) | HTTP Status: $httpCode | Endpoint: POST " . ($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token'));
                 curl_close($ch);
-                throw new Exception('Erro de rede (cURL) ao autenticar via OAuth de Usuário com o Google: ' . $error);
+                throw new Exception('Erro de rede (cURL) ao autenticar via OAuth de Usuário com o Google: ' . $curlError . ' (cURL ' . $curlErrno . ')');
             }
             curl_close($ch);
 
@@ -266,16 +271,20 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/x-www-form-urlencoded'
         ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrno = curl_errno($ch);
+        $curlError = $curlErrno ? curl_error($ch) : '';
 
-        if (curl_errno($ch)) {
-            $error = curl_error($ch);
+        logBackendAudit("Chamada JWT Token | Endpoint: POST " . ($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token') . " | HTTP Status: $httpCode | cURL Errno: $curlErrno | cURL Error: " . ($curlError ?: 'Nenhum') . " | Response: " . $response);
+
+        if ($curlErrno) {
+            logBackendError("Erro cURL no JWT token request: $curlError ($curlErrno) | HTTP Status: $httpCode | Endpoint: POST " . ($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token'));
             curl_close($ch);
-            throw new Exception('Erro de rede (cURL) ao autenticar com o Google: ' . $error);
+            throw new Exception('Erro de rede (cURL) ao autenticar com o Google: ' . $curlError . ' (cURL ' . $curlErrno . ')');
         }
         curl_close($ch);
 
@@ -331,8 +340,8 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $finalHeaders);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, is_string($body) ? $body : json_encode($body));
@@ -340,14 +349,16 @@ class GoogleDriveServiceAccount {
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_errno($ch) ? curl_error($ch) : null;
+        $curlErrno = curl_errno($ch);
+        $curlError = $curlErrno ? curl_error($ch) : null;
         
         // Logar resposta bruta do Google Drive
-        logBackendAudit("Chamada Google Drive: $method $endpoint | HTTP Status: $httpCode | cURL Error: " . ($curlError ?: 'Nenhum') . " | Body: " . $response);
+        logBackendAudit("Chamada Google Drive: $method $url | HTTP Status: $httpCode | cURL Errno: $curlErrno | cURL Error: " . ($curlError ?: 'Nenhum') . " | Body: " . $response);
         
-        if ($curlError) {
+        if ($curlErrno) {
+            logBackendError("Erro cURL na chamada do Google Drive: $method $url | Errno: $curlErrno | Error: $curlError | HTTP Status: $httpCode");
             curl_close($ch);
-            throw new Exception('Erro de rede (cURL) na chamada do Google Drive: ' . $curlError);
+            throw new Exception("Erro de rede (cURL) na chamada do Google Drive (cURL $curlErrno: $curlError). Endpoint: $method $url");
         }
         
         curl_close($ch);
@@ -1337,30 +1348,43 @@ if ($action === 'exchange_code') {
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/x-www-form-urlencoded'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErrno = curl_errno($ch);
+    $curlError = $curlErrno ? curl_error($ch) : '';
 
-    if (curl_errno($ch)) {
-        $error = curl_error($ch);
+    logBackendAudit("Chamada Token Exchange | Endpoint: POST https://oauth2.googleapis.com/token | HTTP Status: $httpCode | cURL Errno: $curlErrno | cURL Error: " . ($curlError ?: 'Nenhum') . " | Response: " . $response);
+
+    if ($curlErrno) {
+        logBackendError("Erro cURL no token exchange: $curlError ($curlErrno) | HTTP Status: $httpCode | Endpoint: POST https://oauth2.googleapis.com/token");
         curl_close($ch);
-        logBackendError("Erro cURL no token exchange: " . $error);
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Erro de rede ao falar com o Google: ' . $error]);
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Erro de rede ao falar com o Google: ' . $curlError . ' (cURL ' . $curlErrno . ')',
+            'curl_errno' => $curlErrno,
+            'curl_error' => $curlError,
+            'http_status' => $httpCode,
+            'endpoint' => 'POST https://oauth2.googleapis.com/token'
+        ]);
         exit;
     }
     curl_close($ch);
 
     if ($httpCode !== 200) {
-        logBackendError("Google Token Exchange falhou com HTTP $httpCode: $response | redirect_uri enviado: $redirectUri");
+        logBackendError("Google Token Exchange falhou com HTTP $httpCode | Response: $response | redirect_uri enviado: $redirectUri");
         http_response_code(500);
         echo json_encode([
             'success' => false, 
             'error' => 'Google retornou erro na troca de código: HTTP ' . $httpCode, 
             'details' => json_decode($response, true),
-            'sent_redirect_uri' => $redirectUri
+            'sent_redirect_uri' => $redirectUri,
+            'http_status' => $httpCode,
+            'response_raw' => $response,
+            'endpoint' => 'POST https://oauth2.googleapis.com/token'
         ]);
         exit;
     }
@@ -1391,11 +1415,43 @@ if ($action === 'exchange_code') {
     curl_setopt($chUserInfo, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $accessToken
     ]);
-    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 2);
     $userInfoResponse = curl_exec($chUserInfo);
     $userInfoCode = curl_getinfo($chUserInfo, CURLINFO_HTTP_CODE);
+    $userinfoErrno = curl_errno($chUserInfo);
+    $userinfoError = $userinfoErrno ? curl_error($chUserInfo) : '';
+
+    logBackendAudit("Chamada UserInfo | Endpoint: GET https://www.googleapis.com/oauth2/v2/userinfo | HTTP Status: $userInfoCode | cURL Errno: $userinfoErrno | cURL Error: " . ($userinfoError ?: 'Nenhum') . " | Response: " . $userInfoResponse);
+
+    if ($userinfoErrno) {
+        logBackendError("Erro cURL no userinfo: $userinfoError ($userinfoErrno) | HTTP Status: $userInfoCode | Endpoint: GET https://www.googleapis.com/oauth2/v2/userinfo");
+        curl_close($chUserInfo);
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Erro de rede ao buscar dados do usuário Google: ' . $userinfoError . ' (cURL ' . $userinfoErrno . ')',
+            'curl_errno' => $userinfoErrno,
+            'curl_error' => $userinfoError,
+            'http_status' => $userInfoCode,
+            'endpoint' => 'GET https://www.googleapis.com/oauth2/v2/userinfo'
+        ]);
+        exit;
+    }
     curl_close($chUserInfo);
+
+    if ($userInfoCode !== 200) {
+        logBackendError("Obtenção do UserInfo do Google falhou com HTTP $userInfoCode | Response: $userInfoResponse");
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Google retornou erro ao obter dados do usuário: HTTP ' . $userInfoCode,
+            'http_status' => $userInfoCode,
+            'response_raw' => $userInfoResponse,
+            'endpoint' => 'GET https://www.googleapis.com/oauth2/v2/userinfo'
+        ]);
+        exit;
+    }
 
     $email = '';
     if ($userInfoCode === 200) {
