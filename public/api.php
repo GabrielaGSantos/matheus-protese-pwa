@@ -46,7 +46,17 @@ function getGoogleCredentials() {
     $privateFile = __DIR__ . '/../database/gdrive_private_credentials.json';
     if (file_exists($privateFile)) {
         $data = file_get_contents($privateFile);
-        return json_decode($data, true);
+        $creds = json_decode($data, true);
+        if ($creds) {
+            $email = $creds['client_email'] ?? '';
+            $isServiceAccount = isset($creds['private_key']) || preg_match('/gserviceaccount\.com$/', $email);
+            if ($isServiceAccount) {
+                // Deletar credenciais antigas de Service Account
+                @unlink($privateFile);
+                return null;
+            }
+            return $creds;
+        }
     }
     return null;
 }
@@ -107,19 +117,32 @@ function getGDrivePublicSettings($dataDir) {
     unset($settings['client_secret']);
     unset($settings['refresh_token']);
     
+    $email = $settings['client_email'] ?? '';
+    $isServiceAccountEmail = preg_match('/gserviceaccount\.com$/', $email);
+    
     $creds = getGoogleCredentials();
-    if ($creds) {
+
+    if ($creds && !$isServiceAccountEmail) {
         $settings['client_email'] = $creds['client_email'] ?? '';
-        $settings['project_id'] = $creds['project_id'] ?? '';
-        $settings['is_oauth_user'] = isset($creds['client_id']);
-        $settings['oauth_client_id'] = $creds['client_id'] ?? '';
-        $settings['drive_connected'] = (isset($creds['refresh_token']) || isset($creds['private_key']));
-    } else {
-        $settings['client_email'] = '';
         $settings['project_id'] = '';
-        $settings['is_oauth_user'] = false;
-        $settings['oauth_client_id'] = '';
-        $settings['drive_connected'] = false;
+        $settings['is_oauth_user'] = true;
+        $settings['oauth_client_id'] = $creds['client_id'] ?? '';
+        $settings['drive_connected'] = isset($creds['refresh_token']) && !empty($creds['refresh_token']);
+    } else {
+        if ($isServiceAccountEmail) {
+            $settings['client_email'] = '';
+            $settings['project_id'] = '';
+            $settings['is_oauth_user'] = false;
+            $settings['oauth_client_id'] = '';
+            $settings['drive_connected'] = false;
+            file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        } else {
+            $settings['client_email'] = '';
+            $settings['project_id'] = '';
+            $settings['is_oauth_user'] = false;
+            $settings['oauth_client_id'] = '';
+            $settings['drive_connected'] = false;
+        }
     }
     return $settings;
 }
@@ -150,11 +173,16 @@ class GoogleDriveServiceAccount {
             throw new Exception('JSON de credenciais do Google Drive inválido.');
         }
 
-        $isServiceAccount = isset($this->credentials['private_key']) && isset($this->credentials['client_email']);
-        $isUserOAuth = isset($this->credentials['client_id']) && isset($this->credentials['client_secret']) && isset($this->credentials['refresh_token']);
+        $email = $this->credentials['client_email'] ?? '';
+        $isServiceAccount = isset($this->credentials['private_key']) || preg_match('/gserviceaccount\.com$/', $email);
 
-        if (!$isServiceAccount && !$isUserOAuth) {
-            throw new Exception('Credenciais do Google Drive inválidas. O JSON deve conter as chaves de Conta de Serviço (private_key, client_email) OU chaves de aplicativo OAuth2 do Usuário (client_id, client_secret, refresh_token).');
+        if ($isServiceAccount) {
+            throw new Exception('Integração por Service Account desativada. Por favor, configure o Google Drive via OAuth de Usuário.');
+        }
+
+        $isUserOAuth = isset($this->credentials['client_id']) && isset($this->credentials['client_secret']) && isset($this->credentials['refresh_token']);
+        if (!$isUserOAuth) {
+            throw new Exception('Google Drive não conectado ou credenciais OAuth inválidas. Por favor, conecte sua conta Google nas Configurações.');
         }
     }
 
@@ -1194,6 +1222,12 @@ if ($action === 'save_oauth_config') {
         exit;
     }
 
+    if (!preg_match('/\.apps\.googleusercontent\.com$/', $clientId)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'O Client ID do Google é inválido. Ele deve terminar com \'.apps.googleusercontent.com\'.']);
+        exit;
+    }
+
     $privateFile = __DIR__ . '/../database/gdrive_private_credentials.json';
     if (!file_exists(dirname($privateFile))) {
         mkdir(dirname($privateFile), 0777, true);
@@ -1361,11 +1395,16 @@ if ($action === 'exchange_code') {
     $email = '';
     if ($userInfoCode === 200) {
         $userInfo = json_decode($userInfoResponse, true);
-        $email = $userInfo['email'] ?? '';
+        $email = trim($userInfo['email'] ?? '');
     }
 
-    if (empty($email)) {
-        $email = 'conta-google@conectada.com';
+    if (empty($email) || preg_match('/gserviceaccount\.com$/', $email)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'A conta Google conectada (' . ($email ?: 'Desconhecida') . ') é inválida ou é uma Conta de Serviço. Por favor, conecte-se com uma conta Google de usuário real.'
+        ]);
+        exit;
     }
 
     // Atualizar credenciais privadas

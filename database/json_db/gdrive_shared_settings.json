@@ -1,5 +1,8 @@
 {
     "root_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing",
-    "client_email": "sistema-dr-matheus-drive@sistema-dr-matheus.iam.gserviceaccount.com",
-    "project_id": "sistema-dr-matheus"
+    "client_email": "",
+    "project_id": "",
+    "is_oauth_user": false,
+    "oauth_client_id": "",
+    "drive_connected": false
 }
