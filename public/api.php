@@ -1,4 +1,7 @@
 <?php
+
+$isLocalhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+
 // Configurar tratamento rígido de erros e forçar JSON
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -198,7 +201,7 @@ class GoogleDriveServiceAccount {
         // Se for OAuth 2.0 do Usuário (Refresh Token)
         if (isset($this->credentials['refresh_token'])) {
             $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -211,7 +214,7 @@ class GoogleDriveServiceAccount {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/x-www-form-urlencoded'
             ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
             $response = curl_exec($ch);
@@ -264,7 +267,7 @@ class GoogleDriveServiceAccount {
         $assertion = $jwt . '.' . $this->base64UrlEncode($signature);
 
         $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -275,7 +278,7 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/x-www-form-urlencoded'
         ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
         $response = curl_exec($ch);
@@ -310,7 +313,7 @@ class GoogleDriveServiceAccount {
         
         $url = 'https://www.googleapis.com' . $endpoint;
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         
         $headerMap = [
@@ -346,7 +349,7 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $finalHeaders);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         
         if ($body !== null) {
@@ -1342,7 +1345,7 @@ if ($action === 'exchange_code') {
 
     // Fazer a chamada de troca do code por token
     $ch = curl_init('https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -1356,7 +1359,7 @@ if ($action === 'exchange_code') {
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/x-www-form-urlencoded'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
     $response = curl_exec($ch);
@@ -1419,13 +1422,13 @@ if ($action === 'exchange_code') {
 
     // Obter o e-mail do usuário conectado via Google API
     $chUserInfo = curl_init('https://www.googleapis.com/oauth2/v2/userinfo');
-        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
         curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($chUserInfo, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($chUserInfo, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $accessToken
     ]);
-    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
     curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
     $userInfoResponse = curl_exec($chUserInfo);
     $userInfoCode = curl_getinfo($chUserInfo, CURLINFO_HTTP_CODE);
