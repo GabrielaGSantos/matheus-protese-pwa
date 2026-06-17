@@ -1,41 +1,67 @@
 [
-  {
-    "case_id": "CASE-202606-0002",
-    "google_drive_file_id": "1_hLk87Tu_hQwKe8bEBg3-hjGOuYHogEg",
-    "file_name": "2.png",
-    "file_size": 2566883,
-    "mime_type": "image/png",
-    "uploaded_by": "dentist-1",
-    "folder_id": "1I2tO3bUykC74CjKAdgh8trDu1wCkkrc2",
-    "web_view_link": "https://drive.google.com/file/d/1_hLk87Tu_hQwKe8bEBg3-hjGOuYHogEg/view?usp=drivesdk",
-    "file_category": "imagens",
-    "id": "att-1781532672083-x97aff8hm",
-    "created_at": "2026-06-15T14:11:12.083Z"
-  },
-  {
-    "id": "att-1781618533-c52f5be48",
-    "case_id": "CASE-202606-0001",
-    "google_drive_file_id": "1nACB5GY96BmFP5YqLdtYTyGSJViRLiiK",
-    "file_name": "Certificado Atrás - Sistema de Inscrições.png",
-    "file_size": 41922,
-    "mime_type": "image/png",
-    "uploaded_by": "dentist-1",
-    "created_at": "2026-06-16T14:02:13.000Z",
-    "folder_id": "1rwp6G2Laiqd7AA--Oifi79p9zhft2UAx",
-    "web_view_link": "https://drive.google.com/file/d/1nACB5GY96BmFP5YqLdtYTyGSJViRLiiK/view?usp=drivesdk",
-    "file_category": "imagens"
-  },
-  {
-    "id": "att-1781619061-ec7b3746c",
-    "case_id": "CASE-202606-0002",
-    "google_drive_file_id": "1MVn6UkRaj-UZx8_tq5mG1VLD0Yh5vaQ3",
-    "file_name": "1778158258.zip",
-    "file_size": 2932874,
-    "mime_type": "application/x-zip-compressed",
-    "uploaded_by": "dentist-1",
-    "created_at": "2026-06-16T14:11:01.000Z",
-    "folder_id": "1k06slXlEZcv9Q2IRfNPxFHHGcA5g-B1P",
-    "web_view_link": "https://drive.google.com/file/d/1MVn6UkRaj-UZx8_tq5mG1VLD0Yh5vaQ3/view?usp=drivesdk",
-    "file_category": "escaneamento"
-  }
+    {
+        "case_id": "CASE-202606-0002",
+        "google_drive_file_id": "1_hLk87Tu_hQwKe8bEBg3-hjGOuYHogEg",
+        "file_name": "2.png",
+        "file_size": 2566883,
+        "mime_type": "image\/png",
+        "uploaded_by": "dentist-1",
+        "folder_id": "1I2tO3bUykC74CjKAdgh8trDu1wCkkrc2",
+        "web_view_link": "https:\/\/drive.google.com\/file\/d\/1_hLk87Tu_hQwKe8bEBg3-hjGOuYHogEg\/view?usp=drivesdk",
+        "file_category": "imagens",
+        "id": "att-1781532672083-x97aff8hm",
+        "created_at": "2026-06-15T14:11:12.083Z"
+    },
+    {
+        "id": "att-1781618533-c52f5be48",
+        "case_id": "CASE-202606-0001",
+        "google_drive_file_id": "1nACB5GY96BmFP5YqLdtYTyGSJViRLiiK",
+        "file_name": "Certificado Atrás - Sistema de Inscrições.png",
+        "file_size": 41922,
+        "mime_type": "image\/png",
+        "uploaded_by": "dentist-1",
+        "created_at": "2026-06-16T14:02:13.000Z",
+        "folder_id": "1rwp6G2Laiqd7AA--Oifi79p9zhft2UAx",
+        "web_view_link": "https:\/\/drive.google.com\/file\/d\/1nACB5GY96BmFP5YqLdtYTyGSJViRLiiK\/view?usp=drivesdk",
+        "file_category": "imagens"
+    },
+    {
+        "id": "att-1781619061-ec7b3746c",
+        "case_id": "CASE-202606-0002",
+        "google_drive_file_id": "1MVn6UkRaj-UZx8_tq5mG1VLD0Yh5vaQ3",
+        "file_name": "1778158258.zip",
+        "file_size": 2932874,
+        "mime_type": "application\/x-zip-compressed",
+        "uploaded_by": "dentist-1",
+        "created_at": "2026-06-16T14:11:01.000Z",
+        "folder_id": "1k06slXlEZcv9Q2IRfNPxFHHGcA5g-B1P",
+        "web_view_link": "https:\/\/drive.google.com\/file\/d\/1MVn6UkRaj-UZx8_tq5mG1VLD0Yh5vaQ3\/view?usp=drivesdk",
+        "file_category": "escaneamento"
+    },
+    {
+        "id": "att-1781710398-b4eeeb837",
+        "case_id": "CASE-202606-0003",
+        "google_drive_file_id": "1EGIfz72FEtxjmsgOC32oA7exXYbg2nRX",
+        "file_name": "ChatGPT Image 15 de jun. de 2026, 16_28_32.png",
+        "file_size": 1815761,
+        "mime_type": "image\/png",
+        "uploaded_by": "dentist-1",
+        "created_at": "2026-06-17T15:33:18.000Z",
+        "folder_id": "1lne6AgPtzfFMmwckPGd5-WqwO4moOlum",
+        "web_view_link": "https:\/\/drive.google.com\/file\/d\/1EGIfz72FEtxjmsgOC32oA7exXYbg2nRX\/view?usp=drivesdk",
+        "file_category": "imagens"
+    },
+    {
+        "id": "att-1781712580-c588a2f96",
+        "case_id": "CASE-202606-0003",
+        "google_drive_file_id": "18qEwB3cfggtzeurw7xdMZxpmfoTp0bZU",
+        "file_name": "1778158258 (1).zip",
+        "file_size": 2932874,
+        "mime_type": "application\/x-zip-compressed",
+        "uploaded_by": "dentist-1",
+        "created_at": "2026-06-17T16:09:40.000Z",
+        "folder_id": "11ZiFrC-vutqVO2v2m_823aSgtTG8Tutj",
+        "web_view_link": "https:\/\/drive.google.com\/file\/d\/18qEwB3cfggtzeurw7xdMZxpmfoTp0bZU\/view?usp=drivesdk",
+        "file_category": "escaneamento"
+    }
 ]

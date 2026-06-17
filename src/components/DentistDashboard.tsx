@@ -571,17 +571,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                                 >
                                   Editar
                                 </button>
-                                {isDriveFolderValid(c) && (
-                                  <a
-                                    href={c.google_drive_folder_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center p-1.5 rounded-md bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 hover:bg-[#ECFDF5]/80 transition-all cursor-pointer"
-                                    title="Google Drive"
-                                  >
-                                    <FolderOpen size={13} />
-                                  </a>
-                                )}
+
                               </div>
                             </td>
                           </tr>
@@ -659,17 +649,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                                       Acessar Resultado
                                     </button>
                                   )}
-                                  {isDriveFolderValid(c) && (
-                                    <a
-                                      href={c.google_drive_folder_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center justify-center p-1.5 rounded-md bg-[#ECFDF5] text-[#0F766E] border border-emerald-100 hover:bg-[#ECFDF5]/80 transition-all cursor-pointer"
-                                      title="Google Drive"
-                                    >
-                                      <FolderOpen size={13} />
-                                    </a>
-                                  )}
+
                                 </div>
                               </td>
                             </tr>
@@ -839,13 +819,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               />
             </div>
 
-            {/* Warning note for file uploads */}
-            <div className="p-3 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] font-medium flex items-center gap-2">
-              <FolderOpen size={16} className="text-[#0F766E] shrink-0" />
-              <span>
-                Os arquivos enviados serão salvos na pasta correspondente no Google Drive: <strong>Fotos</strong> para imagens e <strong>Escaneamento</strong> para arquivos 3D.
-              </span>
-            </div>
+
 
             {/* File Upload zones (Separate Fotos / Escaneamentos) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
