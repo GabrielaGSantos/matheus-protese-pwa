@@ -1,5 +1,4 @@
-import React, {  useState, useEffect  } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Case, Profile, Service, CaseStatus, FinancialStatus, OdontogramSelection, CaseHistory, FileAttachment, CalendarEvent } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -1712,7 +1711,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Advanced Filters */}
       <div className="glass-panel p-4 rounded-xl border border-[#E2E8F0] flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -2031,7 +2030,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             </div>
           )}
         </div>
-      , document.body)}
+      )}
 
       {/* Consultation Conflict Warning popup modal */}
       {conflictEvent && createPortal(
