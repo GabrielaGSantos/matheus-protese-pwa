@@ -927,21 +927,24 @@ if ($action === 'upload_file') {
     $pathInfo = pathinfo($fileName);
     $ext = isset($pathInfo['extension']) ? strtolower($pathInfo['extension']) : '';
     
-    $category = 'imagens';
-    if ($userRole === 'dentist') {
-        $imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif', 'tiff'];
-        if (in_array($ext, $imageExtensions)) {
-            $category = 'imagens';
+    $category = $_POST['category'] ?? '';
+    $validCategories = ['imagens', 'escaneamento', 'enceramento_digital', 'resultado'];
+    if (!in_array($category, $validCategories)) {
+        if ($userRole === 'dentist') {
+            $imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif', 'tiff'];
+            if (in_array($ext, $imageExtensions)) {
+                $category = 'imagens';
+            } else {
+                $category = 'escaneamento';
+            }
         } else {
-            $category = 'escaneamento';
-        }
-    } else {
-        // Admin / Secretary
-        $designExtensions = ['stl', 'obj', 'ply', '3dx', 'dcm'];
-        if (in_array($ext, $designExtensions)) {
-            $category = 'enceramento_digital';
-        } else {
-            $category = 'resultado';
+            // Admin / Secretary
+            $designExtensions = ['stl', 'obj', 'ply', '3dx', 'dcm'];
+            if (in_array($ext, $designExtensions)) {
+                $category = 'enceramento_digital';
+            } else {
+                $category = 'resultado';
+            }
         }
     }
     

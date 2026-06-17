@@ -846,6 +846,7 @@ export const api = {
       formData.append('file', file);
       formData.append('case_id', caseId);
       formData.append('user_id', uploadedBy);
+      formData.append('category', category);
 
       const res = await fetch(`api.php?action=upload_file&user_id=${encodeURIComponent(uploadedBy)}`, {
         method: 'POST',
