@@ -201,8 +201,8 @@ class GoogleDriveServiceAccount {
         // Se for OAuth 2.0 do Usuário (Refresh Token)
         if (isset($this->credentials['refresh_token'])) {
             $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -214,8 +214,8 @@ class GoogleDriveServiceAccount {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/x-www-form-urlencoded'
             ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -267,8 +267,8 @@ class GoogleDriveServiceAccount {
         $assertion = $jwt . '.' . $this->base64UrlEncode($signature);
 
         $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -278,8 +278,8 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/x-www-form-urlencoded'
         ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -313,8 +313,8 @@ class GoogleDriveServiceAccount {
         
         $url = 'https://www.googleapis.com' . $endpoint;
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
         
         $headerMap = [
             'Authorization' => 'Bearer ' . $token,
@@ -349,8 +349,8 @@ class GoogleDriveServiceAccount {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $finalHeaders);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
         
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, is_string($body) ? $body : json_encode($body));
@@ -1345,8 +1345,8 @@ if ($action === 'exchange_code') {
 
     // Fazer a chamada de troca do code por token
     $ch = curl_init('https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -1359,8 +1359,8 @@ if ($action === 'exchange_code') {
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/x-www-form-urlencoded'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1422,14 +1422,14 @@ if ($action === 'exchange_code') {
 
     // Obter o e-mail do usuário conectado via Google API
     $chUserInfo = curl_init('https://www.googleapis.com/oauth2/v2/userinfo');
-        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
     curl_setopt($chUserInfo, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($chUserInfo, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $accessToken
     ]);
-    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, !global $isLocalhost ? !$isLocalhost : true);
-    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? false : true);
+    curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false) ? 0 : 2);
     $userInfoResponse = curl_exec($chUserInfo);
     $userInfoCode = curl_getinfo($chUserInfo, CURLINFO_HTTP_CODE);
     $userinfoErrno = curl_errno($chUserInfo);
