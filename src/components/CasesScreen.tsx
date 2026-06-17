@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 import type { Case, Profile, Service, CaseStatus, FinancialStatus, OdontogramSelection, CaseHistory, FileAttachment, CalendarEvent } from '../types';
 import { useAuth } from '../context/AuthContext';
