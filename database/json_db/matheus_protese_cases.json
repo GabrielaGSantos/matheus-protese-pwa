@@ -5,8 +5,9 @@
         "patient_name": "José Luiz",
         "created_at": "2026-06-17T15:33:10.261Z",
         "requested_delivery_date": "2026-06-25",
-        "status": "em_analise",
+        "status": "em_execucao",
         "financial_status": "aguardando_pagamento",
+        "financial_released": false,
         "teeth_selection": {
             "teeth": [
                 11,
@@ -29,6 +30,7 @@
             "type": "superior"
         },
         "dentist_notes": "",
+        "internal_notes": "",
         "has_photo": true,
         "has_file": true,
         "estimated_hours": 0,
@@ -38,6 +40,7 @@
         "cost_allan_matheus": 0,
         "cost_allan_solo": 0,
         "cost_andrey": 0,
+        "cost_andrey_discounted": false,
         "other_internal_costs": [],
         "total_value": 6400,
         "paid_value": 0,
@@ -50,12 +53,10 @@
         "drive_images_folder_id": "1lne6AgPtzfFMmwckPGd5-WqwO4moOlum",
         "drive_scan_folder_id": "11ZiFrC-vutqVO2v2m_823aSgtTG8Tutj",
         "drive_case_folder_url": "https:\/\/drive.google.com\/drive\/folders\/1-hXLwsCtHWoMLmEK1oQ1r2ZYkK1RWc43",
-        "financial_released": false,
         "selected_services": [
             "s5"
         ],
-        "updated_at": "2026-06-17T16:09:31.566Z",
-        "drive_real_result_folder_id": null
+        "updated_at": "2026-06-17T17:10:47.419Z"
     },
     {
         "id": "CASE-202606-0002",
@@ -63,7 +64,7 @@
         "patient_name": "Rebeca",
         "created_at": "2026-06-16T14:10:41.523Z",
         "requested_delivery_date": "2026-06-23",
-        "status": "em_analise",
+        "status": "em_execucao",
         "financial_status": "aguardando_pagamento",
         "teeth_selection": {
             "teeth": [],
@@ -90,7 +91,7 @@
         "selected_services": [
             "s2"
         ],
-        "updated_at": "2026-06-16T14:10:58.000Z",
+        "updated_at": "2026-06-17T17:08:55.804Z",
         "drive_dentist_folder_id": "1wNVOSG-_MtpJIdRdEgNo06cWMsyL-eJv",
         "drive_case_folder_id": "1n5yBRq1RElC5TDWMSC_40155NInc8iHU",
         "drive_images_folder_id": "1PawlMzD-4U7EN3WxwYpzhhdNxJVJC7zI",
@@ -105,7 +106,7 @@
         "patient_name": "Gabriela Gomes",
         "created_at": "2026-06-16T14:02:01.192Z",
         "requested_delivery_date": "2026-06-23",
-        "status": "em_analise",
+        "status": "em_execucao",
         "financial_status": "aguardando_pagamento",
         "teeth_selection": {
             "teeth": [
@@ -135,7 +136,7 @@
         "selected_services": [
             "s5"
         ],
-        "updated_at": "2026-06-16T14:02:10.000Z",
+        "updated_at": "2026-06-17T17:08:56.212Z",
         "drive_dentist_folder_id": "1wNVOSG-_MtpJIdRdEgNo06cWMsyL-eJv",
         "drive_case_folder_id": "1867TNgIJ5ZraI9DWtgKM3eKlp3kYo66G",
         "drive_images_folder_id": "1rwp6G2Laiqd7AA--Oifi79p9zhft2UAx",

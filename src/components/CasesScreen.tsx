@@ -789,8 +789,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       </div>
       {/* Editor Modal Overlay */}
       {showEditor && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
-          <div className="w-full max-w-5xl bg-white border-l border-[#E2E8F0] h-screen overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in p-0 sm:p-4">
+          <div className="w-full h-full bg-white sm:rounded-xl border border-[#E2E8F0] overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
             <button
               onClick={() => {
                 setShowEditor(false);
@@ -832,12 +832,27 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             ) : (
               <form onSubmit={handleSave} className="flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1">
-                  {editingCase ? `Editar Trabalho - ${editingCase.case_number || editingCase.id}` : 'Cadastrar Trabalho'}
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">
-                  Preencha as informações clínicas, dentes selecionados e custos associados.
-                </p>
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">
+                      {editingCase ? `Editar Trabalho - ${editingCase.case_number || editingCase.id}` : 'Cadastrar Trabalho'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Preencha as informações clínicas, dentes selecionados e custos associados.
+                    </p>
+                  </div>
+                  {editingCase?.google_drive_folder_url && (
+                    <a
+                      href={editingCase.google_drive_folder_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#0F766E] border border-emerald-100 text-xs font-bold px-3 py-2 rounded-lg transition-all shadow-sm"
+                    >
+                      <FolderOpen size={16} />
+                      Abrir Caso no Drive
+                    </a>
+                  )}
+                </div>
 
                 {/* Editor Tabs */}
                 <div className="flex border-b border-[#E2E8F0] mb-6 gap-6 pb-px">
@@ -1133,14 +1148,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                       )}
                                     </div>
                                   </div>
-                                  {att.google_drive_file_id && (
+                                  {att.web_view_link && (
                                     <a
-                                      href={`api.php?action=download_file&file_id=${att.google_drive_file_id}&user_id=${user?.id || ''}`}
+                                      href={att.web_view_link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="py-1.5 px-3 bg-teal-50 hover:bg-teal-100 text-[#0F766E] border border-teal-100 text-center rounded-lg text-[10px] font-bold transition-all whitespace-nowrap"
                                     >
-                                      Baixar
+                                      Abrir no Drive
                                     </a>
                                   )}
                                 </div>
