@@ -2031,7 +2031,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             </div>
           )}
         </div>
-      ), document.body)}
+      , document.body)}
 
       {/* Consultation Conflict Warning popup modal */}
       {conflictEvent && createPortal(
