@@ -69,6 +69,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [showEditor, setShowEditor] = useState(false);
   const [editingCase, setEditingCase] = useState<Case | null>(null);
   const [activeEditorTab, setActiveEditorTab] = useState<'info' | 'financial' | 'history'>('info');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Case Form fields
   const [selectedDentistId, setSelectedDentistId] = useState('');
@@ -356,8 +357,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
   const uploadPendingFiles = async (caseId: string, patientName: string, dentistName: string) => {
     const filesToUpload = pendingUploads.filter(p => p.status !== 'success');
-    if (filesToUpload.length === 0) return;
+    if (filesToUpload.length === 0) return false;
 
+    let hasError = false;
     for (const item of filesToUpload) {
       item.status = 'uploading';
       setPendingUploads([...pendingUploads]);
@@ -388,9 +390,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       } catch (err: any) {
         item.status = 'error';
         item.error = err.message || 'Erro desconhecido';
+        hasError = true;
       }
       setPendingUploads([...pendingUploads]);
     }
+    return hasError;
   };
 
   const retryUpload = async (item: FileUploadState) => {
@@ -439,17 +443,42 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientName || !selectedDentistId) return;
+    if (!patientName || !selectedDentistId) {
+      alert('Preencha o nome do paciente e selecione o dentista.');
+      return;
+    }
 
+    if (!teethSelection.type || teethSelection.teeth.length === 0) {
+      alert('É obrigatório selecionar o tipo de trabalho e ao menos um elemento no odontograma.');
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const calculated = calculateDerivedValues();
-      const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
+      const isNewCase = !editingCase?.id;
+      const caseId = editingCase?.id || crypto.randomUUID();
+      
+      let caseNumber = editingCase?.case_number;
+      if (isNewCase) {
+        let maxNum = 0;
+        cases.forEach(c => {
+          const match = (c.case_number || c.id).match(/-(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) maxNum = num;
+          }
+        });
+        const nextNum = String(maxNum + 1).padStart(4, '0');
+        caseNumber = `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${nextNum}`;
+      }
       
       const dentist = dentists.find(d => d.id === selectedDentistId);
       const dentistName = dentist ? dentist.full_name : 'Sem Dentista';
 
       const payload: Case = {
         id: caseId,
+        case_number: caseNumber,
         dentist_id: selectedDentistId,
         patient_name: patientName,
         created_at: editingCase?.created_at || new Date().toISOString(),
@@ -491,8 +520,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       await api.cases.save(payload, 'admin-1');
 
       // Se existirem novos arquivos, faz upload real deles pelo backend
+      let uploadHasError = false;
       if (pendingUploads.some(p => p.status !== 'success')) {
-        await uploadPendingFiles(caseId, patientName, dentistName);
+        uploadHasError = await uploadPendingFiles(caseId, patientName, dentistName);
+      }
+
+      if (uploadHasError) {
+        alert('Caso adicionado, porém ocorreu um problema ao enviar os arquivos. Por favor entre em contato com o Dr. Matheus');
       }
 
       // Envio de notificações baseados em eventos
@@ -535,6 +569,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       fetchData();
     } catch (err) {
       console.error(err);
+      alert('Ocorreu um erro ao salvar o caso.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -764,6 +801,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               <X size={20} />
             </button>
 
+            {isSaving && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl">
+                <Loader2 size={48} className="animate-spin text-[#0F766E] mb-4" />
+                <p className="text-slate-800 font-bold text-lg">Salvando caso e enviando arquivos...</p>
+                <p className="text-slate-500 text-sm mt-2">Por favor, aguarde.</p>
+              </div>
+            )}
+
             {editingCase && user?.role === 'dentist' && editingCase.dentist_id !== user.id ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 max-w-md mx-auto h-full">
                 <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
@@ -788,7 +833,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               <form onSubmit={handleSave} className="flex-1 flex flex-col justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-1">
-                  {editingCase ? `Editar Trabalho - ${editingCase.id}` : 'Cadastrar Trabalho'}
+                  {editingCase ? `Editar Trabalho - ${editingCase.case_number || editingCase.id}` : 'Cadastrar Trabalho'}
                 </h3>
                 <p className="text-xs text-slate-500 mb-6">
                   Preencha as informações clínicas, dentes selecionados e custos associados.
@@ -1088,14 +1133,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                       )}
                                     </div>
                                   </div>
-                                  {att.web_view_link && (
+                                  {att.google_drive_file_id && (
                                     <a
-                                      href={att.web_view_link}
+                                      href={`api.php?action=download_file&file_id=${att.google_drive_file_id}&user_id=${user?.id || ''}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="py-1.5 px-3 bg-teal-50 hover:bg-teal-100 text-[#0F766E] border border-teal-100 text-center rounded-lg text-[10px] font-bold transition-all whitespace-nowrap"
                                     >
-                                      Abrir no Drive
+                                      Baixar
                                     </a>
                                   )}
                                 </div>
@@ -1420,7 +1465,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     </div>
 
                     {/* Drive Integration View */}
-                    <div className="bg-slate-50 p-5 rounded-2xl border border-dashed border-[#E2E8F0] space-y-3">
+                    {canEditFinancials && (
+                      <div className="bg-slate-50 p-5 rounded-2xl border border-dashed border-[#E2E8F0] space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-xs font-bold text-slate-900">Pasta do Caso no Google Drive</h4>
@@ -1500,7 +1546,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         <div className="bg-white p-3 rounded-lg border border-[#E2E8F0] text-[9px] font-mono text-slate-400 space-y-0.5">
                           <div>📁 Dentista: {editingCase.drive_dentist_folder_id}</div>
                           <div>📁 Caso: {editingCase.drive_case_folder_id}</div>
-                          <div>📁 Imagens: {editingCase.drive_images_folder_id}</div>
+                          <div>📁 Fotos Clínicas: {editingCase.drive_images_folder_id}</div>
                           <div>📁 Escaneamento: {editingCase.drive_scan_folder_id}</div>
                         </div>
                       )}
@@ -1513,7 +1559,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             {/* Imagens Subfolder */}
                             <div className="space-y-1">
                               <div className="text-[10px] font-bold text-[#0F766E] flex items-center gap-1">
-                                📁 Imagens/
+                                📁 Fotos Clínicas/
                               </div>
                               {attachments.filter(a => a.mime_type && a.mime_type.startsWith('image/')).map(att => (
                                 <div key={att.id} className="flex justify-between items-center bg-white p-2 rounded-lg text-[10px] border border-[#E2E8F0] ml-3">
@@ -1573,6 +1619,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         </div>
                       )}
                     </div>
+                    )}
                   </div>
                 )}
 
@@ -1807,7 +1854,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
                           />
                         </td>
-                        <td className="p-3.5 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                        <td className="p-3.5 font-semibold text-slate-800 font-mono text-[11px]">{c.case_number || c.id}</td>
                         <td className="p-3.5 text-slate-600 font-medium">{dentist?.full_name || 'Desconhecido'}</td>
                         <td className="p-3.5 font-bold text-[#0F172A]">{c.patient_name}</td>
                         <td className="p-3.5">{getStatusBadge(c.status)}</td>
@@ -1870,7 +1917,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 mt-1"
                         />
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold">{c.id}</span>
+                          <span className="text-[10px] text-slate-400 font-bold">{c.case_number || c.id}</span>
                           <h4 className="font-bold text-sm text-slate-900 leading-snug">{c.patient_name}</h4>
                           <p className="text-xs font-semibold text-[#0F766E]">{dentist?.full_name || 'Desconhecido'}</p>
                         </div>

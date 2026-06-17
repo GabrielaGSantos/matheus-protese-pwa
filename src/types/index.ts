@@ -69,6 +69,7 @@ export interface CaseService {
 
 export interface Case {
   id: string;
+  case_number?: string;
   dentist_id: string;
   patient_name: string;
   created_at: string;

@@ -125,103 +125,7 @@ function seedMockDatabase() {
   }
 
   if (!localStorage.getItem(MOCK_STORAGE_KEYS.CASES)) {
-    const today = new Date();
-    const defaultCases: Case[] = [
-      {
-        id: 'CASE-202606-0001',
-        dentist_id: 'dentist-1', // Dr. Allan
-        patient_name: 'Ana Silva',
-        created_at: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        requested_delivery_date: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        final_delivery_date: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: 'em_execucao',
-        financial_status: 'aguardando_pagamento',
-        teeth_selection: { teeth: [11, 12, 21, 22], type: 'ponte' },
-        dentist_notes: 'Fazer com capricho na gengiva.',
-        internal_notes: 'Allan pediu urgência.',
-        has_photo: true,
-        has_file: false,
-        google_drive_folder_id: 'folder-1',
-        google_drive_folder_url: 'https://drive.google.com',
-        estimated_hours: 8,
-        value_matheus: 1200.00,
-        value_planning: 300.00,
-        value_paschoal: 0.00,
-        cost_allan_matheus: 100.00,
-        cost_allan_solo: 0.00,
-        cost_andrey: 50.00,
-        other_internal_costs: [],
-        total_value: 1500.00,
-        paid_value: 0.00,
-        remaining_value: 1500.00,
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: 'CASE-202606-0002',
-        dentist_id: 'dentist-2', // Dra. Monique
-        patient_name: 'Carlos Santos',
-        created_at: new Date(today.getTime() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-        requested_delivery_date: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        final_delivery_date: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: 'finalizado',
-        financial_status: 'pago',
-        teeth_selection: { teeth: [36], type: 'individual' },
-        dentist_notes: 'Coroa metal free.',
-        has_photo: false,
-        has_file: true,
-        estimated_hours: 3,
-        value_matheus: 450.00,
-        value_planning: 0.00,
-        value_paschoal: 0.00,
-        cost_allan_matheus: 0.00,
-        cost_allan_solo: 0.00,
-        cost_andrey: 0.00,
-        other_internal_costs: [],
-        total_value: 450.00,
-        paid_value: 450.00,
-        remaining_value: 0.00,
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: 'CASE-202606-0003',
-        dentist_id: 'dentist-3', // Dra. Monique/Iasmim
-        patient_name: 'Julia Ramos',
-        created_at: new Date().toISOString(),
-        requested_delivery_date: new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: 'recebido',
-        financial_status: 'aguardando_pagamento',
-        teeth_selection: { teeth: [14, 15, 16, 24, 25, 26], type: 'protocolo_superior' },
-        dentist_notes: 'Planejar protocolo cerâmico.',
-        has_photo: true,
-        has_file: true,
-        estimated_hours: 16,
-        value_matheus: 3500.00,
-        value_planning: 500.00,
-        value_paschoal: 500.00,
-        cost_allan_matheus: 200.00,
-        cost_allan_solo: 0.00,
-        cost_andrey: 100.00,
-        other_internal_costs: [],
-        total_value: 4500.00,
-        paid_value: 1500.00,
-        remaining_value: 3000.00,
-        updated_at: new Date().toISOString()
-      }
-    ];
-
-    const combinedCases = [...defaultCases, ...(importedCases as Case[])].map(c => {
-      const year = new Date(c.created_at).getFullYear();
-      if (year < 2026) {
-        return {
-          ...c,
-          financial_status: 'pago' as const,
-          paid_value: c.total_value,
-          remaining_value: 0
-        };
-      }
-      return c;
-    });
-    localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify(combinedCases));
+    localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify([]));
   }
 }
 
@@ -711,7 +615,7 @@ export const api = {
           const idx = cases.findIndex(c => c.id === caseItem.id);
           cases[idx] = caseItem;
         } else {
-          caseItem.id = caseItem.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
+          caseItem.id = caseItem.id || crypto.randomUUID();
           caseItem.created_at = caseItem.created_at || new Date().toISOString();
           cases.unshift(caseItem);
         }
@@ -739,6 +643,16 @@ export const api = {
         const oldCase = cases.find(c => c.id === id);
         const filtered = cases.filter(c => c.id !== id);
         saveMockData(MOCK_STORAGE_KEYS.CASES, filtered);
+        
+        // Limpar órfãos (arquivos e histórico)
+        const attachments = getMockData<any>(MOCK_STORAGE_KEYS.ATTACHMENTS);
+        const filteredAtts = attachments.filter((a: any) => a.case_id !== id);
+        saveMockData(MOCK_STORAGE_KEYS.ATTACHMENTS, filteredAtts);
+        
+        const historyData = getMockData<any>(MOCK_STORAGE_KEYS.HISTORY);
+        const filteredHist = historyData.filter((h: any) => h.case_id !== id);
+        saveMockData(MOCK_STORAGE_KEYS.HISTORY, filteredHist);
+        
         recordActivity('delete', id, null, oldCase ? JSON.parse(JSON.stringify(oldCase)) : null);
         return;
       }
@@ -879,7 +793,15 @@ export const api = {
     async list(caseId: string): Promise<FileAttachment[]> {
       if (useMockData) {
         const list = getMockData<FileAttachment>(MOCK_STORAGE_KEYS.ATTACHMENTS);
-        return list.filter(a => a.case_id === caseId);
+        return list.filter(a => 
+          a.case_id === caseId && 
+          a.google_drive_file_id && 
+          !a.google_drive_file_id.startsWith('gfile-error') && 
+          a.file_name && 
+          !a.file_name.includes('Falha no envio') && 
+          a.web_view_link && 
+          a.folder_id
+        );
       }
       const { data, error } = await supabase!
         .from('file_attachments')

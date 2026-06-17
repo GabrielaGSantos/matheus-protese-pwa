@@ -530,10 +530,10 @@ if ($action === 'create_folders') {
         $caseFolder = $driver->findOrCreateFolder($caseFolderName, $dentistFolder['id']);
         $caseFolderUrl = $caseFolder['webViewLink'] ?? ('https://drive.google.com/drive/folders/' . $caseFolder['id']);
         
-        $imagesFolder = $driver->findOrCreateFolder('Imagens', $caseFolder['id']);
+        $imagesFolder = $driver->findOrCreateFolder('Fotos Clínicas', $caseFolder['id']);
         $scanFolder = $driver->findOrCreateFolder('Escaneamento', $caseFolder['id']);
-        $resultFolder = $driver->findOrCreateFolder('Enceramento Digital', $caseFolder['id']);
-        $realResultFolder = $driver->findOrCreateFolder('Resultado', $caseFolder['id']);
+        $resultFolder = ['id' => null];
+        $realResultFolder = ['id' => null];
         
         $updatedCaseObj = null;
         if ($caseIndex >= 0) {
@@ -981,17 +981,17 @@ if ($action === 'upload_file') {
             $driveCaseFolderId = $caseFolder['id'];
             $driveCaseFolderUrl = $caseFolder['webViewLink'] ?? ('https://drive.google.com/drive/folders/' . $driveCaseFolderId);
             
-            $imagesFolder = $driver->findOrCreateFolder('Imagens', $driveCaseFolderId);
+            $imagesFolder = $driver->findOrCreateFolder('Fotos Clínicas', $driveCaseFolderId);
             $driveImagesFolderId = $imagesFolder['id'];
             
             $scanFolder = $driver->findOrCreateFolder('Escaneamento', $driveCaseFolderId);
             $driveScanFolderId = $scanFolder['id'];
             
-            $resultFolder = $driver->findOrCreateFolder('Enceramento Digital', $driveCaseFolderId);
-            $driveResultFolderId = $resultFolder['id'];
             
-            $realResultFolder = $driver->findOrCreateFolder('Resultado', $driveCaseFolderId);
-            $driveRealResultFolderId = $realResultFolder['id'];
+            $driveResultFolderId = null;
+            
+            
+            $driveRealResultFolderId = null;
             
             $driveStatus = 'created';
             
@@ -1016,8 +1016,8 @@ if ($action === 'upload_file') {
         
         // Se a subpasta de "Resultado" ou "Enceramento Digital" estiver vazia nas configurações salvas do caso, certificar
         if (empty($driveRealResultFolderId)) {
-            $realResultFolder = $driver->findOrCreateFolder('Resultado', $driveCaseFolderId);
-            $driveRealResultFolderId = $realResultFolder['id'];
+            
+            $driveRealResultFolderId = null;
             if ($caseIndex >= 0) {
                 $cases[$caseIndex]['drive_real_result_folder_id'] = $driveRealResultFolderId;
                 if (file_put_contents($casesFile, json_encode($cases, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) === false) {
@@ -1031,7 +1031,7 @@ if ($action === 'upload_file') {
         $targetFolderName = '';
         if ($category === 'imagens') {
             $targetFolderId = $driveImagesFolderId;
-            $targetFolderName = 'Imagens';
+            $targetFolderName = 'Fotos Clínicas';
         } else if ($category === 'escaneamento') {
             $targetFolderId = $driveScanFolderId;
             $targetFolderName = 'Escaneamento';

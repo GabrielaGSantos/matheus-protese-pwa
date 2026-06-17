@@ -80,6 +80,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   // Editing state for Dentist
   const [editingCase, setEditingCase] = useState<Case | null>(null);
   const [caseResults, setCaseResults] = useState<Record<string, any[]>>({});
+  const [dentistFiles, setDentistFiles] = useState<Record<string, any[]>>({});
   const [viewingResultsFiles, setViewingResultsFiles] = useState<any[] | null>(null);
 
   useEffect(() => {
@@ -99,18 +100,24 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
 
       // Fetch result attachments
       const resultsMap: Record<string, any[]> = {};
+      const dentistFilesMap: Record<string, any[]> = {};
       for (const caseItem of c) {
         try {
           const attachments = await api.attachments.list(caseItem.id);
           const results = attachments.filter(a => a.file_category === 'resultado' || a.file_category === 'enceramento_digital');
+          const dFiles = attachments.filter(a => a.file_category === 'imagens' || a.file_category === 'escaneamento');
           if (results.length > 0) {
             resultsMap[caseItem.id] = results;
+          }
+          if (dFiles.length > 0) {
+            dentistFilesMap[caseItem.id] = dFiles;
           }
         } catch (err) {
           console.error(`Erro ao carregar anexos para o caso ${caseItem.id}:`, err);
         }
       }
       setCaseResults(resultsMap);
+      setDentistFiles(dentistFilesMap);
 
       // Set default requested date (7 days from now)
       setRequestedDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -128,6 +135,11 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     const selectedIds = Object.keys(selectedServices).filter(id => selectedServices[id]);
     if (selectedIds.length === 0) {
       alert('Por favor, selecione pelo menos um serviço/procedimento.');
+      return;
+    }
+
+    if (!teethSelection || !teethSelection.teeth || teethSelection.teeth.length === 0) {
+      alert('Por favor, selecione pelo menos um elemento (dente) no odontograma.');
       return;
     }
 
@@ -214,6 +226,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       await api.cases.save(payload, user.id);
 
       // Upload photos clinical to backend Google Drive integration
+      let uploadError = false;
       for (const f of photoFiles) {
         try {
           await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', user.id);
@@ -225,15 +238,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
           );
         } catch (err: any) {
           console.error('Erro ao enviar foto para o Google Drive:', err);
-          // Fallback mock so we don't block workflow
-          await api.attachments.upload({
-            case_id: caseId,
-            google_drive_file_id: `gfile-error-${Date.now()}`,
-            file_name: `${f.name} (Falha no envio: ${err.message})`,
-            file_size: f.size,
-            mime_type: 'image/jpeg',
-            uploaded_by: user.id
-          });
+          uploadError = true;
         }
       }
 
@@ -249,16 +254,12 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
           );
         } catch (err: any) {
           console.error('Erro ao enviar escaneamento para o Google Drive:', err);
-          // Fallback mock so we don't block workflow
-          await api.attachments.upload({
-            case_id: caseId,
-            google_drive_file_id: `gfile-error-${Date.now()}`,
-            file_name: `${f.name} (Falha no envio: ${err.message})`,
-            file_size: f.size,
-            mime_type: 'application/octet-stream',
-            uploaded_by: user.id
-          });
+          uploadError = true;
         }
+      }
+
+      if (uploadError) {
+        alert('Caso adicionado, porém ocorreu um problema ao enviar os arquivos. Por favor entre em contato com o Dr. Matheus');
       }
       
       // Trigger notifications for new/modified cases
@@ -878,10 +879,32 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                             setPhotoFiles(updated);
                             if (updated.length === 0) setHasPhoto(false);
                           }}
-                          className="text-rose-600 hover:text-rose-700 font-semibold px-1.5"
+                          className="text-rose-600 hover:text-rose-700 font-semibold px-1.5 cursor-pointer"
                         >
                           Remover
                         </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Exibir arquivos de imagem já enviados */}
+                {editingCase && dentistFiles[editingCase.id] && dentistFiles[editingCase.id].filter(f => f.file_category === 'imagens').length > 0 && (
+                  <div className="pt-3 mt-3 border-t border-[#E2E8F0] space-y-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fotos já enviadas</p>
+                    {dentistFiles[editingCase.id].filter(f => f.file_category === 'imagens').map((att) => (
+                      <div key={att.id} className="flex justify-between items-center bg-white p-2.5 rounded-lg text-[10px] border border-[#E2E8F0]">
+                        <span className="truncate max-w-[120px] text-slate-800 font-semibold" title={att.file_name}>{att.file_name}</span>
+                        {att.web_view_link && (
+                          <a
+                            href={att.web_view_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#0F766E] hover:underline font-bold px-1.5"
+                          >
+                            Visualizar
+                          </a>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -918,10 +941,32 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                             setScanFiles(updated);
                             if (updated.length === 0) setHasFile(false);
                           }}
-                          className="text-rose-600 hover:text-rose-700 font-semibold px-1.5"
+                          className="text-rose-600 hover:text-rose-700 font-semibold px-1.5 cursor-pointer"
                         >
                           Remover
                         </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Exibir arquivos de escaneamento já enviados */}
+                {editingCase && dentistFiles[editingCase.id] && dentistFiles[editingCase.id].filter(f => f.file_category === 'escaneamento').length > 0 && (
+                  <div className="pt-3 mt-3 border-t border-[#E2E8F0] space-y-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Escaneamentos já enviados</p>
+                    {dentistFiles[editingCase.id].filter(f => f.file_category === 'escaneamento').map((att) => (
+                      <div key={att.id} className="flex justify-between items-center bg-white p-2.5 rounded-lg text-[10px] border border-[#E2E8F0]">
+                        <span className="truncate max-w-[120px] text-slate-800 font-semibold" title={att.file_name}>{att.file_name}</span>
+                        {att.web_view_link && (
+                          <a
+                            href={att.web_view_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#0F766E] hover:underline font-bold px-1.5"
+                          >
+                            Baixar/Ver
+                          </a>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1017,6 +1062,25 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Uploading progress modal */}
+      {submitting && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-8 text-center shadow-2xl relative text-slate-900 flex flex-col items-center">
+            <div className="relative w-16 h-16 mb-6">
+              <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-[#0F766E] rounded-full border-t-transparent animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-[#0F766E]">
+                <Send size={20} className="animate-pulse" />
+              </div>
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-2">Enviando Arquivos...</h3>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-[250px]">
+              Aguarde enquanto sincronizamos as informações e os arquivos com o Google Drive. Isso pode levar alguns minutos dependendo do tamanho.
+            </p>
+          </div>
         </div>
       )}
 

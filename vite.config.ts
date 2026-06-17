@@ -13,7 +13,7 @@ export default defineConfig({
         secure: true
       },
       '/api.php': {
-        target: 'http://localhost/matheus-protese-pwa/public',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false
       },
