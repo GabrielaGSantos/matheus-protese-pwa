@@ -198,6 +198,8 @@ class GoogleDriveServiceAccount {
         // Se for OAuth 2.0 do Usuário (Refresh Token)
         if (isset($this->credentials['refresh_token'])) {
             $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -262,6 +264,8 @@ class GoogleDriveServiceAccount {
         $assertion = $jwt . '.' . $this->base64UrlEncode($signature);
 
         $ch = curl_init($this->credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -306,6 +310,8 @@ class GoogleDriveServiceAccount {
         
         $url = 'https://www.googleapis.com' . $endpoint;
         $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         
         $headerMap = [
             'Authorization' => 'Bearer ' . $token,
@@ -1336,6 +1342,8 @@ if ($action === 'exchange_code') {
 
     // Fazer a chamada de troca do code por token
     $ch = curl_init('https://oauth2.googleapis.com/token');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -1411,6 +1419,8 @@ if ($action === 'exchange_code') {
 
     // Obter o e-mail do usuário conectado via Google API
     $chUserInfo = curl_init('https://www.googleapis.com/oauth2/v2/userinfo');
+        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($chUserInfo, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($chUserInfo, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($chUserInfo, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $accessToken
