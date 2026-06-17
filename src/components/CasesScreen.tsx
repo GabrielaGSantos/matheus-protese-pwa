@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, {  useState, useEffect  } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 import type { Case, Profile, Service, CaseStatus, FinancialStatus, OdontogramSelection, CaseHistory, FileAttachment, CalendarEvent } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -788,7 +789,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         </div>
       </div>
       {/* Editor Modal Overlay */}
-      {showEditor && (
+      {showEditor && createPortal(
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in p-0 sm:p-4">
           <div className="w-full h-full bg-white sm:rounded-xl border border-[#E2E8F0] overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
             <button
@@ -2030,11 +2031,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             </div>
           )}
         </div>
-      )}
+      ), document.body)}
 
       {/* Consultation Conflict Warning popup modal */}
-      {conflictEvent && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      {conflictEvent && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" style={{ zIndex: 9999 }}>
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative">
             <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-4 text-amber-600">
               <AlertTriangle size={24} />
@@ -2055,7 +2056,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             </button>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };
