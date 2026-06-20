@@ -442,11 +442,22 @@ export const api = {
         });
 
         if (authErr) {
-            console.error('Erro ao criar Auth User:', authErr);
-            throw new Error(`Erro ao criar login. O Supabase recusou: ${authErr.message}`);
-        }
-
-        if (authData.user) {
+            if (authErr.message.includes('User already registered') || authErr.message.includes('already registered')) {
+              const { data: loginData, error: loginErr } = await tempClient.auth.signInWithPassword({
+                email: generatedEmail,
+                password: 'cad_123456'
+              });
+              if (loginErr) {
+                throw new Error(`O usuário já existe, mas ocorreu um erro: ${loginErr.message}`);
+              }
+              if (loginData.user) {
+                finalId = loginData.user.id;
+              }
+            } else {
+              console.error('Erro ao criar Auth User:', authErr);
+              throw new Error(`Erro ao criar login. O Supabase recusou: ${authErr.message}`);
+            }
+        } else if (authData.user) {
           finalId = authData.user.id;
         }
       } catch (e) {
