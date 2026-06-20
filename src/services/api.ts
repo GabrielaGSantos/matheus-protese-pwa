@@ -420,18 +420,43 @@ export const api = {
         return newProfile;
       }
       
-      // In Supabase, creating a dentist login typically requires creating an auth user 
-      // (which triggers public.profiles insert via trigger)
-      // For ease of admin use, we can invoke a Supabase Edge Function or custom procedure,
-      // or standard profiles insertion directly if authentication registration is done.
-      // Here is standard profile insert:
+      let finalId = crypto.randomUUID() as string;
+      let generatedEmail = '';
+      
+      try {
+        const tempClient = createClient(supabaseUrl, supabaseAnonKey);
+        
+        let emailBase = profile.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+        if (profile.role === 'auxiliar') emailBase = 'auxiliar_' + emailBase;
+        generatedEmail = `${emailBase}@iorclab.com`;
+        
+        const { data: authData, error: authErr } = await tempClient.auth.signUp({
+          email: generatedEmail,
+          password: 'cad_123456'
+        });
+
+        if (authErr) {
+            console.error('Erro ao criar Auth User:', authErr);
+            throw new Error(`Erro ao criar login. O Supabase recusou: ${authErr.message}`);
+        }
+
+        if (authData.user) {
+          finalId = authData.user.id;
+        }
+      } catch (e) {
+        console.error('Erro no registro do auth:', e);
+        throw e;
+      }
+
       const { data, error } = await supabase!
         .from('profiles')
-        .insert([{ ...profile, id: genUUID() }])
+        .upsert([{ ...profile, id: finalId }])
         .select()
         .single();
+        
       if (error) throw error;
-      return data;
+      
+      return { ...data, _generatedEmail: generatedEmail } as any;
     },
 
     async save(profile: Profile): Promise<Profile> {

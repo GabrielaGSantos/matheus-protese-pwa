@@ -71,13 +71,18 @@ export const DentistsScreen: React.FC = () => {
           notes: notes
         });
       } else {
-        await api.profiles.create({
+        const newProfile = await api.profiles.create({
           role: addingAuxiliarFor ? 'auxiliar' : 'dentist',
           linked_dentist_id: addingAuxiliarFor || undefined,
           full_name: name,
           whatsapp: whatsapp,
           notes: notes
         });
+        
+        if ((newProfile as any)._generatedEmail) {
+           const userLogin = (newProfile as any)._generatedEmail.split('@')[0];
+           alert(`ACESSO GERADO COM SUCESSO!\n\nEnvie estes dados para o dentista acessar o sistema:\n\nUsuário (Login): ${userLogin}\nSenha Padrão: cad_123456\n\n(Eles podem entrar usando apenas o nome de usuário)`);
+        }
       }
       
       setSuccess(true);
