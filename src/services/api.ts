@@ -424,7 +424,13 @@ export const api = {
       let generatedEmail = '';
       
       try {
-        const tempClient = createClient(supabaseUrl, supabaseAnonKey);
+        const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+          }
+        });
         
         let emailBase = profile.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
         if (profile.role === 'auxiliar') emailBase = 'auxiliar_' + emailBase;
