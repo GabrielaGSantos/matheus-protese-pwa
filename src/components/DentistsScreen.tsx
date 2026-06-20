@@ -268,18 +268,6 @@ export const DentistsScreen: React.FC = () => {
                       className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
-                      Login
-                    </label>
-                    <input
-                      type="text"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={addingAuxiliarFor ? "auxiliar_nome" : "dr_fulano"}
-                      className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
-                    />
-                  </div>
                 </div>
 
                 <div>
