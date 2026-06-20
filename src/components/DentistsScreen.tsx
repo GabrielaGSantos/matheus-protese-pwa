@@ -19,7 +19,6 @@ export const DentistsScreen: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [email, setEmail] = useState('');
   const [userLogin, setUserLogin] = useState('');
   const [notes, setNotes] = useState('');
   const [editingDentist, setEditingDentist] = useState<Profile | null>(null);
@@ -117,7 +116,6 @@ export const DentistsScreen: React.FC = () => {
       setSuccess(true);
       setName('');
       setWhatsapp('');
-      setEmail('');
       setUserLogin('');
       setNotes('');
       setEditingDentist(null);
@@ -159,7 +157,6 @@ export const DentistsScreen: React.FC = () => {
     setAddingAuxiliarFor(dentistId);
     setName('');
     setWhatsapp('');
-    setEmail('');
     setUserLogin('');
     setNotes('');
     setShowForm(true);
@@ -206,7 +203,6 @@ export const DentistsScreen: React.FC = () => {
                 setAddingAuxiliarFor(null);
                 setName('');
                 setWhatsapp('');
-                setEmail('');
                 setUserLogin('');
                 setNotes('');
               }}
