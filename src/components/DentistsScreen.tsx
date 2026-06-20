@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users, Copy, KeyRound } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users, Copy, KeyRound, Edit2 } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
