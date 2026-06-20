@@ -473,15 +473,17 @@ export const api = {
         throw e;
       }
 
-      const { data, error } = await supabase!
-        .from('profiles')
-        .upsert([{ ...profile, id: finalId }])
-        .select()
-        .single();
+      const { data, error } = await supabase!.functions.invoke('admin-actions', {
+        body: { 
+          action: 'create_profile', 
+          profile: { ...profile, id: finalId } 
+        }
+      });
         
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
-      return { ...data, _generatedEmail: generatedEmail, _generatedPassword: generatedPassword } as any;
+      return { ...data.profile, _generatedEmail: generatedEmail, _generatedPassword: generatedPassword } as any;
     },
 
     async save(profile: Profile): Promise<Profile> {

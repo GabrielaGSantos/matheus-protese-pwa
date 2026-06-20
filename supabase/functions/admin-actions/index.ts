@@ -61,6 +61,23 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'create_profile') {
+      const { profile } = body;
+      if (!profile || !profile.id) throw new Error('Missing profile data');
+
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .upsert([profile])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true, profile: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     throw new Error('Invalid action');
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
