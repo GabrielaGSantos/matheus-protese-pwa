@@ -261,9 +261,13 @@ export const api = {
       return profile;
     },
 
-    async login(email: string): Promise<Profile> {
+    async login(email: string, password?: string): Promise<Profile> {
       let profile: Profile;
       if (useMockData) {
+        if (password !== 'cad_123456') {
+          throw new Error('Senha incorreta.');
+        }
+
         const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
         const query = email.toLowerCase().trim();
         // Admin Login mock: "matheus" or "admin"
@@ -341,7 +345,7 @@ export const api = {
         const formattedEmail = email.includes('@') ? email : `${email.trim().toLowerCase()}@iorclab.com`;
         const { error } = await supabase!.auth.signInWithPassword({
           email: formattedEmail,
-          password: 'Password123'
+          password: password || 'cad_123456'
         });
         if (error) throw error;
         

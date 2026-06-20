@@ -5,7 +5,7 @@ import { api } from '../services/api';
 interface AuthContextType {
   user: Profile | null;
   loading: boolean;
-  login: (email: string) => Promise<void>;
+  login: (email: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isAuxiliar: boolean;
@@ -71,10 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  const login = async (email: string) => {
+  const login = async (email: string, password?: string) => {
     setLoading(true);
     try {
-      const loggedUser = await api.auth.login(email);
+      const loggedUser = await api.auth.login(email, password);
       setUser(loggedUser);
       await syncGDriveSettings();
     } catch (err) {

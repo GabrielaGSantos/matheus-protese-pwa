@@ -15,25 +15,17 @@ export const AuthScreen: React.FC = () => {
       setErrorMsg('Por favor, informe seu e-mail.');
       return;
     }
-
-    setSubmitting(true);
-    setErrorMsg('');
-    try {
-      await login(email);
-    } catch (err: any) {
-      setErrorMsg('Falha na autenticação. Verifique os dados inseridos.');
-    } finally {
-      setSubmitting(false);
+    if (!password) {
+      setErrorMsg('Por favor, informe sua senha.');
+      return;
     }
-  };
 
-  const handleQuickLogin = async (quickEmail: string) => {
     setSubmitting(true);
     setErrorMsg('');
     try {
-      await login(quickEmail);
+      await login(email, password);
     } catch (err: any) {
-      setErrorMsg('Falha no login rápido.');
+      setErrorMsg('Falha na autenticação. Verifique usuário e senha.');
     } finally {
       setSubmitting(false);
     }
@@ -113,51 +105,6 @@ export const AuthScreen: React.FC = () => {
             {submitting ? 'Acessando...' : 'Entrar'}
           </button>
         </form>
-
-        {/* Quick Logins as subtle text links */}
-        <div className="mt-6 pt-5 border-t border-[#E2E8F0] text-center">
-          <p className="text-[11px] text-slate-400 mb-2">Entrar rapidamente:</p>
-          <div className="flex items-center justify-center gap-1 text-[11px]">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('matheus')}
-              disabled={submitting}
-              className="text-[#0F766E] hover:text-[#115E59] font-medium transition-all cursor-pointer disabled:opacity-50"
-            >
-              Dr. Matheus
-            </button>
-            <span className="text-slate-300">·</span>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('secretaria')}
-              disabled={submitting}
-              className="text-[#0F766E] hover:text-[#115E59] font-medium transition-all cursor-pointer disabled:opacity-50"
-            >
-              Secretária
-            </button>
-            <span className="text-slate-300">·</span>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('allan')}
-              disabled={submitting}
-              className="text-[#0F766E] hover:text-[#115E59] font-medium transition-all cursor-pointer disabled:opacity-50"
-            >
-              Dr. Allan
-            </button>
-            <span className="text-slate-300">·</span>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('aux_allan')}
-              disabled={submitting}
-              className="text-[#0F766E] hover:text-[#115E59] font-medium transition-all cursor-pointer disabled:opacity-50"
-            >
-              Auxiliar
-            </button>
-          </div>
-          <p className="text-[10px] text-slate-300 mt-3">
-            Modo de demonstração (Mock)
-          </p>
-        </div>
 
       </div>
     </div>
