@@ -210,31 +210,31 @@ export const SettingsScreen: React.FC = () => {
     setDriveLoading(true);
     setDriveTestResult(null);
     try {
-      const res = await fetch('api.php?action=test_drive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          root_folder_url: driveRootLink
-        })
+      const formData = new FormData();
+      formData.append('action', 'test_connection');
+      formData.append('case_id', 'test');
+      formData.append('dentist_id', 'test');
+      formData.append('dentist_name', 'Test');
+      formData.append('patient_name', 'Test');
+
+      const { data, error } = await supabase.functions.invoke('gdrive-upload', {
+        body: formData,
       });
-      
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        const text = await res.text();
-        throw new Error(`Resposta não-JSON do servidor: ${text.substring(0, 200)}`);
+
+      if (error) {
+        throw new Error(error.message || 'Erro na Edge Function');
       }
       
-      const resJson = await res.json();
-      if (resJson.success) {
+      if (data.success) {
         setDriveTestResult({
           success: true,
-          message: resJson.message || '✅ Conexão estabelecida com sucesso!',
+          message: data.message || '✅ Conexão estabelecida com sucesso!',
         });
         setDbDriveConnected(true);
       } else {
         setDriveTestResult({
           success: false,
-          message: `❌ ${resJson.error || 'Erro de conexão.'}`,
+          message: `❌ ${data.error || 'Erro de conexão.'}`,
         });
       }
     } catch (err: any) {
@@ -821,7 +821,7 @@ export const SettingsScreen: React.FC = () => {
                 <div>
                   <div className={`text-xs font-bold ${driveConnected ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {driveConnected 
-                      ? `Google Drive Conectado como [${clientEmail}]`
+                      ? `Google Drive Conectado${clientEmail ? ` como [${clientEmail}]` : ''}`
                       : 'Google Drive Pendente de Conexão'}
                   </div>
                   <div className="text-[10px] text-slate-500 mt-0.5">
