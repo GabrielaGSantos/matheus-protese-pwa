@@ -220,7 +220,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       const c = await api.cases.list('admin', 'admin-1');
       const p = await api.profiles.list();
       const s = await api.services.list();
-      const ev = await api.calendar.list();
+      
+      let ev: CalendarEvent[] = [];
+      try {
+        ev = await api.calendar.list();
+      } catch (err) {
+        console.warn('Erro ao carregar calendário (ignorado):', err);
+      }
       
       setCases(c);
       setCalendarEvents(ev);

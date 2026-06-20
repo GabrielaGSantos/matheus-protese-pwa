@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users, Copy } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users, Copy, KeyRound } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
@@ -25,7 +25,7 @@ export const DentistsScreen: React.FC = () => {
   const [addingAuxiliarFor, setAddingAuxiliarFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [generatedCredentials, setGeneratedCredentials] = useState<{login: string, role: string} | null>(null);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{login: string, role: string, password?: string} | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -59,6 +59,28 @@ export const DentistsScreen: React.FC = () => {
     }
   };
 
+  const handleResetPassword = async (profile: Profile) => {
+    if (!window.confirm(`Tem certeza que deseja gerar uma nova senha aleatória para ${profile.full_name}?`)) return;
+    setLoading(true);
+    try {
+      const newPassword = await api.profiles.resetPassword(profile.id);
+      
+      let emailBase = profile.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+      if (profile.role === 'auxiliar') emailBase = 'auxiliar_' + emailBase;
+      
+      setGeneratedCredentials({
+        login: emailBase,
+        password: newPassword,
+        role: profile.role === 'auxiliar' ? 'auxiliar' : 'dentista'
+      });
+    } catch (err: any) {
+      console.error(err);
+      alert(`Erro ao resetar senha: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
@@ -85,6 +107,7 @@ export const DentistsScreen: React.FC = () => {
            const userLogin = (newProfile as any)._generatedEmail.split('@')[0];
            setGeneratedCredentials({ 
              login: userLogin, 
+             password: (newProfile as any)._generatedPassword || 'cad_123456',
              role: addingAuxiliarFor ? 'auxiliar' : 'dentista' 
            });
         }
@@ -348,35 +371,51 @@ export const DentistsScreen: React.FC = () => {
                           <Users size={12} />
                           Equipe ({myAuxiliars.length})
                         </span>
-                        <button
-                          onClick={() => startAddAuxiliar(d.id)}
-                          className="text-[9px] font-bold text-[#0F766E] hover:text-[#115E59] uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          + Adicionar
-                        </button>
                       </div>
-                      
-                      {myAuxiliars.length > 0 && (
-                        <div className="space-y-1.5 mt-2">
-                          {myAuxiliars.map(aux => (
-                            <div key={aux.id} className="flex items-center justify-between bg-slate-50 border border-[#E2E8F0] p-1.5 rounded-md text-[10px]">
-                              <span className="font-semibold text-slate-700 truncate">{aux.full_name}</span>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button onClick={() => startEdit(aux)} className="p-1 hover:text-[#0F766E] text-slate-400 transition-all cursor-pointer" title="Editar">
-                                  <FileText size={10} />
-                                </button>
-                                <button onClick={() => handleDelete(aux.id)} className="p-1 hover:text-rose-600 text-slate-400 transition-all cursor-pointer" title="Excluir">
-                                  <X size={10} />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
 
-                  <div className="flex gap-2 mt-4 pt-3 border-t border-[#E2E8F0]">
+                  {d.notes && (
+                    <p className="text-sm text-slate-600 mb-4 line-clamp-2 bg-white p-3 rounded-xl border border-slate-100">
+                      {d.notes}
+                    </p>
+                  )}
+                  
+                  {myAuxiliars.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Auxiliares / Secretárias</div>
+                      {myAuxiliars.map(aux => (
+                        <div key={aux.id} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-100">
+                          <span className="text-xs font-semibold text-slate-700">{aux.full_name}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => startEdit(aux)}
+                              className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-md transition-colors"
+                              title="Editar Auxiliar"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleResetPassword(aux)}
+                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
+                              title="Resetar Senha"
+                            >
+                              <KeyRound size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(aux.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              title="Excluir Auxiliar"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-auto pt-4 border-t border-slate-200/60">
                     {d.whatsapp && (
                       <a
                         href={`https://wa.me/55${d.whatsapp.replace(/\D/g, '')}`}
@@ -388,6 +427,21 @@ export const DentistsScreen: React.FC = () => {
                         WhatsApp
                       </a>
                     )}
+                    <button
+                      onClick={() => startAddAuxiliar(d.id)}
+                      className="py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      title="Adicionar Auxiliar/Secretária"
+                    >
+                      <Plus size={11} className="text-teal-600" />
+                      Auxiliar
+                    </button>
+                    <button
+                      onClick={() => handleResetPassword(d)}
+                      className="py-1.5 px-3 bg-white hover:bg-amber-50 text-amber-700 border border-amber-200 text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      title="Resetar Senha"
+                    >
+                      <KeyRound size={11} />
+                    </button>
                     <button
                       onClick={() => startEdit(d)}
                       className="py-1.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] text-center rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -401,7 +455,6 @@ export const DentistsScreen: React.FC = () => {
                       title="Excluir Dentista"
                     >
                       <Trash2 size={11} />
-                      Excluir
                     </button>
                   </div>
                 </div>
@@ -442,7 +495,7 @@ export const DentistsScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Generated Credentials Modal */}
+      {/* Credentials Modal */}
       {generatedCredentials && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -458,7 +511,7 @@ export const DentistsScreen: React.FC = () => {
               </div>
               <h2 className="text-2xl font-bold mb-1">Acesso Gerado!</h2>
               <p className="text-emerald-100 text-sm">
-                O perfil de {generatedCredentials.role} foi criado com sucesso.
+                O perfil de {generatedCredentials.role} foi configurado com sucesso.
               </p>
             </div>
             
@@ -473,8 +526,8 @@ export const DentistsScreen: React.FC = () => {
                   <div className="text-lg font-bold text-slate-800">{generatedCredentials.login}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Senha Padrão</div>
-                  <div className="text-lg font-bold text-slate-800 font-mono tracking-wider">cad_123456</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Senha Gerada</div>
+                  <div className="text-lg font-bold text-slate-800 font-mono tracking-wider">{generatedCredentials.password}</div>
                 </div>
               </div>
               

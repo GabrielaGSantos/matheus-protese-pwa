@@ -422,7 +422,11 @@ export const api = {
       
       let finalId = crypto.randomUUID() as string;
       let generatedEmail = '';
-      
+      let generatedPassword = '';
+      if (!useMockData) {
+        generatedPassword = Math.random().toString(36).substring(2, 8).toLowerCase(); // 6 random characters
+      }
+
       try {
         const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
           auth: {
@@ -438,20 +442,24 @@ export const api = {
         
         const { data: authData, error: authErr } = await tempClient.auth.signUp({
           email: generatedEmail,
-          password: 'cad_123456'
+          password: generatedPassword
         });
 
         if (authErr) {
             if (authErr.message.includes('User already registered') || authErr.message.includes('already registered')) {
-              const { data: loginData, error: loginErr } = await tempClient.auth.signInWithPassword({
-                email: generatedEmail,
-                password: 'cad_123456'
-              });
-              if (loginErr) {
-                throw new Error(`O usuário já existe, mas ocorreu um erro: ${loginErr.message}`);
-              }
-              if (loginData.user) {
-                finalId = loginData.user.id;
+              // Try to find if user exists by checking the profiles table directly
+              const { data: existingProfile } = await supabase!
+                .from('profiles')
+                .select('id')
+                .ilike('full_name', profile.full_name)
+                .single();
+              
+              if (existingProfile) {
+                finalId = existingProfile.id;
+                // If the profile already exists, we should probably throw or just overwrite it.
+                // Since the user is explicitly trying to recreate, let's just proceed.
+              } else {
+                 throw new Error(`O usuário já existe, mas o perfil não foi encontrado. Utilize a função de Resetar Senha.`);
               }
             } else {
               console.error('Erro ao criar Auth User:', authErr);
@@ -473,7 +481,7 @@ export const api = {
         
       if (error) throw error;
       
-      return { ...data, _generatedEmail: generatedEmail } as any;
+      return { ...data, _generatedEmail: generatedEmail, _generatedPassword: generatedPassword } as any;
     },
 
     async save(profile: Profile): Promise<Profile> {
@@ -495,6 +503,20 @@ export const api = {
         .single();
       if (error) throw error;
       return data;
+    },
+
+    async resetPassword(userId: string): Promise<string> {
+      if (useMockData) return 'senha_mock';
+      const newPassword = Math.random().toString(36).substring(2, 8).toLowerCase();
+      
+      const { data, error } = await supabase!.functions.invoke('admin-actions', {
+        body: { action: 'reset_password', userId: userId, password: newPassword }
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return newPassword;
     },
 
     async delete(id: string): Promise<void> {
