@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users, Copy } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
@@ -25,6 +25,8 @@ export const DentistsScreen: React.FC = () => {
   const [addingAuxiliarFor, setAddingAuxiliarFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{login: string, role: string} | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchDentists();
@@ -81,7 +83,10 @@ export const DentistsScreen: React.FC = () => {
         
         if ((newProfile as any)._generatedEmail) {
            const userLogin = (newProfile as any)._generatedEmail.split('@')[0];
-           alert(`ACESSO GERADO COM SUCESSO!\n\nEnvie estes dados para o dentista acessar o sistema:\n\nUsuário (Login): ${userLogin}\nSenha Padrão: cad_123456\n\n(Eles podem entrar usando apenas o nome de usuário)`);
+           setGeneratedCredentials({ 
+             login: userLogin, 
+             role: addingAuxiliarFor ? 'auxiliar' : 'dentista' 
+           });
         }
       }
       
@@ -104,6 +109,14 @@ export const DentistsScreen: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCopy = () => {
+    if (!generatedCredentials) return;
+    const text = `Acesso ao Sistema\nUsuário: ${generatedCredentials.login}\nSenha: cad_123456\nLink: https://matheus-odontologia-digital.vercel.app`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const startEdit = (dentist: Profile) => {
@@ -426,6 +439,71 @@ export const DentistsScreen: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Generated Credentials Modal */}
+      {generatedCredentials && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white text-center relative">
+              <button 
+                onClick={() => setGeneratedCredentials(null)}
+                className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+                <Check size={32} className="text-white drop-shadow-md" />
+              </div>
+              <h2 className="text-2xl font-bold mb-1">Acesso Gerado!</h2>
+              <p className="text-emerald-100 text-sm">
+                O perfil de {generatedCredentials.role} foi criado com sucesso.
+              </p>
+            </div>
+            
+            <div className="p-8">
+              <p className="text-slate-600 text-sm mb-6 text-center">
+                Envie os dados abaixo para o profissional acessar o sistema:
+              </p>
+              
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 space-y-4 relative">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Usuário (Login)</div>
+                  <div className="text-lg font-bold text-slate-800">{generatedCredentials.login}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Senha Padrão</div>
+                  <div className="text-lg font-bold text-slate-800 font-mono tracking-wider">cad_123456</div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setGeneratedCredentials(null)}
+                  className="flex-1 py-3 px-4 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold rounded-xl transition-all text-sm"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="flex-1 py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-sm hover:shadow"
+                >
+                  {copied ? (
+                    <>
+                      <Check size={18} />
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={18} />
+                      Copiar Dados
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
