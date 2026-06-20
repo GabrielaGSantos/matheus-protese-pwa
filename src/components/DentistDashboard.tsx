@@ -384,19 +384,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     );
   };
 
-  const dentistAllowedNames = [
-    'enceramento digital',
-    'impressao',
-    'coroa de dissilicato',
-    'coroa em zirconia',
-    'coroa zirconia',
-    'protocolo zirconia',
-    'modelo total',
-    'placa'
-  ];
-  const dentistServices = services.filter(s => 
-    dentistAllowedNames.includes(s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-  );
+  const dentistServices = services.filter(s => !s.is_internal_cost);
 
   const getServiceNames = (caseItem: Case) => {
     if (!caseItem.selected_services || caseItem.selected_services.length === 0) {
