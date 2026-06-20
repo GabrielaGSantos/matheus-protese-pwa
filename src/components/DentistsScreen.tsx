@@ -295,7 +295,6 @@ export const DentistsScreen: React.FC = () => {
                       setAddingAuxiliarFor(null);
                       setName('');
                       setWhatsapp('');
-                      setEmail('');
                       setNotes('');
                     }}
                     className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all cursor-pointer"
