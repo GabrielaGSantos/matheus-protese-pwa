@@ -523,7 +523,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
                                 <span className="truncate">📦 {c.patient_name}</span>
                               </div>
                               <div className="text-[9px] text-muted-foreground">
-                                Dr. {dentist?.full_name || 'Desconhecido'}
+                                {dentist?.full_name || 'Desconhecido'}
                               </div>
                               <span className="px-1.5 py-0.5 rounded-full bg-teal-100 text-[8px] font-bold uppercase text-[#0F766E]">
                                 {c.status}

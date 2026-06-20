@@ -76,7 +76,9 @@ export const notificationService = {
     const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
     const isDentist = currentUser?.role === 'dentist';
 
-    if (isDentist && settings.enable_telegram && settings.telegram_bot_token && settings.telegram_chat_id) {
+    const isSystemAlert = category === 'due_date';
+
+    if ((isDentist || isSystemAlert) && settings.enable_telegram && settings.telegram_bot_token && settings.telegram_chat_id) {
       const text = `🔔 *${title}*\n\n${message}${caseId ? `\n\nCaso ID: \`${caseId}\`` : ''}`;
       const url = `https://api.telegram.org/bot${settings.telegram_bot_token}/sendMessage`;
       

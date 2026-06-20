@@ -8,6 +8,8 @@ interface AuthContextType {
   login: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
+  isAuxiliar: boolean;
+  linkedDentistId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,7 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     login,
     logout,
-    isAdmin: user?.role === 'admin' || user?.role === 'secretary'
+    isAdmin: user?.role === 'admin' || user?.role === 'secretary',
+    isAuxiliar: user?.role === 'auxiliar',
+    linkedDentistId: user?.role === 'auxiliar' ? (user?.linked_dentist_id || null) : null
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

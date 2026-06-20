@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
-import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users } from 'lucide-react';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
+  const [auxiliars, setAuxiliars] = useState<Profile[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,6 +22,7 @@ export const DentistsScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
   const [editingDentist, setEditingDentist] = useState<Profile | null>(null);
+  const [addingAuxiliarFor, setAddingAuxiliarFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -33,6 +35,7 @@ export const DentistsScreen: React.FC = () => {
     try {
       const all = await api.profiles.list();
       setDentists(all.filter(p => p.role === 'dentist'));
+      setAuxiliars(all.filter(p => p.role === 'auxiliar'));
     } catch (err) {
       console.error(err);
     } finally {
@@ -69,7 +72,8 @@ export const DentistsScreen: React.FC = () => {
         });
       } else {
         await api.profiles.create({
-          role: 'dentist',
+          role: addingAuxiliarFor ? 'auxiliar' : 'dentist',
+          linked_dentist_id: addingAuxiliarFor || undefined,
           full_name: name,
           whatsapp: whatsapp,
           notes: notes
@@ -82,6 +86,7 @@ export const DentistsScreen: React.FC = () => {
       setEmail('');
       setNotes('');
       setEditingDentist(null);
+      setAddingAuxiliarFor(null);
       
       setTimeout(() => {
         setSuccess(false);
@@ -98,9 +103,20 @@ export const DentistsScreen: React.FC = () => {
 
   const startEdit = (dentist: Profile) => {
     setEditingDentist(dentist);
+    setAddingAuxiliarFor(dentist.role === 'auxiliar' ? (dentist.linked_dentist_id || null) : null);
     setName(dentist.full_name);
     setWhatsapp(dentist.whatsapp || '');
     setNotes(dentist.notes || '');
+    setShowForm(true);
+  };
+
+  const startAddAuxiliar = (dentistId: string) => {
+    setEditingDentist(null);
+    setAddingAuxiliarFor(dentistId);
+    setName('');
+    setWhatsapp('');
+    setEmail('');
+    setNotes('');
     setShowForm(true);
   };
 
@@ -142,6 +158,7 @@ export const DentistsScreen: React.FC = () => {
               onClick={() => {
                 setShowForm(false);
                 setEditingDentist(null);
+                setAddingAuxiliarFor(null);
                 setName('');
                 setWhatsapp('');
                 setEmail('');
@@ -151,13 +168,17 @@ export const DentistsScreen: React.FC = () => {
             >
               <X size={16} />
             </button>
-            <h3 className="text-sm font-bold text-slate-900 mb-4">{editingDentist ? 'Editar Dentista' : 'Novo Dentista'}</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-4">
+              {editingDentist 
+                ? (editingDentist.role === 'auxiliar' ? 'Editar Auxiliar' : 'Editar Dentista')
+                : (addingAuxiliarFor ? 'Novo Auxiliar' : 'Novo Dentista')}
+            </h3>
             {success ? (
               <div className="flex flex-col items-center justify-center py-6 text-emerald-600 font-semibold gap-2 text-sm">
                 <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                   <Check size={20} />
                 </div>
-                {editingDentist ? 'Dentista editado com sucesso' : 'Dentista adicionado com sucesso'}
+                {editingDentist ? 'Cadastro editado com sucesso' : 'Cadastro realizado com sucesso'}
               </div>
             ) : (
               <form onSubmit={handleCreate} className="space-y-4">
@@ -170,7 +191,7 @@ export const DentistsScreen: React.FC = () => {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ex: Dr. Lucas Medeiros"
+                    placeholder={addingAuxiliarFor ? "Ex: Ana Beatriz (Auxiliar)" : "Ex: Dr. Lucas Medeiros"}
                     className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                   />
                 </div>
@@ -196,7 +217,7 @@ export const DentistsScreen: React.FC = () => {
                       type="text"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="dr_fulano"
+                      placeholder={addingAuxiliarFor ? "auxiliar_nome" : "dr_fulano"}
                       className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                     />
                   </div>
@@ -210,13 +231,16 @@ export const DentistsScreen: React.FC = () => {
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Anotações internas sobre preferências do dentista, prazos, etc."
+                    placeholder={addingAuxiliarFor ? "Anotações internas sobre a função do auxiliar." : "Anotações internas sobre preferências do dentista, prazos, etc."}
                     className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all"
                   />
                 </div>
 
                 <p className="text-[10px] text-slate-400">
-                  * No modo de demonstração, a senha padrão criada será <strong>123456</strong>. O login rápido do dentista ficará disponível na tela de login.
+                  * No modo de demonstração, a senha padrão criada será <strong>123456</strong>. 
+                  {addingAuxiliarFor 
+                    ? " Para acessar como auxiliar, digite aux_ seguido do nome do dentista vinculado na tela de login rápido."
+                    : " O login rápido do dentista ficará disponível na tela de login."}
                 </p>
 
                 <div className="flex justify-end gap-2.5 pt-2">
@@ -225,6 +249,7 @@ export const DentistsScreen: React.FC = () => {
                     onClick={() => {
                       setShowForm(false);
                       setEditingDentist(null);
+                      setAddingAuxiliarFor(null);
                       setName('');
                       setWhatsapp('');
                       setEmail('');
@@ -275,7 +300,9 @@ export const DentistsScreen: React.FC = () => {
                 Nenhum dentista encontrado para a busca.
               </div>
             ) : (
-              paginatedDentists.map((d) => (
+              paginatedDentists.map((d) => {
+                const myAuxiliars = auxiliars.filter(a => a.linked_dentist_id === d.id);
+                return (
                 <div key={d.id} className="glass-panel p-4 flex flex-col justify-between hover:shadow-sm transition-all">
                   <div>
                     <h4 className="font-semibold text-sm text-slate-900">{d.full_name}</h4>
@@ -293,6 +320,39 @@ export const DentistsScreen: React.FC = () => {
                         <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E2E8F0] text-[10px] text-slate-500 mt-2 leading-relaxed">
                           <strong className="text-slate-700 block mb-0.5">Observação:</strong>
                           {d.notes}
+                        </div>
+                      )}
+                    </div>
+                    {/* Auxiliaries Section */}
+                    <div className="mt-4 pt-3 border-t border-[#E2E8F0]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <Users size={12} />
+                          Equipe ({myAuxiliars.length})
+                        </span>
+                        <button
+                          onClick={() => startAddAuxiliar(d.id)}
+                          className="text-[9px] font-bold text-[#0F766E] hover:text-[#115E59] uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          + Adicionar
+                        </button>
+                      </div>
+                      
+                      {myAuxiliars.length > 0 && (
+                        <div className="space-y-1.5 mt-2">
+                          {myAuxiliars.map(aux => (
+                            <div key={aux.id} className="flex items-center justify-between bg-slate-50 border border-[#E2E8F0] p-1.5 rounded-md text-[10px]">
+                              <span className="font-semibold text-slate-700 truncate">{aux.full_name}</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button onClick={() => startEdit(aux)} className="p-1 hover:text-[#0F766E] text-slate-400 transition-all cursor-pointer" title="Editar">
+                                  <FileText size={10} />
+                                </button>
+                                <button onClick={() => handleDelete(aux.id)} className="p-1 hover:text-rose-600 text-slate-400 transition-all cursor-pointer" title="Excluir">
+                                  <X size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -327,7 +387,8 @@ export const DentistsScreen: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 

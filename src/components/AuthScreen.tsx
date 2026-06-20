@@ -144,6 +144,15 @@ export const AuthScreen: React.FC = () => {
             >
               Dr. Allan
             </button>
+            <span className="text-slate-300">·</span>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('aux_allan')}
+              disabled={submitting}
+              className="text-[#0F766E] hover:text-[#115E59] font-medium transition-all cursor-pointer disabled:opacity-50"
+            >
+              Auxiliar
+            </button>
           </div>
           <p className="text-[10px] text-slate-300 mt-3">
             Modo de demonstração (Mock)

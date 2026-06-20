@@ -36,7 +36,8 @@ interface DentistDashboardProps {
 }
 
 export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, setCurrentTab }) => {
-  const { user } = useAuth();
+  const { user, isAuxiliar, linkedDentistId } = useAuth();
+  const activeDentistId = isAuxiliar ? linkedDentistId : user?.id;
   const [cases, setCases] = useState<Case[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [activeTab, setActiveTab] = useState<'my-cases' | 'new-case' | 'change-password'>(
@@ -76,6 +77,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   const [scanFiles, setScanFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
   // Editing state for Dentist
   const [editingCase, setEditingCase] = useState<Case | null>(null);
@@ -90,10 +92,10 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   }, [user]);
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!activeDentistId) return;
     setLoading(true);
     try {
-      const c = await api.cases.list('dentist', user.id);
+      const c = await api.cases.list('dentist', activeDentistId);
       const s = await api.services.list();
       setCases(c);
       setServices(s);
@@ -181,15 +183,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       let driveCaseFolderUrl = editingCase?.drive_case_folder_url;
       let driveErrorMessage = editingCase?.drive_error_message;
 
-      // Google Drive folders are now created automatically on the backend during upload
-
       const payload: Case = {
         id: caseId,
-        dentist_id: user.id,
+        dentist_id: activeDentistId,
         patient_name: patientName,
         created_at: editingCase?.created_at || new Date().toISOString(),
         requested_delivery_date: requestedDate,
-        final_delivery_date: editingCase?.final_delivery_date, // Admin sets this
+        final_delivery_date: editingCase?.final_delivery_date, 
         status: (photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
           ? 'aguardando_arquivos'
           : 'em_analise',
@@ -223,13 +223,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
         updated_at: new Date().toISOString()
       };
 
-      await api.cases.save(payload, user.id);
+      await api.cases.save(payload, activeDentistId);
 
       // Upload photos clinical to backend Google Drive integration
       let uploadError = false;
       for (const f of photoFiles) {
         try {
-          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', user.id);
+          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', activeDentistId);
           notificationService.add(
             'Novo Arquivo Enviado',
             `O dentista "${dentistName}" enviou a foto "${f.name}" para o caso ${caseId}.`,
@@ -245,7 +245,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       // Upload scans 3D to backend Google Drive integration
       for (const f of scanFiles) {
         try {
-          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'escaneamento', user.id);
+          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'escaneamento', activeDentistId);
           notificationService.add(
             'Novo Arquivo Enviado',
             `O dentista "${dentistName}" enviou o escaneamento "${f.name}" para o caso ${caseId}.`,
@@ -258,8 +258,10 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
         }
       }
 
+      let hasUploadError = false;
+
       if (uploadError) {
-        alert('Caso adicionado, porém ocorreu um problema ao enviar os arquivos. Por favor entre em contato com o Dr. Matheus');
+        hasUploadError = true;
       }
       
       // Trigger notifications for new/modified cases
@@ -292,7 +294,11 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       setCurrentTab('dentist-cases');
       
       fetchData();
-      setShowSuccessPopup(true);
+      if (hasUploadError) {
+        setShowErrorPopup(true);
+      } else {
+        setShowSuccessPopup(true);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -438,15 +444,17 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
         </div>
 
         {/* Total Owed card */}
-        <div className="bg-white border border-[#E2E8F0] px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-3 w-fit">
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
-            <DollarSign size={16} />
+        {!isAuxiliar && (
+          <div className="bg-white border border-[#E2E8F0] px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-3 w-fit">
+            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
+              <DollarSign size={16} />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo Devedor Geral</span>
+              <span className="text-base font-bold text-slate-900">R$ {totalOwed.toFixed(2)}</span>
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo Devedor Geral</span>
-            <span className="text-base font-bold text-slate-900">R$ {totalOwed.toFixed(2)}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="flex border-b border-[#E2E8F0] w-full gap-6 mb-2 pb-px">
@@ -553,7 +561,9 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                               {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                             </td>
                             <td className="p-3 font-semibold text-slate-700">
-                              {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
+                              {isAuxiliar ? (
+                                <span className="text-slate-400 italic text-[10px]">Restrito</span>
+                              ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
                             </td>
                             <td className="p-3 text-right">
                               <div className="inline-flex items-center gap-1.5 justify-end">
@@ -613,9 +623,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                             <th className="p-3">Paciente</th>
                             <th className="p-3">Procedimento(s)</th>
                             <th className="p-3">Status</th>
-                            <th className="p-3">Valor Total</th>
-                            <th className="p-3">Pago</th>
-                            <th className="p-3">Aberto</th>
+                            <th className="p-3">Valores</th>
                             <th className="p-3 text-right">Ações</th>
                           </tr>
                         </thead>
@@ -630,14 +638,33 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                                   {c.status === 'entregue' ? 'Entregue' : 'Finalizado'}
                                 </span>
                               </td>
-                              <td className="p-3 font-semibold text-slate-900">
-                                {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
-                              </td>
-                              <td className="p-3 font-semibold text-emerald-600">
-                                {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.paid_value.toFixed(2)}` : '—'}
-                              </td>
-                              <td className="p-3 font-semibold text-slate-700">
-                                {(c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.remaining_value.toFixed(2)}` : '—'}
+                              <td className="p-3">
+                                <div className="flex gap-4">
+                                  <div>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Valor Total</p>
+                                    <p className="text-xs font-bold text-slate-900">
+                                      {isAuxiliar ? (
+                                        <span className="text-slate-400 italic font-normal text-[10px]">Restrito</span>
+                                      ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic font-normal text-[10px]">Aguardando liberação</span>}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Valor Pago</p>
+                                    <p className="text-xs font-bold text-emerald-600">
+                                      {isAuxiliar ? (
+                                        <span className="text-slate-400 italic font-normal text-[10px]">Restrito</span>
+                                      ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.paid_value.toFixed(2)}` : '—'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Saldo Devedor</p>
+                                    <p className="text-xs font-bold text-rose-600">
+                                      {isAuxiliar ? (
+                                        <span className="text-slate-400 italic font-normal text-[10px]">Restrito</span>
+                                      ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.remaining_value.toFixed(2)}` : '—'}
+                                    </p>
+                                  </div>
+                                </div>
                               </td>
                               <td className="p-3 text-right">
                                 <div className="inline-flex items-center gap-1.5 justify-end">
@@ -1074,6 +1101,27 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               className="w-full py-2 bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold rounded-lg text-xs transition-all cursor-pointer"
             >
               OK, fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Case submitted with error popup modal */}
+      {showErrorPopup && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
+            <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-4 text-rose-500">
+              <AlertTriangle size={24} />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Atenção ao Enviar Arquivos</h3>
+            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+              Caso salvo com sucesso, porém ocorreu um problema ao enviar os arquivos anexos. Por favor, tente enviá-los novamente ou entre em contato com o laboratório.
+            </p>
+            <button
+              onClick={() => setShowErrorPopup(false)}
+              className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-xs transition-all cursor-pointer"
+            >
+              Entendido
             </button>
           </div>
         </div>

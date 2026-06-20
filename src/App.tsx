@@ -80,9 +80,9 @@ const AppContent: React.FC = () => {
       const casesList = await api.cases.list('admin', user.id);
       const today = new Date();
       
-      const notifiedStr = localStorage.getItem('matheus_protese_deadlines_notified');
-      const notifiedIds: string[] = notifiedStr ? JSON.parse(notifiedStr) : [];
-      const newlyNotified = [...notifiedIds];
+      const notifiedStr = localStorage.getItem('matheus_protese_deadlines_notified_dates');
+      const notifiedDates: Record<string, string> = notifiedStr ? JSON.parse(notifiedStr) : {};
+      const todayStr = new Date().toISOString().split('T')[0];
       let hasNewNotification = false;
 
       for (const c of casesList) {
@@ -92,27 +92,27 @@ const AppContent: React.FC = () => {
         const deliveryDateStr = c.final_delivery_date || c.requested_delivery_date;
         if (!deliveryDateStr) continue;
 
-        const deliveryDate = new Date(deliveryDateStr + 'T23:59:59');
-        const diffTime = deliveryDate.getTime() - today.getTime();
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        const deliveryDateObj = new Date(deliveryDateStr + 'T00:00:00');
+        const todayObj = new Date(todayStr + 'T00:00:00');
+        const diffDays = Math.round((deliveryDateObj.getTime() - todayObj.getTime()) / (1000 * 60 * 60 * 24));
 
-        // Menos de 48h (2 dias)
+        // Quando faltar 2 dias (incluindo o dia e 1 ou 2 dias antes)
         if (diffDays >= 0 && diffDays <= 2) {
-          if (!notifiedIds.includes(c.id)) {
+          if (notifiedDates[c.id] !== todayStr) {
             notificationService.add(
               'Prazo Próximo do Vencimento',
-              `O caso do paciente "${c.patient_name}" vence em ${new Date(deliveryDateStr).toLocaleDateString('pt-BR')} (menos de 48h).`,
+              `O caso do paciente "${c.patient_name}" vence em ${new Date(deliveryDateStr + 'T12:00:00').toLocaleDateString('pt-BR')} (faltam ${diffDays} dias).`,
               'due_date',
               c.id
             );
-            newlyNotified.push(c.id);
+            notifiedDates[c.id] = todayStr;
             hasNewNotification = true;
           }
         }
       }
 
       if (hasNewNotification) {
-        localStorage.setItem('matheus_protese_deadlines_notified', JSON.stringify(newlyNotified));
+        localStorage.setItem('matheus_protese_deadlines_notified_dates', JSON.stringify(notifiedDates));
       }
     } catch (err) {
       console.error('Erro ao verificar prazos de vencimento:', err);

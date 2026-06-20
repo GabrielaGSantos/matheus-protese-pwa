@@ -71,6 +71,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [editingCase, setEditingCase] = useState<Case | null>(null);
   const [activeEditorTab, setActiveEditorTab] = useState<'info' | 'financial' | 'history'>('info');
   const [isSaving, setIsSaving] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
   // Case Form fields
   const [selectedDentistId, setSelectedDentistId] = useState('');
@@ -96,6 +97,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [costAndreyDiscounted, setCostAndreyDiscounted] = useState(false);
   const [dynamicCosts, setDynamicCosts] = useState<{ name: string; value: number }[]>([]);
   const [paidValue, setPaidValue] = useState('');
+  const [isManualPrice, setIsManualPrice] = useState(false);
   const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'id-desc' | 'id-asc'>('date-desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCaseIds, setSelectedCaseIds] = useState<Record<string, boolean>>({});
@@ -262,6 +264,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       setHistoryLogs([]);
       setPendingUploads([]);
       setAttachments([]);
+      setIsManualPrice(false);
       return;
     }
 
@@ -302,11 +305,21 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     setCostAndreyDiscounted(!!editingCase.cost_andrey_discounted);
     setDynamicCosts(editingCase.other_internal_costs || []);
     setPaidValue(String(editingCase.paid_value));
+    setIsManualPrice(!!editingCase.is_manual_price);
 
     // Retrieve history & attachments
     api.history.list(editingCase.id).then(setHistoryLogs);
     api.attachments.list(editingCase.id).then(setAttachments);
   }, [editingCase, dentists, services]);
+
+  // Auto-recalculate when teeth or services change (only when NOT in manual mode)
+  useEffect(() => {
+    if (!isManualPrice) {
+      setOverrideValueMatheus('');
+      setOverrideValuePaschoal('');
+      setCostAndrey('0');
+    }
+  }, [teethSelection, caseServicesSelected]);
 
   // Recalculates default values based on selected services and elements
   const calculateDerivedValues = () => {
@@ -514,6 +527,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         drive_scan_folder_id: editingCase?.drive_scan_folder_id,
         drive_case_folder_url: editingCase?.drive_case_folder_url,
         selected_services: Object.keys(caseServicesSelected).filter(id => caseServicesSelected[id]?.selected),
+        is_manual_price: isManualPrice,
         updated_at: new Date().toISOString()
       };
 
@@ -526,8 +540,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         uploadHasError = await uploadPendingFiles(caseId, patientName, dentistName);
       }
 
+      let hasUploadError = false;
       if (uploadHasError) {
-        alert('Caso adicionado, porém ocorreu um problema ao enviar os arquivos. Por favor entre em contato com o Dr. Matheus');
+        hasUploadError = true;
       }
 
       // Envio de notificações baseados em eventos
@@ -568,6 +583,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       setShowEditor(false);
       setEditingCase(null);
       fetchData();
+      
+      if (hasUploadError) {
+        setShowErrorPopup(true);
+      }
     } catch (err) {
       console.error(err);
       alert('Ocorreu um erro ao salvar o caso.');
@@ -803,10 +822,20 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
             </button>
 
             {isSaving && (
-              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl">
-                <Loader2 size={48} className="animate-spin text-[#0F766E] mb-4" />
-                <p className="text-slate-800 font-bold text-lg">Salvando caso e enviando arquivos...</p>
-                <p className="text-slate-500 text-sm mt-2">Por favor, aguarde.</p>
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+                <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-8 text-center shadow-2xl relative text-slate-900 flex flex-col items-center">
+                  <div className="relative w-16 h-16 mb-6">
+                    <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-[#0F766E] rounded-full border-t-transparent animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center text-[#0F766E]">
+                      <Loader2 size={20} className="animate-spin" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-2">Salvando caso...</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-[250px]">
+                    Aguarde enquanto os arquivos e as informações são sincronizados.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -1347,7 +1376,37 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                     </div>
 
                     <div className="bg-slate-50 p-4 rounded-xl border border-[#E2E8F0] space-y-4">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F766E]">Preços & Comissões Laboratoriais (Substitui automático se preenchido)</h4>
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F766E]">Preços & Comissões Laboratoriais</h4>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <span className={`text-[10px] font-semibold ${isManualPrice ? 'text-amber-600' : 'text-slate-400'}`}>
+                            {isManualPrice ? '✏️ Manual' : '⚡ Automático'}
+                          </span>
+                          <div
+                            onClick={() => {
+                              const next = !isManualPrice;
+                              setIsManualPrice(next);
+                              if (!next) {
+                                setOverrideValueMatheus('');
+                                setOverrideValuePaschoal('');
+                                setCostAndrey('0');
+                              }
+                            }}
+                            className={`relative w-9 h-5 rounded-full transition-all cursor-pointer ${
+                              isManualPrice ? 'bg-amber-500' : 'bg-slate-300'
+                            }`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${
+                              isManualPrice ? 'left-[18px]' : 'left-0.5'
+                            }`} />
+                          </div>
+                        </label>
+                      </div>
+                      <p className="text-[9px] text-slate-400">
+                        {isManualPrice 
+                          ? 'Os valores foram editados manualmente. Alterações nos elementos ou serviços NÃO irão recalcular os preços.' 
+                          : 'Os valores são recalculados automaticamente quando você altera os elementos ou serviços selecionados.'}
+                      </p>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -1360,7 +1419,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             placeholder="Deixar vazio para cálculo automático"
                             value={overrideValueMatheus}
                             disabled={!canEditFinancials}
-                            onChange={(e) => setOverrideValueMatheus(e.target.value)}
+                            onChange={(e) => {
+                              setOverrideValueMatheus(e.target.value);
+                              if (e.target.value !== '') setIsManualPrice(true);
+                            }}
                             className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all disabled:bg-slate-100"
                           />
                         </div>
@@ -1375,11 +1437,44 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             placeholder="Deixar vazio para cálculo automático"
                             value={overrideValuePaschoal}
                             disabled={!canEditFinancials}
-                            onChange={(e) => setOverrideValuePaschoal(e.target.value)}
+                            onChange={(e) => {
+                              setOverrideValuePaschoal(e.target.value);
+                              if (e.target.value !== '') setIsManualPrice(true);
+                            }}
                             className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all disabled:bg-slate-100"
                           />
                         </div>
                       </div>
+
+                      {/* Show current calculated values when in automatic mode */}
+                      {!isManualPrice && (
+                        <div className="mt-3 p-3 rounded-lg bg-teal-50/50 border border-teal-100 animate-fade-in">
+                          <p className="text-[10px] font-bold text-[#0F766E] uppercase tracking-wider mb-2">💰 Valores Calculados Automaticamente</p>
+                          {(() => {
+                            const calc = calculateDerivedValues();
+                            return (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div>
+                                  <span className="text-[9px] text-slate-400 block">Matheus</span>
+                                  <span className="text-xs font-bold text-slate-900">R$ {calc.value_matheus.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-slate-400 block">Paschoal</span>
+                                  <span className="text-xs font-bold text-slate-900">R$ {calc.value_paschoal.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-slate-400 block">Andrey</span>
+                                  <span className="text-xs font-bold text-slate-900">R$ {calc.cost_andrey.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-slate-400 block">Total</span>
+                                  <span className="text-xs font-bold text-emerald-700">R$ {calc.total_value.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
 
                     <div className="bg-slate-50 p-4 rounded-xl border border-[#E2E8F0] space-y-4">

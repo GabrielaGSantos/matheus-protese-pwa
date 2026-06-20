@@ -783,9 +783,52 @@ export const SettingsScreen: React.FC = () => {
               </div>
             </div>
 
+            {/* Seção de Chaves Pix para Cobrança */}
+            <div className="pt-4 mt-4 border-t border-[#E2E8F0] space-y-3">
+              <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                💳 Chaves Pix para Cobrança de Dentistas
+              </h4>
+              <p className="text-[10px] text-slate-400">
+                Essas chaves serão usadas automaticamente nas mensagens de cobrança do WhatsApp.
+              </p>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                  Pix Dr. Matheus
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: CNPJ, E-mail ou Celular do Dr. Matheus"
+                  value={notifSettings.pix_matheus || ''}
+                  onChange={(e) => {
+                    const updated = { ...notifSettings, pix_matheus: e.target.value };
+                    setNotifSettings(updated);
+                  }}
+                  className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                  Pix Dr. Paschoal
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: CNPJ, E-mail ou Celular do Dr. Paschoal"
+                  value={notifSettings.pix_paschoal || ''}
+                  onChange={(e) => {
+                    const updated = { ...notifSettings, pix_paschoal: e.target.value };
+                    setNotifSettings(updated);
+                  }}
+                  className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={savingProfile}
+              onClick={() => notificationService.saveSettings(notifSettings)}
               className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {savingProfile ? 'Salvando...' : 'Salvar Dados Gerais'}

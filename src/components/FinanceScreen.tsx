@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
+import { notificationService } from '../services/notifications';
 import type { Case, Profile, Service } from '../types';
 import { 
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
-  TrendingUp, ShieldCheck, X, Download 
+  TrendingUp, ShieldCheck, X, Download, CalendarRange 
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export const FinanceScreen: React.FC = () => {
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'billing' | 'reports' | 'monthly_status'>('billing');
+  const [activeTab, setActiveTab] = useState<'billing' | 'reports' | 'monthly_status' | 'andrey_costs'>('billing');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [expandedDentistId, setExpandedDentistId] = useState<string | null>(null);
   const [showAllOutstanding, setShowAllOutstanding] = useState(false);
@@ -144,22 +146,32 @@ export const FinanceScreen: React.FC = () => {
     const monthLabel = `${monthNames[parseInt(month) - 1]} de ${year}`;
     
     let totalOpen = 0;
+    let totalMatheus = 0;
+    let totalPaschoal = 0;
     let itemsText = '';
     
     pendingCases.forEach((c) => {
-      // Find patient name and services
-      const toothSelection = c.teeth_selection.teeth.length > 0 
-        ? ` (Dentes: ${c.teeth_selection.teeth.join(',')})`
-        : '';
+      // Build service description with element count
+      const serviceNames = getServiceNames(c);
+      const elemCount = c.teeth_selection.teeth.length;
+      const serviceDesc = elemCount > 0
+        ? `Serviço: ${serviceNames}\n  Elementos: ${elemCount}`
+        : `Serviço: ${serviceNames}`;
+
       const dateObj = new Date(c.created_at);
       const formattedDate = !isNaN(dateObj.getTime())
         ? ` [${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}]`
         : '';
-      itemsText += `• Paciente: ${c.patient_name}${toothSelection}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n`;
+      itemsText += `• Paciente: ${c.patient_name}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n  ${serviceDesc}\n\n`;
       totalOpen += c.remaining_value;
+      totalMatheus += c.value_matheus;
+      totalPaschoal += c.value_paschoal;
     });
 
-    const pixKey = dentist.pix_key || 'matheus@pix.com'; // Admin default key
+    // Read configured PIX keys
+    const globalSettings = notificationService.getSettings();
+    const pixMatheus = globalSettings.pix_matheus || dentist.pix_key || 'matheus@pix.com';
+    const pixPaschoal = globalSettings.pix_paschoal || '';
 
     let totalOpenText = '';
     if (andreyDiscountCredit > 0) {
@@ -169,7 +181,20 @@ export const FinanceScreen: React.FC = () => {
       totalOpenText = `Total em aberto: *R$ ${totalOpen.toFixed(2)}*`;
     }
 
-    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos de ${monthLabel}:\n\n${itemsText}\n${totalOpenText}\n\nPix para pagamento: *${pixKey}*\nFavor enviar o comprovante após a transação. Obrigado!`;
+    // Build PIX section (Option A: both PIX keys with subtotals if mixed)
+    let pixSection = '';
+    const hasMatheusValue = totalMatheus > 0;
+    const hasPaschoalValue = totalPaschoal > 0 && pixPaschoal;
+
+    if (hasMatheusValue && hasPaschoalValue) {
+      pixSection = `Pix Dr. Matheus: *${pixMatheus}*\n  Valor: R$ ${totalMatheus.toFixed(2)}\nPix Dr. Paschoal: *${pixPaschoal}*\n  Valor: R$ ${totalPaschoal.toFixed(2)}`;
+    } else if (hasPaschoalValue && !hasMatheusValue) {
+      pixSection = `Pix para pagamento: *${pixPaschoal}*`;
+    } else {
+      pixSection = `Pix para pagamento: *${pixMatheus}*`;
+    }
+
+    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos de ${monthLabel}:\n\n${itemsText}${totalOpenText}\n\n${pixSection}\nFavor enviar o comprovante após a transação. Obrigado!`;
   };
 
   const handleCopyText = (text: string, dentistId: string) => {
@@ -298,6 +323,45 @@ export const FinanceScreen: React.FC = () => {
   const summary = getReportSummary();
   const dentistsBalances = getDentistsWithBalances();
 
+  // Revenue chart data with date range filter
+  const [chartStartDate, setChartStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 5);
+    return d.toISOString().slice(0, 7);
+  });
+  const [chartEndDate, setChartEndDate] = useState(() => new Date().toISOString().slice(0, 7));
+
+  const revenueChartData = useMemo(() => {
+    const monthNames = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ];
+
+    const start = new Date(chartStartDate + '-01');
+    const end = new Date(chartEndDate + '-01');
+    const data: { name: string; matheus: number; paschoal: number; total: number }[] = [];
+
+    const current = new Date(start);
+    while (current <= end) {
+      const ym = current.toISOString().slice(0, 7);
+      const monthCases = cases.filter(c => c.created_at.startsWith(ym) && c.status !== 'cancelado');
+
+      const matheus = monthCases.reduce((s, c) => s + c.value_matheus, 0);
+      const paschoal = monthCases.reduce((s, c) => s + c.value_paschoal, 0);
+      const total = monthCases.reduce((s, c) => s + c.total_value, 0);
+
+      data.push({
+        name: `${monthNames[current.getMonth()]}/${String(current.getFullYear()).slice(2)}`,
+        matheus,
+        paschoal,
+        total
+      });
+
+      current.setMonth(current.getMonth() + 1);
+    }
+    return data;
+  }, [cases, chartStartDate, chartEndDate]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -366,6 +430,16 @@ export const FinanceScreen: React.FC = () => {
           }`}
         >
           Status dos Casos (Pago vs Aberto)
+        </button>
+        <button
+          onClick={() => setActiveTab('andrey_costs')}
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'andrey_costs'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          Repasse Dr. Andrey
         </button>
       </div>
 
@@ -764,9 +838,77 @@ export const FinanceScreen: React.FC = () => {
              </div>
  
            </div>
+
+          {/* Revenue Chart */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-1.5">
+                <TrendingUp size={14} className="text-[#0F766E]" />
+                Gráfico de Faturamento
+              </h4>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CalendarRange size={14} className="text-slate-400" />
+                <input
+                  type="month"
+                  value={chartStartDate}
+                  onChange={(e) => setChartStartDate(e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] text-[10px] font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+                <span className="text-[10px] font-bold text-slate-400">até</span>
+                <input
+                  type="month"
+                  value={chartEndDate}
+                  onChange={(e) => setChartEndDate(e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] text-[10px] font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="w-full" style={{ height: 320 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} tickFormatter={(v: number) => `R$${v}`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      boxShadow: '0 4px 16px rgba(15,23,42,0.06)'
+                    }}
+                    formatter={(value: number, name: string) => {
+                      const labels: Record<string, string> = {
+                        matheus: 'Dr. Matheus',
+                        paschoal: 'Dr. Paschoal',
+                        total: 'Total Faturado'
+                      };
+                      return [`R$ ${value.toFixed(2)}`, labels[name] || name];
+                    }}
+                  />
+                  <Legend
+                    formatter={(value: string) => {
+                      const labels: Record<string, string> = {
+                        matheus: 'Dr. Matheus',
+                        paschoal: 'Dr. Paschoal',
+                        total: 'Total Faturado'
+                      };
+                      return labels[value] || value;
+                    }}
+                    wrapperStyle={{ fontSize: '10px', fontWeight: 700 }}
+                  />
+                  <Bar dataKey="matheus" fill="#0F766E" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="paschoal" fill="#0EA5E9" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
  
          </div>
-      ) : (
+      ) : activeTab === 'monthly_status' ? (
         /* MONTHLY STATUS TAB */
         <div className="space-y-6 animate-fade-in">
           {/* Filtro de Dentista específico para esta aba */}
@@ -890,7 +1032,129 @@ export const FinanceScreen: React.FC = () => {
 
           </div>
         </div>
-      )}
+      ) : activeTab === 'andrey_costs' ? (
+        /* ANDREY COSTS TAB */
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-sm text-slate-900">Custos de Repasse — Dr. Andrey</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">Gerencie os descontos de repasse do Dr. Andrey nos casos do mês selecionado.</p>
+            </div>
+          </div>
+
+          {(() => {
+            const andreyCases = cases.filter(c => {
+              if (c.status === 'cancelado') return false;
+              if (!c.created_at.startsWith(selectedMonth) && !showAllOutstanding) return false;
+              if (showAllOutstanding && !c.created_at.startsWith(selectedMonth) && (c.cost_andrey || 0) <= 0) return false;
+              return (c.cost_andrey || 0) > 0;
+            });
+
+            const totalAndrey = andreyCases.reduce((s, c) => s + (c.cost_andrey || 0), 0);
+            const totalDiscounted = andreyCases.filter(c => c.cost_andrey_discounted).reduce((s, c) => s + (c.cost_andrey || 0), 0);
+            const totalPending = totalAndrey - totalDiscounted;
+
+            return (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="glass-panel p-4 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Total Repasse</span>
+                    <h3 className="text-lg font-bold text-slate-900">R$ {totalAndrey.toFixed(2)}</h3>
+                  </div>
+                  <div className="glass-panel p-4 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Já Descontado</span>
+                    <h3 className="text-lg font-bold text-emerald-600">R$ {totalDiscounted.toFixed(2)}</h3>
+                  </div>
+                  <div className="glass-panel p-4 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Pendente</span>
+                    <h3 className="text-lg font-bold text-amber-600">R$ {totalPending.toFixed(2)}</h3>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <tr>
+                        <th className="p-3">Caso</th>
+                        <th className="p-3">Paciente</th>
+                        <th className="p-3">Dentista</th>
+                        <th className="p-3">Data</th>
+                        <th className="p-3 text-right">Valor Andrey</th>
+                        <th className="p-3 text-center">Descontado?</th>
+                        <th className="p-3 text-center">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E2E8F0]">
+                      {andreyCases.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-6 text-center text-slate-400 text-xs">
+                            Nenhum caso com repasse do Dr. Andrey neste período.
+                          </td>
+                        </tr>
+                      ) : (
+                        andreyCases.map(c => {
+                          const dentist = dentists.find(d => d.id === c.dentist_id);
+                          return (
+                            <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                              <td className="p-3 font-mono text-[11px] font-semibold text-slate-800">{c.case_number || c.id}</td>
+                              <td className="p-3 font-semibold text-slate-900">{c.patient_name}</td>
+                              <td className="p-3 text-slate-600">{dentist?.full_name || '—'}</td>
+                              <td className="p-3 text-slate-500">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+                              <td className="p-3 text-right font-bold text-slate-900">R$ {(c.cost_andrey || 0).toFixed(2)}</td>
+                              <td className="p-3 text-center">
+                                {c.cost_andrey_discounted ? (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[9px] font-bold uppercase">Sim</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[9px] font-bold uppercase">Pendente</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {!c.cost_andrey_discounted ? (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const updated: Case = { ...c, cost_andrey_discounted: true, updated_at: new Date().toISOString() };
+                                        await api.cases.save(updated, 'admin-1');
+                                        fetchData();
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-semibold rounded-md transition-all cursor-pointer"
+                                  >
+                                    Dar Baixa
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const updated: Case = { ...c, cost_andrey_discounted: false, updated_at: new Date().toISOString() };
+                                        await api.cases.save(updated, 'admin-1');
+                                        fetchData();
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-500 text-[10px] font-semibold rounded-md border border-[#E2E8F0] transition-all cursor-pointer"
+                                  >
+                                    Desfazer
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
     </div>
   );
 };

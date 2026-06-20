@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'dentist' | 'secretary';
+export type UserRole = 'admin' | 'dentist' | 'secretary' | 'auxiliar';
 
 export interface Profile {
   id: string;
@@ -7,6 +7,7 @@ export interface Profile {
   whatsapp?: string;
   pix_key?: string;
   notes?: string;
+  linked_dentist_id?: string;
   created_at: string;
 }
 
@@ -110,6 +111,7 @@ export interface Case {
   payment_receipt_url?: string;
   pix_key?: string;
   selected_services?: string[];
+  is_manual_price?: boolean;
   updated_at: string;
 }
 
@@ -170,6 +172,8 @@ export interface NotificationSettings {
   enable_telegram: boolean;
   telegram_bot_token?: string;
   telegram_chat_id?: string;
+  pix_matheus?: string;
+  pix_paschoal?: string;
 }
 
 export interface NoteHistoryEntry {

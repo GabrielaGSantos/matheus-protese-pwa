@@ -296,6 +296,36 @@ export const api = {
             saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
           }
           profile = sec;
+        } else if (query.startsWith('aux_') || query.startsWith('auxiliar_') || query.includes('auxiliar')) {
+          // Auxiliar login - extract dentist name from query
+          const dentistPart = query.replace('aux_', '').replace('auxiliar_', '').replace('auxiliar', '').trim();
+          
+          // Find the linked dentist
+          let linkedDentist = profiles.find(p => 
+            p.role === 'dentist' && p.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(dentistPart)
+          );
+          if (!linkedDentist) {
+            linkedDentist = profiles.find(p => p.role === 'dentist');
+          }
+          
+          if (linkedDentist) {
+            const auxId = `aux-${linkedDentist.id}`;
+            let auxProfile = profiles.find(p => p.id === auxId);
+            if (!auxProfile) {
+              auxProfile = {
+                id: auxId,
+                role: 'auxiliar' as any,
+                full_name: `Auxiliar - ${linkedDentist.full_name}`,
+                linked_dentist_id: linkedDentist.id,
+                created_at: new Date().toISOString()
+              };
+              profiles.push(auxProfile);
+              saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
+            }
+            profile = auxProfile;
+          } else {
+            throw new Error('Nenhum dentista encontrado para vincular o auxiliar.');
+          }
         } else {
           const nameQuery = query.split('@')[0];
           let match = profiles.find(p => 
