@@ -407,7 +407,7 @@ export const api = {
       return data;
     },
 
-    async create(profile: Omit<Profile, 'id' | 'created_at'>): Promise<Profile> {
+    async create(profile: Omit<Profile, 'id' | 'created_at'>, userLogin?: string): Promise<Profile> {
       if (useMockData) {
         const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
         const newProfile: Profile = {
@@ -436,9 +436,13 @@ export const api = {
           }
         });
         
-        let emailBase = profile.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-        if (profile.role === 'auxiliar') emailBase = 'auxiliar_' + emailBase;
-        generatedEmail = `${emailBase}@iorclab.com`;
+        if (userLogin) {
+          generatedEmail = `${userLogin}@iorclab.com`;
+        } else {
+          let emailBase = profile.full_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+          if (profile.role === 'auxiliar') emailBase = 'auxiliar_' + emailBase;
+          generatedEmail = `${emailBase}@iorclab.com`;
+        }
         
         const { data: authData, error: authErr } = await tempClient.auth.signUp({
           email: generatedEmail,

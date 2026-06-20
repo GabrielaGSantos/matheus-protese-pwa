@@ -20,6 +20,7 @@ export const DentistsScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
+  const [userLogin, setUserLogin] = useState('');
   const [notes, setNotes] = useState('');
   const [editingDentist, setEditingDentist] = useState<Profile | null>(null);
   const [addingAuxiliarFor, setAddingAuxiliarFor] = useState<string | null>(null);
@@ -101,12 +102,12 @@ export const DentistsScreen: React.FC = () => {
           full_name: name,
           whatsapp: whatsapp,
           notes: notes
-        });
+        }, userLogin.trim() || undefined);
         
         if ((newProfile as any)._generatedEmail) {
-           const userLogin = (newProfile as any)._generatedEmail.split('@')[0];
+           const userLoginName = (newProfile as any)._generatedEmail.split('@')[0];
            setGeneratedCredentials({ 
-             login: userLogin, 
+             login: userLoginName, 
              password: (newProfile as any)._generatedPassword || 'cad_123456',
              role: addingAuxiliarFor ? 'auxiliar' : 'dentista' 
            });
@@ -117,6 +118,7 @@ export const DentistsScreen: React.FC = () => {
       setName('');
       setWhatsapp('');
       setEmail('');
+      setUserLogin('');
       setNotes('');
       setEditingDentist(null);
       setAddingAuxiliarFor(null);
@@ -136,7 +138,7 @@ export const DentistsScreen: React.FC = () => {
 
   const handleCopy = () => {
     if (!generatedCredentials) return;
-    const text = `Acesso ao Sistema\nUsuário: ${generatedCredentials.login}\nSenha: cad_123456\nLink: https://matheus-odontologia-digital.vercel.app`;
+    const text = `Acesso ao Sistema\nUsuário: ${generatedCredentials.login}\nSenha: ${generatedCredentials.password || 'cad_123456'}\nLink: https://matheus-odontologia-digital.vercel.app`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -148,6 +150,7 @@ export const DentistsScreen: React.FC = () => {
     setName(dentist.full_name);
     setWhatsapp(dentist.whatsapp || '');
     setNotes(dentist.notes || '');
+    setUserLogin('');
     setShowForm(true);
   };
 
@@ -157,6 +160,7 @@ export const DentistsScreen: React.FC = () => {
     setName('');
     setWhatsapp('');
     setEmail('');
+    setUserLogin('');
     setNotes('');
     setShowForm(true);
   };
@@ -203,6 +207,7 @@ export const DentistsScreen: React.FC = () => {
                 setName('');
                 setWhatsapp('');
                 setEmail('');
+                setUserLogin('');
                 setNotes('');
               }}
               className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
@@ -238,6 +243,19 @@ export const DentistsScreen: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                      Usuário de Acesso (Login)
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!!editingDentist}
+                      value={userLogin}
+                      onChange={(e) => setUserLogin(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      placeholder={editingDentist ? "Não é possível alterar" : "Deixe em branco p/ gerar auto."}
+                      className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] text-xs font-medium transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                  </div>
                   <div>
                     <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
                       WhatsApp / Telefone
