@@ -876,55 +876,30 @@ export const api = {
       uploadedBy: string
     ): Promise<{ success: boolean; attachment: FileAttachment; case?: Case }> {
       console.debug(`[Upload File] Case ID: ${caseId}, Patient: ${patientName}, Dentist: ${dentistName}, Category: ${category}, Uploaded By: ${uploadedBy}`);
+      
       const formData = new FormData();
       formData.append('file', file);
       formData.append('case_id', caseId);
-      formData.append('user_id', uploadedBy);
+      formData.append('patient_name', patientName);
+      formData.append('dentist_name', dentistName);
+      formData.append('dentist_id', uploadedBy); // Temporary mapping
+      formData.append('uploaded_by', uploadedBy);
       formData.append('category', category);
 
-      const res = await fetch(`api.php?action=upload_file&user_id=${encodeURIComponent(uploadedBy)}`, {
-        method: 'POST',
-        headers: {
-          'X-User-Id': uploadedBy
-        },
-        body: formData
+      const { data, error } = await supabase!.functions.invoke('gdrive-upload', {
+        body: formData,
       });
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        const errText = await res.text();
-        console.error('Resposta não-JSON do servidor:', errText);
-        throw new Error(`Resposta inválida do servidor: ${errText.substring(0, 200)}`);
+      if (error) {
+        console.error('Erro na Edge Function gdrive-upload:', error);
+        throw new Error(`Erro ao enviar arquivo: ${error.message}`);
       }
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || `HTTP ${res.status}`);
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro desconhecido ao enviar arquivo.');
       }
 
-      const resJson = await res.json();
-      
-      if (useMockData) {
-        if (resJson.attachment) {
-          const list = getMockData<FileAttachment>(MOCK_STORAGE_KEYS.ATTACHMENTS);
-          if (!list.some(a => a.id === resJson.attachment.id)) {
-            list.push(resJson.attachment);
-            localStorage.setItem(MOCK_STORAGE_KEYS.ATTACHMENTS, JSON.stringify(list));
-          }
-        }
-        if (resJson.case) {
-          const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
-          const idx = cases.findIndex(c => c.id === resJson.case.id);
-          if (idx >= 0) {
-            cases[idx] = resJson.case;
-          } else {
-            cases.push(resJson.case);
-          }
-          localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify(cases));
-        }
-      }
-
-      return resJson;
+      return data;
     },
 
     async delete(id: string): Promise<void> {
@@ -944,171 +919,67 @@ export const api = {
 
   gdrive: {
     async getSettings(): Promise<any> {
-      if (useMockData) {
-        try {
-          const res = await fetch('api.php?action=get&key=gdrive_shared_settings');
-          const data = await res.json();
-          if (data.success && data.data) {
-            localStorage.setItem('gdrive_shared_settings', JSON.stringify(data.data));
-            return data.data;
-          }
-        } catch (e) {
-          console.warn('Erro ao carregar configurações do Drive do backend:', e);
-        }
-        const settings = localStorage.getItem('gdrive_shared_settings');
-        return settings ? JSON.parse(settings) : null;
-      }
       const { data, error } = await supabase!
-        .from('gdrive_settings')
+        .from('gdrive_config')
         .select('*')
-        .eq('id', 'default')
+        .eq('id', 1)
         .maybeSingle();
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      if (error) throw error;
+      return {
+        ...data,
+        drive_connected: !!data?.refresh_token
+      };
     },
 
-    async saveSettings(settings: {
-      service_account_json: string;
-      root_folder_url: string;
-    }): Promise<void> {
-      if (useMockData) {
-        localStorage.setItem('gdrive_shared_settings', JSON.stringify(settings));
-        await fetch(`api.php?action=set&key=gdrive_shared_settings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(settings)
-        });
-        return;
-      }
+    async saveSettings(settings: { root_folder_url?: string; root_folder_id?: string }): Promise<void> {
       const { error } = await supabase!
-        .from('gdrive_settings')
+        .from('gdrive_config')
         .upsert({
-          id: 'default',
-          ...settings,
-          updated_at: new Date().toISOString()
+          id: 1,
+          root_folder_id: settings.root_folder_id || settings.root_folder_url
         });
       if (error) throw error;
     },
 
-    async saveOauthConfig(
-      clientId: string,
-      clientSecret: string,
-      rootFolderUrl: string
-    ): Promise<any> {
-      if (useMockData) {
-        const res = await fetch('api.php?action=save_oauth_config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: clientId,
-            client_secret: clientSecret,
-            root_folder_url: rootFolderUrl
-          })
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(errText || `HTTP ${res.status}`);
-        }
-        const resJson = await res.json();
-        if (!resJson.success) {
-          throw new Error(resJson.error || 'Erro ao salvar configuração.');
-        }
-        localStorage.setItem('gdrive_shared_settings', JSON.stringify(resJson.data));
-        return resJson.data;
-      }
-      return null;
-    },
-
-    async exchangeCode(code: string, redirectUri: string): Promise<any> {
-      if (useMockData) {
-        const res = await fetch('api.php?action=exchange_code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, redirect_uri: redirectUri })
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(errText || `HTTP ${res.status}`);
-        }
-        const resJson = await res.json();
-        if (!resJson.success) {
-          throw new Error(resJson.error || 'Erro na troca de código.');
-        }
-        localStorage.setItem('gdrive_shared_settings', JSON.stringify(resJson.data));
-        return resJson.data;
-      }
-      return null;
+    async getAuthUrl(): Promise<string> {
+      if (!supabase) throw new Error('Supabase não configurado. Adicione VITE_SUPABASE_URL e KEY no arquivo .env para testar localmente.');
+      const { data, error } = await supabase.functions.invoke('gdrive-auth', {
+        body: { action: 'auth' }
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error('Não foi possível gerar a URL de autenticação.');
+      return data.url;
     },
 
     async disconnect(): Promise<any> {
-      if (useMockData) {
-        const res = await fetch('api.php?action=disconnect_drive', {
-          method: 'POST'
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(errText || `HTTP ${res.status}`);
-        }
-        const resJson = await res.json();
-        if (!resJson.success) {
-          throw new Error(resJson.error || 'Erro ao desconectar.');
-        }
-        localStorage.setItem('gdrive_shared_settings', JSON.stringify(resJson.data));
-        return resJson.data;
-      }
-      return null;
+      const { error } = await supabase!
+        .from('gdrive_config')
+        .update({ refresh_token: null })
+        .eq('id', 1);
+      if (error) throw error;
+      return { success: true };
     },
 
     async createCaseFolders(
       caseId: string,
       patientName: string,
       dentistName: string
-    ): Promise<{
-      success: boolean;
-      dentistFolderId?: string;
-      caseFolderId?: string;
-      imagesFolderId?: string;
-      scanFolderId?: string;
-      resultFolderId?: string;
-      caseFolderUrl?: string;
-      case?: Case;
-      error?: string;
-    }> {
-      const currentUserStr = localStorage.getItem(MOCK_STORAGE_KEYS.CURRENT_USER);
-      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-      const headers: Record<string, string> = {};
-      let userIdQuery = '';
-      if (currentUser && currentUser.id) {
-        headers['X-User-Id'] = currentUser.id;
-        userIdQuery = `&user_id=${encodeURIComponent(currentUser.id)}`;
-      }
+    ): Promise<{ success: boolean; caseFolderId?: string; error?: string }> {
+      const formData = new FormData();
+      formData.append('action', 'create_folders');
+      formData.append('case_id', caseId);
+      formData.append('patient_name', patientName);
+      formData.append('dentist_name', dentistName);
 
-      const res = await fetch(`api.php?action=create_folders&case_id=${encodeURIComponent(caseId)}&patient_name=${encodeURIComponent(patientName)}&dentist_name=${encodeURIComponent(dentistName)}${userIdQuery}`, {
-        headers
+      const { data, error } = await supabase!.functions.invoke('gdrive-upload', {
+        body: formData,
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        let errMsg = 'Erro desconhecido ao criar pastas no backend';
-        try {
-          const errData = JSON.parse(errText);
-          if (errData.error) errMsg = errData.error;
-        } catch {
-          errMsg = errText || `HTTP ${res.status}`;
-        }
-        throw new Error(errMsg);
+
+      if (error) {
+        console.error('Erro na Edge Function criar pastas:', error);
+        return { success: false, error: error.message };
       }
-      const resJson = await res.json();
-      
-      if (useMockData && resJson.success && resJson.case) {
-        const cases = getMockData<Case>(MOCK_STORAGE_KEYS.CASES);
-        const idx = cases.findIndex(c => c.id === resJson.case.id);
-        if (idx >= 0) {
-          cases[idx] = resJson.case;
-          localStorage.setItem(MOCK_STORAGE_KEYS.CASES, JSON.stringify(cases));
-        }
-      }
-      
-      return resJson;
+      return data;
     }
   },
 

@@ -37,15 +37,12 @@ export const SettingsScreen: React.FC = () => {
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Google Drive Config States
-  const [driveRootLink, setDriveRootLink] = useState('https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing');
+  const [driveRootLink, setDriveRootLink] = useState('');
   const [extractedFolderId, setExtractedFolderId] = useState('');
   const [driveTestResult, setDriveTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [driveLoading, setDriveLoading] = useState(false);
   const [clientEmail, setClientEmail] = useState('');
   const [dbDriveConnected, setDbDriveConnected] = useState(false);
-  const [oauthClientId, setOauthClientId] = useState('');
-  const [oauthClientSecret, setOauthClientSecret] = useState('');
-  const [isExchangingCode, setIsExchangingCode] = useState(false);
   const [driveStructure, setDriveStructure] = useState<{ root_folder: { id: string; name: string }; dentist_folders: { id: string; name: string; cases_count: number }[] } | null>(null);
   const [showStructureModal, setShowStructureModal] = useState(false);
   const [loadingStructure, setLoadingStructure] = useState(false);
@@ -74,22 +71,16 @@ export const SettingsScreen: React.FC = () => {
     try {
       const settings = await api.gdrive.getSettings();
       if (settings) {
-        if (settings.root_folder_url) {
+        if (settings.root_folder_id) {
+          setDriveRootLink(settings.root_folder_id);
+        } else if (settings.root_folder_url) {
           setDriveRootLink(settings.root_folder_url);
-          const id = extractFolderId(settings.root_folder_url);
-          setExtractedFolderId(id);
         }
         if (settings.client_email) {
           setClientEmail(settings.client_email);
         }
         
-        setOauthClientId(settings.oauth_client_id || '');
         setDbDriveConnected(!!settings.drive_connected);
-        if (settings.drive_connected || settings.oauth_client_id) {
-          setOauthClientSecret('********');
-        } else {
-          setOauthClientSecret('');
-        }
       }
     } catch (err) {
       console.error('Erro ao buscar configurações do Google Drive no banco:', err);
@@ -106,30 +97,18 @@ export const SettingsScreen: React.FC = () => {
 
     const checkOAuthCode = async () => {
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const state = params.get('state');
-      if (code && state === 'settings') {
-        setIsExchangingCode(true);
+      const isConnected = params.get('gdrive');
+      if (isConnected === 'connected') {
         try {
-          const redirectUri = window.location.origin + '/settings';
-          console.log("[Google Drive OAuth] Trocando código. redirect_uri enviado:", redirectUri);
-          const updatedSettings = await api.gdrive.exchangeCode(code, redirectUri);
           alert('✅ Conta Google conectada com sucesso ao Google Drive!');
-          
-          // Limpar a URL do navegador removendo os parâmetros do OAuth
           window.history.replaceState({}, '', window.location.origin + window.location.pathname);
-          
-          if (updatedSettings) {
-            setClientEmail(updatedSettings.client_email || '');
-            setOauthClientId(updatedSettings.oauth_client_id || '');
-            setDbDriveConnected(!!updatedSettings.drive_connected);
-            setOauthClientSecret('********');
-          }
+          fetchGDriveSettings();
         } catch (err: any) {
-          alert('❌ Erro ao autorizar conta Google: ' + err.message);
-        } finally {
-          setIsExchangingCode(false);
+          alert('❌ Erro ao buscar novas configurações: ' + err.message);
         }
+      } else if (params.get('error')) {
+        alert('❌ Erro de Autenticação do Google: ' + params.get('error'));
+        window.history.replaceState({}, '', window.location.origin + window.location.pathname);
       }
     };
     checkOAuthCode();
@@ -140,7 +119,7 @@ export const SettingsScreen: React.FC = () => {
     if (matchFolders) return matchFolders[1];
     const matchId = url.match(/[?&]id=([a-zA-Z0-9-_]+)/);
     if (matchId) return matchId[1];
-    return '';
+    return url;
   };
 
   const formatLogDate = (dateStr: string) => {
@@ -178,28 +157,17 @@ export const SettingsScreen: React.FC = () => {
     if (e) e.preventDefault();
     const folderId = extractFolderId(driveRootLink);
     if (!folderId) {
-      alert('Por favor, insira um link válido do Google Drive contendo o ID da pasta.');
+      alert('Por favor, insira um ID de pasta ou link válido do Google Drive.');
       return false;
     }
     
-    if (!oauthClientId.trim()) {
-      alert('Por favor, insira o Client ID.');
-      return false;
-    }
-
-    if (!oauthClientSecret.trim()) {
-      alert('Por favor, insira o Client Secret.');
-      return false;
-    }
-
     try {
       setDriveLoading(true);
-      await api.gdrive.saveOauthConfig(
-        oauthClientId.trim(),
-        oauthClientSecret.trim(),
-        driveRootLink
-      );
-      alert('Configurações do Google Drive salvas com sucesso!');
+      await api.gdrive.saveSettings({
+        root_folder_url: driveRootLink,
+        root_folder_id: folderId
+      });
+      alert('Pasta raiz do Google Drive salva com sucesso!');
       await fetchGDriveSettings();
       return true;
     } catch (err: any) {
@@ -211,16 +179,15 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleConnectGoogle = async () => {
-    const saved = await handleSaveDriveConfig();
-    if (!saved) return;
-
-    const rawRedirectUri = window.location.origin + '/settings';
-    console.log("[Google Drive OAuth] Redirecionando para login do Google. redirect_uri enviado:", rawRedirectUri);
-    const redirectUri = encodeURIComponent(rawRedirectUri);
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email');
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${oauthClientId.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=settings`;
-    
-    window.location.href = authUrl;
+    try {
+      setDriveLoading(true);
+      const authUrl = await api.gdrive.getAuthUrl();
+      window.location.href = authUrl;
+    } catch (err: any) {
+      alert('Erro ao iniciar conexão: ' + err.message);
+    } finally {
+      setDriveLoading(false);
+    }
   };
 
   const handleDisconnectDrive = async () => {
@@ -229,8 +196,6 @@ export const SettingsScreen: React.FC = () => {
       try {
         await api.gdrive.disconnect();
         alert('Conta Google desconectada com sucesso.');
-        setOauthClientId('');
-        setOauthClientSecret('');
         setClientEmail('');
         setDbDriveConnected(false);
       } catch (err: any) {
@@ -841,12 +806,6 @@ export const SettingsScreen: React.FC = () => {
           <div className="space-y-6 max-w-2xl animate-fade-in">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold text-slate-900">Integração do Google Drive via OAuth de Usuário</h3>
-              {isExchangingCode && (
-                <div className="flex items-center gap-1.5 text-xs text-[#0F766E] font-semibold">
-                  <Loader2 className="animate-spin" size={14} />
-                  Conectando conta Google...
-                </div>
-              )}
             </div>
             
             {/* Connection Status Card */}
@@ -868,7 +827,7 @@ export const SettingsScreen: React.FC = () => {
                   <div className="text-[10px] text-slate-500 mt-0.5">
                     {driveConnected 
                       ? 'Os uploads de arquivos consumirão a quota de armazenamento desta conta.'
-                      : 'Salve suas credenciais abaixo e conecte sua conta Google para ativar a sincronização.'}
+                      : 'Conecte sua conta Google para ativar a sincronização.'}
                   </div>
                 </div>
               </div>
@@ -898,7 +857,7 @@ export const SettingsScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConnectGoogle}
-                disabled={driveLoading || isExchangingCode}
+                disabled={driveLoading}
                 className="px-4 py-2 text-xs font-bold text-white bg-[#0F766E] rounded-lg hover:bg-[#115E59] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
               >
                 {driveLoading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
@@ -908,7 +867,7 @@ export const SettingsScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={handleTestConnection}
-                disabled={driveLoading || !driveConnected || isExchangingCode}
+                disabled={driveLoading || !driveConnected}
                 className="px-4 py-2 text-xs font-bold text-[#0F766E] bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {driveLoading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
@@ -919,7 +878,7 @@ export const SettingsScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleViewStructure}
-                  disabled={loadingStructure || isExchangingCode}
+                  disabled={loadingStructure}
                   className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
                   {loadingStructure ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
@@ -930,36 +889,6 @@ export const SettingsScreen: React.FC = () => {
 
             {/* General Settings Form */}
             <form onSubmit={handleSaveDriveConfig} className="space-y-4 pt-4 border-t border-[#E2E8F0]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Client ID
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={oauthClientId}
-                    onChange={(e) => setOauthClientId(e.target.value)}
-                    placeholder="Cole seu Google OAuth Client ID"
-                    className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Client Secret
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={oauthClientSecret}
-                    onChange={(e) => setOauthClientSecret(e.target.value)}
-                    placeholder="Cole seu Google OAuth Client Secret"
-                    className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                   Link da Pasta Raiz no Drive (Onde serão criadas as pastas dos Dentistas)
