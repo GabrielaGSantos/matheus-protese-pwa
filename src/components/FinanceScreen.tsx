@@ -879,7 +879,7 @@ export const FinanceScreen: React.FC = () => {
                       fontWeight: 600,
                       boxShadow: '0 4px 16px rgba(15,23,42,0.06)'
                     }}
-                    formatter={(value: number, name: string) => {
+                    formatter={(value: any, name: any) => {
                       const labels: Record<string, string> = {
                         matheus: 'Dr. Matheus',
                         paschoal: 'Dr. Paschoal',

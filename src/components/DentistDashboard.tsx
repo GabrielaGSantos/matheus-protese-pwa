@@ -11,6 +11,7 @@ import {
 // Google Drive is now managed by the backend
 import { notificationService } from '../services/notifications';
 
+// @ts-ignore
 const isDriveFolderValid = (c: Case) => {
   if (c.drive_status !== 'created' || !c.google_drive_folder_url) return false;
   const rootId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
@@ -183,69 +184,70 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       let driveCaseFolderUrl = editingCase?.drive_case_folder_url;
       let driveErrorMessage = editingCase?.drive_error_message;
 
-      const payload: Case = {
-        id: caseId,
-        dentist_id: activeDentistId,
-        patient_name: patientName,
-        created_at: editingCase?.created_at || new Date().toISOString(),
-        requested_delivery_date: requestedDate,
-        final_delivery_date: editingCase?.final_delivery_date, 
-        status: (photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
-          ? 'aguardando_arquivos'
-          : 'em_analise',
-        financial_status: editingCase?.financial_status || 'aguardando_pagamento',
-        teeth_selection: teethSelection,
-        dentist_notes: dentistNotes,
-        has_photo: hasPhoto || photoFiles.length > 0,
-        has_file: hasFile || scanFiles.length > 0,
-        estimated_hours: totalEstHours,
-        value_matheus: valMatheus,
-        value_planning: 0,
-        value_paschoal: valPaschoal,
-        cost_allan_matheus: 0,
-        cost_allan_solo: 0,
-        cost_andrey: editingCase?.cost_andrey || 0,
-        other_internal_costs: editingCase?.other_internal_costs || [],
-        total_value: computedTotalValue,
-        paid_value: editingCase?.paid_value || 0,
-        remaining_value: computedTotalValue - (editingCase?.paid_value || 0),
-        google_drive_folder_id: driveCaseFolderId || editingCase?.google_drive_folder_id || `${rootFolderId}/${dentistName}/${patientName} - ${caseId}`,
-        google_drive_folder_url: driveCaseFolderUrl || editingCase?.google_drive_folder_url || driveFolderUrl,
-        drive_status: driveStatus,
-        drive_dentist_folder_id: driveDentistFolderId,
-        drive_case_folder_id: driveCaseFolderId,
-        drive_images_folder_id: driveImagesFolderId,
-        drive_scan_folder_id: driveScanFolderId,
-        drive_case_folder_url: driveCaseFolderUrl,
-        drive_error_message: driveErrorMessage,
-        financial_released: editingCase ? editingCase.financial_released : false,
-        selected_services: selectedIds,
-        updated_at: new Date().toISOString()
-      };
+        const fallbackDentistId = activeDentistId || '';
+        const payload: Case = {
+          id: caseId,
+          dentist_id: fallbackDentistId,
+          patient_name: patientName,
+          created_at: editingCase?.created_at || new Date().toISOString(),
+          requested_delivery_date: requestedDate,
+          final_delivery_date: editingCase?.final_delivery_date, 
+          status: (photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
+            ? 'aguardando_arquivos'
+            : 'em_analise',
+          financial_status: editingCase?.financial_status || 'aguardando_pagamento',
+          teeth_selection: teethSelection,
+          dentist_notes: dentistNotes,
+          has_photo: hasPhoto || photoFiles.length > 0,
+          has_file: hasFile || scanFiles.length > 0,
+          estimated_hours: totalEstHours,
+          value_matheus: valMatheus,
+          value_planning: 0,
+          value_paschoal: valPaschoal,
+          cost_allan_matheus: 0,
+          cost_allan_solo: 0,
+          cost_andrey: editingCase?.cost_andrey || 0,
+          other_internal_costs: editingCase?.other_internal_costs || [],
+          total_value: computedTotalValue,
+          paid_value: editingCase?.paid_value || 0,
+          remaining_value: computedTotalValue - (editingCase?.paid_value || 0),
+          google_drive_folder_id: driveCaseFolderId || editingCase?.google_drive_folder_id || `${rootFolderId}/${dentistName}/${patientName} - ${caseId}`,
+          google_drive_folder_url: driveCaseFolderUrl || editingCase?.google_drive_folder_url || driveFolderUrl,
+          drive_status: driveStatus,
+          drive_dentist_folder_id: driveDentistFolderId,
+          drive_case_folder_id: driveCaseFolderId,
+          drive_images_folder_id: driveImagesFolderId,
+          drive_scan_folder_id: driveScanFolderId,
+          drive_case_folder_url: driveCaseFolderUrl,
+          drive_error_message: driveErrorMessage,
+          financial_released: editingCase ? editingCase.financial_released : false,
+          selected_services: selectedIds,
+          updated_at: new Date().toISOString()
+        };
 
-      await api.cases.save(payload, activeDentistId);
+        await api.cases.save(payload, fallbackDentistId);
 
-      // Upload photos clinical to backend Google Drive integration
-      let uploadError = false;
-      for (const f of photoFiles) {
-        try {
-          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', activeDentistId);
-          notificationService.add(
-            'Novo Arquivo Enviado',
-            `O dentista "${dentistName}" enviou a foto "${f.name}" para o caso ${caseId}.`,
-            'file_uploaded',
-            caseId
-          );
-        } catch (err: any) {
-          console.error('Erro ao enviar foto para o Google Drive:', err);
-          uploadError = true;
+        // Upload photos clinical to backend Google Drive integration
+        let uploadError = false;
+        for (const f of photoFiles) {
+          try {
+            await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', fallbackDentistId);
+            notificationService.add(
+              'Novo Arquivo Enviado',
+              `O dentista "${dentistName}" enviou a foto "${f.name}" para o caso ${caseId}.`,
+              'file_uploaded',
+              caseId
+            );
+          } catch (err: any) {
+            console.error('Erro ao enviar foto para o Google Drive:', err);
+            uploadError = true;
+          }
         }
-      }
 
-      // Upload scans 3D to backend Google Drive integration
-      for (const f of scanFiles) {
-        try {
-          await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'escaneamento', activeDentistId);
+        // Upload scans 3D to backend Google Drive integration
+        for (const f of scanFiles) {
+          try {
+            await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'escaneamento', fallbackDentistId);
           notificationService.add(
             'Novo Arquivo Enviado',
             `O dentista "${dentistName}" enviou o escaneamento "${f.name}" para o caso ${caseId}.`,

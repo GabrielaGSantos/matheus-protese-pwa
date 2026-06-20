@@ -71,7 +71,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [editingCase, setEditingCase] = useState<Case | null>(null);
   const [activeEditorTab, setActiveEditorTab] = useState<'info' | 'financial' | 'history'>('info');
   const [isSaving, setIsSaving] = useState(false);
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  // const [showErrorPopup, setShowErrorPopup] = useState(false);
 
   // Case Form fields
   const [selectedDentistId, setSelectedDentistId] = useState('');

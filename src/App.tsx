@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
     if (!isAdmin || !user) return;
     try {
       const casesList = await api.cases.list('admin', user.id);
-      const today = new Date();
+      // const today = new Date();
       
       const notifiedStr = localStorage.getItem('matheus_protese_deadlines_notified_dates');
       const notifiedDates: Record<string, string> = notifiedStr ? JSON.parse(notifiedStr) : {};

@@ -10,7 +10,7 @@ import type {
   FileAttachment,
   InternalNote
 } from '../types';
-import importedCases from './imported_cases.json';
+// import importedCases from './imported_cases.json';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
