@@ -210,20 +210,7 @@ export const SettingsScreen: React.FC = () => {
     setDriveLoading(true);
     setDriveTestResult(null);
     try {
-      const formData = new FormData();
-      formData.append('action', 'test_connection');
-      formData.append('case_id', 'test');
-      formData.append('dentist_id', 'test');
-      formData.append('dentist_name', 'Test');
-      formData.append('patient_name', 'Test');
-
-      const { data, error } = await supabase.functions.invoke('gdrive-upload', {
-        body: formData,
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Erro na Edge Function');
-      }
+      const data = await api.gdrive.testConnection();
       
       if (data.success) {
         setDriveTestResult({

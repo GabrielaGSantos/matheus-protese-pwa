@@ -1005,6 +1005,24 @@ export const api = {
         return { success: false, error: error.message };
       }
       return data;
+    },
+
+    async testConnection(): Promise<{ success: boolean; message?: string; error?: string }> {
+      const formData = new FormData();
+      formData.append('action', 'test_connection');
+      formData.append('case_id', 'test');
+      formData.append('dentist_id', 'test');
+      formData.append('dentist_name', 'Test');
+      formData.append('patient_name', 'Test');
+
+      const { data, error } = await supabase!.functions.invoke('gdrive-upload', {
+        body: formData,
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro na Edge Function');
+      }
+      return data;
     }
   },
 
