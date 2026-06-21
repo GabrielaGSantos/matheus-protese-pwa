@@ -115,8 +115,9 @@ export const ServicesScreen: React.FC = () => {
       setEntersAndrey(false);
       setIsInternal(false);
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert('Erro ao salvar o serviço. Detalhes: ' + (err.message || 'Falha de comunicação com o banco de dados.'));
     }
   };
 
