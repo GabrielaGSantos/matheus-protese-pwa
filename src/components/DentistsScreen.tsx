@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Profile } from '../types';
 import { Search, Plus, Phone, Calendar, Mail, FileText, Check, X, ChevronLeft, ChevronRight, Trash2, Users, Copy, KeyRound, Edit2 } from 'lucide-react';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const DentistsScreen: React.FC = () => {
   const [dentists, setDentists] = useState<Profile[]>([]);
@@ -27,6 +28,10 @@ export const DentistsScreen: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState<{login: string, role: string, password?: string} | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useRealtime('profiles', () => {
+    fetchDentists();
+  });
 
   useEffect(() => {
     fetchDentists();

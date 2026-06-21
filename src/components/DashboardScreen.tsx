@@ -5,8 +5,7 @@ import {
   DollarSign, Briefcase, Clock, AlertTriangle, 
   CheckCircle, ShieldAlert
 } from 'lucide-react';
-
-
+import { useRealtime } from '../hooks/useRealtime';
 interface DashboardScreenProps {
   onSelectCase?: (caseId: string) => void;
 }
@@ -15,7 +14,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  // Unused useAuth isAdmin removed
+
+  useRealtime('cases', () => {
+    fetchData();
+  });
+
   useEffect(() => {
     fetchData();
   }, []);

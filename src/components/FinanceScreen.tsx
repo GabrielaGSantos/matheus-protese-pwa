@@ -7,6 +7,7 @@ import {
   TrendingUp, ShieldCheck, X, Download, CalendarRange 
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const FinanceScreen: React.FC = () => {
   const [cases, setCases] = useState<Case[]>([]);
@@ -30,6 +31,10 @@ export const FinanceScreen: React.FC = () => {
 
   // Selection state for finance batch conciliation
   const [selectedFinanceCaseIds, setSelectedFinanceCaseIds] = useState<Record<string, boolean>>({});
+
+  useRealtime('cases', () => {
+    fetchData();
+  });
 
   useEffect(() => {
     fetchData();

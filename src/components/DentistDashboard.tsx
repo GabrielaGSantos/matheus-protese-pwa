@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 // Google Drive is now managed by the backend
 import { notificationService } from '../services/notifications';
-
+import { useRealtime } from '../hooks/useRealtime';
 // @ts-ignore
 const isDriveFolderValid = (c: Case) => {
   if (c.drive_status !== 'created' || !c.google_drive_folder_url) return false;
@@ -86,6 +86,16 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   const [dentistFiles, setDentistFiles] = useState<Record<string, any[]>>({});
   const [viewingResultsFiles, setViewingResultsFiles] = useState<any[] | null>(null);
 
+  useRealtime('cases', () => {
+    fetchData();
+  }, (payload) => {
+    if (editingCase && payload.eventType === 'UPDATE' && payload.new.id === editingCase.id) {
+      if (payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
+        alert('Atenção: O laboratório acabou de atualizar o status deste caso! Feche e abra novamente para ver as informações mais recentes.');
+      }
+    }
+  });
+
   useEffect(() => {
     if (user) {
       fetchData();
@@ -96,8 +106,17 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     if (!activeDentistId) return;
     setLoading(true);
     try {
-      const c = await api.cases.list('dentist', activeDentistId);
-      const s = await api.services.list();
+      const [cResult, sResult] = await Promise.allSettled([
+        api.cases.list('dentist', activeDentistId),
+        api.services.list()
+      ]);
+
+      const c = cResult.status === 'fulfilled' ? cResult.value : [];
+      if (cResult.status === 'rejected') console.error('Erro casos:', cResult.reason);
+
+      const s = sResult.status === 'fulfilled' ? sResult.value : [];
+      if (sResult.status === 'rejected') console.error('Erro serviços:', sResult.reason);
+
       setCases(c);
       setServices(s);
 

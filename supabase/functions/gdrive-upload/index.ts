@@ -89,15 +89,17 @@ serve(async (req) => {
 
   try {
     const formData = await req.formData();
-    const file = formData.get('file') as File;
+    const action = formData.get('action') as string;
     const caseId = formData.get('case_id') as string;
     const dentistId = formData.get('dentist_id') as string;
     const dentistName = formData.get('dentist_name') as string;
     const patientName = formData.get('patient_name') as string;
     const uploadedBy = formData.get('uploaded_by') as string;
 
-    if (!file || !caseId || !dentistId || !dentistName || !patientName) {
-      throw new Error('Parâmetros incompletos para upload.');
+    const file = formData.get('file') as File | null;
+
+    if (action !== 'test_connection' && (!caseId || !dentistId || !dentistName || !patientName)) {
+      throw new Error('Parâmetros incompletos para a operação.');
     }
 
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
@@ -125,12 +127,28 @@ serve(async (req) => {
     const accessToken = await getAccessToken(clientId, clientSecret, configData.refresh_token);
     const rootFolderId = configData.root_folder_id; // Se nulo, criará no root do drive
 
+    if (action === 'test_connection') {
+      return new Response(JSON.stringify({ success: true, message: 'Conexão testada com sucesso (token válido)' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Garantir pasta do dentista
     const dentistFolderId = await findOrCreateFolder(accessToken, dentistName, rootFolderId);
 
     // Garantir pasta do caso
     const caseFolderName = `${patientName} (Caso ${caseId})`;
     const caseFolderId = await findOrCreateFolder(accessToken, caseFolderName, dentistFolderId);
+
+    if (action === 'create_folders') {
+      return new Response(JSON.stringify({ success: true, caseFolderId }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!file) {
+      throw new Error('Nenhum arquivo enviado para upload.');
+    }
 
     // Fazer upload do arquivo
     const driveFile = await uploadFileToDrive(accessToken, file, caseFolderId);

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 // Google Drive is now managed by the backend
 import { notificationService } from '../services/notifications';
-
+import { useRealtime } from '../hooks/useRealtime';
 const isDriveFolderValid = (c: Case) => {
   if (c.drive_status !== 'created' || !c.google_drive_folder_url) return false;
   const rootId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
@@ -103,6 +103,17 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [selectedCaseIds, setSelectedCaseIds] = useState<Record<string, boolean>>({});
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [conflictEvent, setConflictEvent] = useState<CalendarEvent | null>(null);
+
+  useRealtime('cases', () => {
+    fetchData();
+  }, (payload) => {
+    if (editingCase && payload.eventType === 'UPDATE' && payload.new.id === editingCase.id) {
+      // Check if it was updated by someone else by comparing updated_at
+      if (payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
+        alert('Atenção: Este caso acabou de ser modificado por outro usuário! Suas edições podem sobrescrever o que foi alterado. Recomendamos que você feche e abra novamente este caso.');
+      }
+    }
+  });
 
   useEffect(() => {
     setCurrentPage(1);

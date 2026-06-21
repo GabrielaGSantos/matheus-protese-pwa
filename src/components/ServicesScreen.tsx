@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Service, Profile, DentistCustomPrice } from '../types';
 import { Search, Plus, Save, Edit, X } from 'lucide-react';
+import { useRealtime } from '../hooks/useRealtime';
 
 export const ServicesScreen: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
@@ -30,6 +31,10 @@ export const ServicesScreen: React.FC = () => {
   const [selectedDentistId, setSelectedDentistId] = useState('');
   const [customPriceInputs, setCustomPriceInputs] = useState<Record<string, string>>({});
   const [savingPrices, setSavingPrices] = useState(false);
+
+  useRealtime('services', () => {
+    fetchData();
+  });
 
   useEffect(() => {
     fetchData();

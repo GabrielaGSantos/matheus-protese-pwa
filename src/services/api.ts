@@ -548,6 +548,11 @@ export const api = {
     async list(): Promise<Service[]> {
       if (useMockData) {
         const list = getMockData<Service>(MOCK_STORAGE_KEYS.SERVICES);
+        if (!list || list.length === 0) {
+          // Restaura os serviços padrão caso tenham sido apagados do cache/banco mock
+          localStorage.setItem(MOCK_STORAGE_KEYS.SERVICES, JSON.stringify(defaultServices));
+          return defaultServices.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        }
         return list.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       }
       const { data, error } = await supabase!
@@ -644,12 +649,13 @@ export const api = {
         return cases.filter(c => c.dentist_id === userId);
       }
 
-      // If Supabase, we read from view dentist_cases or cases table depending on role
-      const table = (role === 'admin' || role === 'secretary') ? 'cases' : 'dentist_cases';
-      const { data, error } = await supabase!
-        .from(table)
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase!.from('cases').select('*').order('created_at', { ascending: false });
+
+      if (role !== 'admin' && role !== 'secretary') {
+        query = query.eq('dentist_id', userId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;

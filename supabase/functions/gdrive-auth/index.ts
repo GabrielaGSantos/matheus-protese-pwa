@@ -13,7 +13,14 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.pathname.split('/').pop() || url.searchParams.get('action');
+    let action = url.searchParams.get('action');
+
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        if (body.action) action = body.action;
+      } catch (e) {}
+    }
 
     const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
