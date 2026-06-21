@@ -853,7 +853,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       </div>
       {/* Editor Modal Overlay */}
       {showEditor && createPortal(
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in p-0 sm:p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center animate-fade-in p-0 sm:p-4">
           <div className="w-full h-full bg-white sm:rounded-xl border border-[#E2E8F0] overflow-y-auto p-6 md:p-8 flex flex-col justify-between shadow-2xl relative text-slate-900">
             <button
               onClick={() => {
@@ -1929,8 +1929,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       </div>
 
       {/* Popups */}
-      {showPaymentConfirmPopup && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in">
+      {showPaymentConfirmPopup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden text-center">
             <div className="p-6">
               <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1956,11 +1956,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showSuccessPopup && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in">
+      {showSuccessPopup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
             <div className="w-12 h-12 rounded-full bg-[#ECFDF5] border border-emerald-100 flex items-center justify-center mx-auto mb-4 text-[#0F766E]">
               <CheckCircle size={24} />
@@ -1976,11 +1977,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               OK, fechar
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showErrorPopup && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in">
+      {showErrorPopup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
             <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-4 text-rose-500">
               <AlertTriangle size={24} />
@@ -1996,7 +1998,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               Entendido
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Main Cases Table (desktop) / Cards (mobile) */}
@@ -2247,7 +2250,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
       {/* Consultation Conflict Warning popup modal */}
       {conflictEvent && createPortal(
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" style={{ zIndex: 9999 }}>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in" style={{ zIndex: 9999 }}>
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative">
             <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-4 text-amber-600">
               <AlertTriangle size={24} />

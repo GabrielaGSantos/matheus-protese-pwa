@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 import type { Case, Service, OdontogramSelection, CaseStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -6,7 +7,7 @@ import { Odontogram } from './Odontogram';
 import { 
   AlertCircle, AlertTriangle, DollarSign, 
   Clock, CheckCircle, FolderOpen, Send, Paperclip,
-  Search, ChevronLeft, ChevronRight, X
+  Search, ChevronLeft, ChevronRight, X, FileText
 } from 'lucide-react';
 // Google Drive is now managed by the backend
 import { notificationService } from '../services/notifications';
@@ -219,9 +220,9 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
           created_at: editingCase?.created_at || new Date().toISOString(),
           requested_delivery_date: requestedDate,
           final_delivery_date: editingCase?.final_delivery_date, 
-          status: (photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
+          status: editingCase ? editingCase.status : ((photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
             ? 'aguardando_arquivos'
-            : 'em_analise',
+            : 'em_analise'),
           financial_status: editingCase?.financial_status || 'aguardando_pagamento',
           teeth_selection: teethSelection,
           dentist_notes: dentistNotes,
@@ -763,10 +764,32 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
           </div>
         ) : (
           /* SOLICITAR NOVO TRABALHO TAB */
-          <div className="glass-panel p-5 max-w-5xl animate-fade-in space-y-5">
-          <div>
-            <h3 className="font-semibold text-lg text-slate-900 mb-1">{editingCase ? 'Editando Solicitação' : 'Nova Solicitação de Serviço'}</h3>
-            <p className="text-sm text-slate-500">{editingCase ? 'Altere os dados abaixo e salve as modificações.' : 'Cadastre o nome do paciente, selecione os dentes e insira observações para o Dr. Matheus.'}</p>
+          <div className="glass-panel p-6 animate-fade-in space-y-6">
+          <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-4">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="text-[#0F766E]" />
+              {editingCase ? `Editando Solicitação: ${editingCase.patient_name}` : 'Solicitar Novo Trabalho'}
+            </h3>
+            {editingCase && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCase(null);
+                  setCurrentTab('dentist-cases');
+                  setPatientName('');
+                  setDentistNotes('');
+                  setTeethSelection({ teeth: [], type: 'individual' });
+                  setHasPhoto(false);
+                  setHasFile(false);
+                  setSelectedServices({});
+                  setPhotoFiles([]);
+                  setScanFiles([]);
+                }}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+              >
+                Cancelar Edição
+              </button>
+            )}
           </div>
 
           {/* Alert / Informational disclaimer */}
@@ -811,7 +834,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
             {/* Checklist of allowed services (multi-selection, hidden prices) */}
             <div>
               <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-                Procedimento(s) Requerido(s) (Selecione um ou mais) - Debug: {services.length} services loaded, {dentistServices.length} filtered.
+                Procedimento(s) Requerido(s) (Selecione um ou mais)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50/50 p-4 rounded-lg border border-[#E2E8F0]">
                 {dentistServices.map(s => {
@@ -1004,10 +1027,10 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center gap-1.5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
               >
                 <Send size={14} />
-                {submitting ? 'Enviando...' : editingCase ? 'Salvar Alterações' : 'Enviar Solicitação'}
+                {editingCase ? 'Salvar Alterações' : 'Enviar Solicitação'}
               </button>
             </div>
 
@@ -1082,8 +1105,8 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       )}
 
       {/* Uploading progress modal */}
-      {submitting && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+      {submitting && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-8 text-center shadow-2xl relative text-slate-900 flex flex-col items-center">
             <div className="relative w-16 h-16 mb-6">
               <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
@@ -1097,12 +1120,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               Aguarde enquanto sincronizamos as informações e os arquivos com o Google Drive. Isso pode levar alguns minutos dependendo do tamanho.
             </p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Case submitted successfully popup modal */}
-      {showSuccessPopup && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      {showSuccessPopup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
             <div className="w-12 h-12 rounded-full bg-[#ECFDF5] border border-emerald-100 flex items-center justify-center mx-auto mb-4 text-[#0F766E]">
               <CheckCircle size={24} />
@@ -1118,12 +1142,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               OK, fechar
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Case submitted with error popup modal */}
-      {showErrorPopup && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
+      {showErrorPopup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
             <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-4 text-rose-500">
               <AlertTriangle size={24} />
@@ -1139,12 +1164,13 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               Entendido
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Result Files Modal */}
-      {viewingResultsFiles && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      {viewingResultsFiles && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-lg bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
             <button
               onClick={() => setViewingResultsFiles(null)}
@@ -1198,7 +1224,8 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

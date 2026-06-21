@@ -121,6 +121,25 @@ export const ServicesScreen: React.FC = () => {
     }
   };
 
+  const handleDeactivateService = async () => {
+    if (!editingService) return;
+    if (window.confirm('Tem certeza que deseja excluir/desativar este serviço? Ele não aparecerá mais para novos casos.')) {
+      try {
+        const payload: Service = {
+          ...editingService,
+          is_active: false
+        };
+        await api.services.save(payload);
+        setShowForm(false);
+        setEditingService(null);
+        fetchData();
+      } catch (err: any) {
+        console.error(err);
+        alert('Erro ao desativar o serviço. Detalhes: ' + (err.message || 'Falha de comunicação.'));
+      }
+    }
+  };
+
   const handleEditServiceClick = (s: Service) => {
     setEditingService(s);
     setName(s.name);
@@ -168,7 +187,7 @@ export const ServicesScreen: React.FC = () => {
   };
 
   const filteredServices = services.filter(s => 
-    s.name.toLowerCase().includes(search.toLowerCase())
+    s.is_active !== false && s.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const formatEstimatedTime = (time: number) => {
@@ -451,12 +470,23 @@ export const ServicesScreen: React.FC = () => {
                     >
                       Cancelar
                     </button>
-                    <button
-                      type="submit"
-                      className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all"
-                    >
-                      Salvar Serviço
-                    </button>
+                      <div className="flex gap-2">
+                        {editingService && (
+                          <button
+                            type="button"
+                            onClick={handleDeactivateService}
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2 rounded-lg text-xs transition-all"
+                          >
+                            Excluir / Desativar
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          className="bg-[#0F766E] hover:bg-[#115E59] text-white font-bold px-4 py-2 rounded-lg text-xs transition-all shadow-sm"
+                        >
+                          {editingService ? 'Salvar Alterações' : 'Salvar Novo Serviço'}
+                        </button>
+                      </div>
                   </div>
                 </form>
               </div>
