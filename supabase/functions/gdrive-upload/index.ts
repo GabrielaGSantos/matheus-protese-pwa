@@ -140,6 +140,17 @@ serve(async (req) => {
     const caseFolderName = `${patientName} (Caso ${caseId})`;
     const caseFolderId = await findOrCreateFolder(accessToken, caseFolderName, dentistFolderId);
 
+    // Atualizar tabela cases com a URL correta do Drive
+    await supabase
+      .from('cases')
+      .update({
+        google_drive_folder_url: `https://drive.google.com/drive/folders/${caseFolderId}`,
+        drive_case_folder_id: caseFolderId,
+        drive_dentist_folder_id: dentistFolderId,
+        drive_status: 'created'
+      })
+      .eq('id', caseId);
+
     if (action === 'create_folders') {
       // Pré-criar as subpastas
       await findOrCreateFolder(accessToken, 'Fotos Clínicas', caseFolderId);
