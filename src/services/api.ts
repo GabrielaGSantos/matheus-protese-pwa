@@ -21,6 +21,12 @@ export const supabase = (!useMockData && supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
+export const anonSupabase = (!useMockData && supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
+  : null;
+
 // =========================================================================
 // MOCK DATABASE & STORAGE (SEEDED WITH DENTISTS AND SERVICES)
 // =========================================================================
@@ -555,7 +561,7 @@ export const api = {
         }
         return list.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       }
-      const { data, error } = await supabase!
+      const { data, error } = await anonSupabase!
         .from('services')
         .select('*')
         .order('name', { ascending: true });

@@ -805,7 +805,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
             {/* Checklist of allowed services (multi-selection, hidden prices) */}
             <div>
               <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-                Procedimento(s) Requerido(s) (Selecione um ou mais)
+                Procedimento(s) Requerido(s) (Selecione um ou mais) - Debug: {services.length} services loaded, {dentistServices.length} filtered.
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50/50 p-4 rounded-lg border border-[#E2E8F0]">
                 {dentistServices.map(s => {
