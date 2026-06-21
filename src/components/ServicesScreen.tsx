@@ -24,7 +24,9 @@ export const ServicesScreen: React.FC = () => {
   const [estMinutes, setEstMinutes] = useState('0');
   const [entersMatheus, setEntersMatheus] = useState(true);
   const [entersPaschoal, setEntersPaschoal] = useState(false);
+  const [defaultPaschoalValue, setDefaultPaschoalValue] = useState('0');
   const [entersAndrey, setEntersAndrey] = useState(false);
+  const [defaultAndreyValue, setDefaultAndreyValue] = useState('0');
   const [isInternal, setIsInternal] = useState(false);
   
   // Custom pricing state
@@ -91,7 +93,9 @@ export const ServicesScreen: React.FC = () => {
         default_estimated_time: finalEstTime,
         enters_matheus_value: entersMatheus,
         enters_paschoal_value: entersPaschoal,
+        default_paschoal_value: parseFloat(defaultPaschoalValue) || 0,
         enters_andrey_value: entersAndrey,
+        default_andrey_value: parseFloat(defaultAndreyValue) || 0,
         is_internal_cost: isInternal,
         is_active: editingService ? editingService.is_active : true,
         created_at: editingService?.created_at || new Date().toISOString()
@@ -131,7 +135,9 @@ export const ServicesScreen: React.FC = () => {
 
     setEntersMatheus(s.enters_matheus_value);
     setEntersPaschoal(s.enters_paschoal_value);
+    setDefaultPaschoalValue(String(s.default_paschoal_value || 0));
     setEntersAndrey(!!s.enters_andrey_value);
+    setDefaultAndreyValue(String(s.default_andrey_value || 0));
     setIsInternal(s.is_internal_cost);
     setShowForm(true);
   };
@@ -225,6 +231,18 @@ export const ServicesScreen: React.FC = () => {
             <button
               onClick={() => {
                 setEditingService(null);
+                setName('');
+                setDescription('');
+                setBillingType('per_element');
+                setDefaultValue('');
+                setEstHours('');
+                setEstMinutes('');
+                setEntersMatheus(false);
+                setEntersPaschoal(false);
+                setDefaultPaschoalValue('0');
+                setEntersAndrey(false);
+                setDefaultAndreyValue('0');
+                setIsInternal(false);
                 setShowForm(true);
               }}
               className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 text-xs transition-all"
@@ -370,6 +388,20 @@ export const ServicesScreen: React.FC = () => {
                         Entra no faturamento do Dr. Paschoal? (Ex: Parcerias/Terceirização)
                       </label>
                     </div>
+                    {entersPaschoal && (
+                      <div className="ml-7 mb-2">
+                        <label className="block text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">
+                          Valor Padrão (Paschoal - R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={defaultPaschoalValue}
+                          onChange={(e) => setDefaultPaschoalValue(e.target.value)}
+                          className="w-1/2 px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
@@ -382,6 +414,20 @@ export const ServicesScreen: React.FC = () => {
                         Entra no faturamento do Dr. Andrey? (Ex: Repasse Andrey)
                       </label>
                     </div>
+                    {entersAndrey && (
+                      <div className="ml-7 mb-2">
+                        <label className="block text-[10px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">
+                          Valor Padrão (Andrey - R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={defaultAndreyValue}
+                          onChange={(e) => setDefaultAndreyValue(e.target.value)}
+                          className="w-1/2 px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"

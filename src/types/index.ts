@@ -22,7 +22,9 @@ export interface Service {
   default_estimated_time: number; // in hours
   enters_matheus_value: boolean;
   enters_paschoal_value: boolean;
+  default_paschoal_value?: number;
   enters_andrey_value?: boolean;
+  default_andrey_value?: number;
   is_internal_cost: boolean;
   is_active: boolean;
   created_at: string;

@@ -141,7 +141,7 @@ export const AgendaScreen: React.FC<AgendaScreenProps> = ({ onSelectCase }) => {
 
     try {
       const payload: CalendarEvent = {
-        id: editingEventId || '',
+        id: editingEventId || crypto.randomUUID(),
         title: blockTitle,
         type: blockType,
         start_date: startDate,

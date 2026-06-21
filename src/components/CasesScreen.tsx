@@ -73,6 +73,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showPaymentConfirmPopup, setShowPaymentConfirmPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
   // Case Form fields
   const [selectedDentistId, setSelectedDentistId] = useState('');
@@ -154,13 +155,17 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     }
   };
 
-  const handleBulkPayment = async () => {
+  const handleBulkPayment = () => {
+    const idsToPay = Object.keys(selectedCaseIds).filter(id => selectedCaseIds[id]);
+    if (idsToPay.length === 0) return;
+    setShowPaymentConfirmPopup(true);
+  };
+
+  const executeBulkPayment = async () => {
     const idsToPay = Object.keys(selectedCaseIds).filter(id => selectedCaseIds[id]);
     if (idsToPay.length === 0) return;
 
-    if (!window.confirm(`Deseja dar baixa no pagamento de ${idsToPay.length} caso(s) selecionado(s)?`)) {
-      return;
-    }
+    setShowPaymentConfirmPopup(false);
 
     try {
       setLoading(true);
@@ -361,6 +366,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         // Multiply by quantity if element-based
         const qtyMultiplier = s.billing_type === 'per_element' ? (teethSelection.teeth.length || 1) : 1;
         const lineTotal = serviceValue * qty * qtyMultiplier;
+        const linePaschoalTotal = (s.default_paschoal_value || 0) * qty * qtyMultiplier;
+        const lineAndreyTotal = (s.default_andrey_value || 0) * qty * qtyMultiplier;
 
         defaultEstHours += s.default_estimated_time * qty * qtyMultiplier;
         computedTotalVal += lineTotal;
@@ -369,10 +376,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
           computedMatheusVal += lineTotal;
         }
         if (s.enters_paschoal_value) {
-          computedPaschoalVal += lineTotal;
+          computedPaschoalVal += linePaschoalTotal;
         }
         if (s.enters_andrey_value) {
-          computedAndreyVal += lineTotal;
+          computedAndreyVal += lineAndreyTotal;
         }
       }
     });
@@ -1921,6 +1928,36 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       </div>
 
       {/* Popups */}
+      {showPaymentConfirmPopup && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden text-center">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-6 h-6 text-indigo-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmar Pagamento</h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Deseja dar baixa no pagamento de {Object.keys(selectedCaseIds).filter(id => selectedCaseIds[id]).length} caso(s) selecionado(s)?
+              </p>
+            </div>
+            <div className="flex border-t border-slate-100">
+              <button 
+                onClick={() => setShowPaymentConfirmPopup(false)}
+                className="flex-1 p-3 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors border-r border-slate-100"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={executeBulkPayment}
+                className="flex-1 p-3 text-indigo-600 font-bold text-sm hover:bg-indigo-50 transition-colors"
+              >
+                Sim, Dar Baixa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSuccessPopup && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
