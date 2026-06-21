@@ -202,7 +202,6 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       });
 
       const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
-      const rootFolderId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
       const dentistName = user?.full_name || 'Dentista';
       let driveStatus: 'not_created' | 'created' | 'error' = editingCase?.drive_status || 'not_created';
       let driveDentistFolderId = editingCase?.drive_dentist_folder_id;
