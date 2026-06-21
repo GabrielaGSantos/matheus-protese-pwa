@@ -174,17 +174,17 @@ serve(async (req) => {
 
     // Salvar metadados no Supabase
     const { data: attachment, error: insertError } = await supabase
-      .from('file_attachments')
+      .from('case_attachments')
       .insert({
         case_id: caseId,
-        google_drive_file_id: driveFile.id,
-        folder_id: targetFolderId,
+        dentist_id: uploadedBy || null,
+        drive_file_id: driveFile.id,
+        drive_folder_id: targetFolderId,
         file_name: driveFile.name,
         mime_type: driveFile.mimeType || file.type,
         file_size: parseInt(driveFile.size || '0', 10),
-        web_view_link: driveFile.webViewLink,
-        uploaded_by: uploadedBy || 'System',
-        file_category: category || null
+        web_view_link: `${driveFile.webViewLink}#cat=${category || ''}`,
+        uploaded_by: uploadedBy || 'System'
       })
       .select()
       .single();

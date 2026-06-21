@@ -920,12 +920,39 @@ export const api = {
         );
       }
       const { data, error } = await supabase!
-        .from('file_attachments')
+        .from('case_attachments')
         .select('*')
         .eq('case_id', caseId)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data;
+      
+      return data.map((d: any) => {
+        let cat = 'escaneamento'; // default fallback
+        let link = d.web_view_link || '';
+        
+        // Extrair categoria salva no link pela edge function (ex: https://...#cat=imagens)
+        if (link.includes('#cat=')) {
+          const parts = link.split('#cat=');
+          link = parts[0];
+          cat = parts[1] || cat;
+        } else if (d.mime_type && d.mime_type.startsWith('image/')) {
+          cat = 'imagens';
+        }
+
+        return {
+          id: d.id,
+          case_id: d.case_id,
+          google_drive_file_id: d.drive_file_id,
+          folder_id: d.drive_folder_id,
+          file_name: d.file_name,
+          mime_type: d.mime_type,
+          file_size: d.file_size,
+          web_view_link: link,
+          uploaded_by: d.uploaded_by || d.dentist_id,
+          file_category: cat as any,
+          created_at: d.created_at
+        };
+      });
     },
 
     async upload(attachment: Omit<FileAttachment, 'id' | 'created_at'>): Promise<FileAttachment> {
