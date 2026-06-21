@@ -636,6 +636,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     if (!window.confirm('Tem certeza que deseja excluir permanentemente este caso?')) return;
     try {
       await api.cases.delete(id);
+      setShowEditor(false);
+      setEditingCase(null);
       fetchData();
     } catch (err) {
       console.error(err);

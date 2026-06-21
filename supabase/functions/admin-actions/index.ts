@@ -61,6 +61,14 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'get_services') {
+      const { data, error } = await supabaseAdmin.from('services').select('*').order('name');
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, services: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     if (action === 'create_profile') {
       const { profile } = body;
       if (!profile || !profile.id) throw new Error('Missing profile data');
