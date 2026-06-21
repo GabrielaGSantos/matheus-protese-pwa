@@ -48,8 +48,19 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   useEffect(() => {
     if (currentTab === 'dentist-new-case') {
       setActiveTab('new-case');
+      setEditingCase(null);
+      setPatientName('');
+      setDentistNotes('');
+      setTeethSelection({ teeth: [], type: 'individual' });
+      setHasPhoto(false);
+      setHasFile(false);
+      setPhotoFiles([]);
+      setScanFiles([]);
+      setSelectedServices({});
+      setRequestedDate('');
     } else if (currentTab === 'dentist-cases') {
       setActiveTab('my-cases');
+      setEditingCase(null);
     }
   }, [currentTab]);
   const [loading, setLoading] = useState(true);
