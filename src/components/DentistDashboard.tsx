@@ -743,7 +743,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       )}
 
       {activeTab === 'new-case' && (
-        editingCase && editingCase.dentist_id !== user?.id ? (
+        editingCase && editingCase.dentist_id !== activeDentistId ? (
           <div className="glass-panel p-8 max-w-xl mx-auto text-center space-y-4 animate-fade-in my-8">
             <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
               <AlertTriangle size={32} />
