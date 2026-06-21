@@ -336,6 +336,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   };
 
   const startEdit = (caseItem: Case) => {
+    setActiveTab('new-case');
     setEditingCase(caseItem);
     setPatientName(caseItem.patient_name);
     setRequestedDate(caseItem.requested_delivery_date);
@@ -763,12 +764,8 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
           /* SOLICITAR NOVO TRABALHO TAB */
           <div className="glass-panel p-5 max-w-5xl animate-fade-in space-y-5">
           <div>
-            <h3 className="text-base font-bold text-slate-900">
-              {editingCase ? 'Editar Solicitação' : 'Nova Solicitação de Serviço'}
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Cadastre o nome do paciente, selecione os dentes e insira observações para o Dr. Matheus.
-            </p>
+            <h3 className="font-semibold text-lg text-slate-900 mb-1">{editingCase ? 'Editando Solicitação' : 'Nova Solicitação de Serviço'}</h3>
+            <p className="text-sm text-slate-500">{editingCase ? 'Altere os dados abaixo e salve as modificações.' : 'Cadastre o nome do paciente, selecione os dentes e insira observações para o Dr. Matheus.'}</p>
           </div>
 
           {/* Alert / Informational disclaimer */}

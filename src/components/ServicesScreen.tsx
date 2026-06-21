@@ -323,7 +323,6 @@ export const ServicesScreen: React.FC = () => {
                       <input
                         type="number"
                         step="0.01"
-                        required
                         value={defaultValue}
                         onChange={(e) => setDefaultValue(e.target.value)}
                         className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
@@ -338,7 +337,6 @@ export const ServicesScreen: React.FC = () => {
                           <input
                             type="number"
                             min="0"
-                            required
                             value={estHours}
                             onChange={(e) => setEstHours(e.target.value)}
                             placeholder="Horas"
@@ -351,7 +349,6 @@ export const ServicesScreen: React.FC = () => {
                             type="number"
                             min="0"
                             max="59"
-                            required
                             value={estMinutes}
                             onChange={(e) => setEstMinutes(e.target.value)}
                             placeholder="Minutos"
