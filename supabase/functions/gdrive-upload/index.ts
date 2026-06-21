@@ -141,6 +141,11 @@ serve(async (req) => {
     const caseFolderId = await findOrCreateFolder(accessToken, caseFolderName, dentistFolderId);
 
     if (action === 'create_folders') {
+      // Pré-criar as subpastas
+      await findOrCreateFolder(accessToken, 'Fotos Clínicas', caseFolderId);
+      await findOrCreateFolder(accessToken, 'Escaneamento', caseFolderId);
+      await findOrCreateFolder(accessToken, 'Enceramento Digital', caseFolderId);
+
       return new Response(JSON.stringify({ success: true, caseFolderId }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -150,8 +155,22 @@ serve(async (req) => {
       throw new Error('Nenhum arquivo enviado para upload.');
     }
 
+    const category = formData.get('category') as string;
+    let targetFolderId = caseFolderId;
+    
+    if (category) {
+      let subfolderName = '';
+      if (category === 'imagens') subfolderName = 'Fotos Clínicas';
+      else if (category === 'escaneamento') subfolderName = 'Escaneamento';
+      else if (category === 'enceramento_digital' || category === 'resultado') subfolderName = 'Enceramento Digital';
+      
+      if (subfolderName) {
+        targetFolderId = await findOrCreateFolder(accessToken, subfolderName, caseFolderId);
+      }
+    }
+
     // Fazer upload do arquivo
-    const driveFile = await uploadFileToDrive(accessToken, file, caseFolderId);
+    const driveFile = await uploadFileToDrive(accessToken, file, targetFolderId);
 
     // Salvar metadados no Supabase
     const { data: attachment, error: insertError } = await supabase
