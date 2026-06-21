@@ -168,12 +168,12 @@ const ALLOWED_CALENDAR_KEYS = [
 ];
 
 const ALLOWED_NOTE_KEYS = [
-  'id', 'title', 'content', 'pinned', 'important', 'created_at', 'updated_at', 'created_by', 'created_by_name', 'history'
+  'id', 'case_id', 'title', 'content', 'note', 'pinned', 'important', 'created_at', 'updated_at', 'created_by', 'history'
 ];
 
 const ALLOWED_CASE_KEYS = [
   'id', 'case_number', 'dentist_id', 'patient_name', 'created_at', 'requested_delivery_date',
-  'final_delivery_date', 'created_by', 'status', 'financial_status', 'teeth_selection',
+  'final_delivery_date', 'status', 'financial_status', 'teeth_selection',
   'dentist_notes', 'has_photo', 'has_file', 'google_drive_folder_id', 'google_drive_folder_url',
   'drive_status', 'drive_dentist_folder_id', 'drive_case_folder_id', 'drive_images_folder_id',
   'drive_scan_folder_id', 'drive_result_folder_id', 'drive_case_folder_url', 'drive_error_message',
@@ -181,6 +181,18 @@ const ALLOWED_CASE_KEYS = [
   'cost_allan_solo', 'cost_andrey', 'cost_andrey_discounted', 'other_internal_costs',
   'total_value', 'paid_value', 'remaining_value', 'financial_released', 'payment_receipt_url',
   'pix_key', 'selected_services', 'is_manual_price', 'updated_at'
+];
+
+const ALLOWED_PROFILE_KEYS = [
+  'id', 'role', 'full_name', 'whatsapp', 'pix_key', 'notes', 'linked_dentist_id', 'created_at'
+];
+
+const ALLOWED_HISTORY_KEYS = [
+  'id', 'case_id', 'user_id', 'action', 'previous_data', 'new_data', 'created_at'
+];
+
+const ALLOWED_ATTACHMENT_KEYS = [
+  'id', 'case_id', 'google_drive_file_id', 'file_name', 'mime_type', 'file_size', 'uploaded_by', 'created_at', 'folder_id', 'web_view_link', 'file_category'
 ];
 
 // Helper getter/setter helpers for LocalStorage
@@ -226,15 +238,20 @@ export const recordActivity = async (action: string, caseId: string = '', newDat
   } else {
     try {
       const { data: { user } } = await supabase!.auth.getUser();
-      if (user) {
-        await supabase!.from('case_history').insert([{
-          case_id: caseId || null,
-          user_id: user.id,
-          action: action,
-          previous_data: prevData,
-          new_data: newData,
-          created_at: new Date().toISOString()
-        }]);
+      if (!supabase) return;
+      
+      const payload = {
+        case_id: caseId,
+        user_id: user?.id || null,
+        action,
+        previous_data: prevData,
+        new_data: newData,
+        created_at: new Date().toISOString()
+      };
+      const sanitizedLog = sanitizePayload(payload, ALLOWED_HISTORY_KEYS);
+
+      if (caseId) {
+        await supabase!.from('case_history').insert([sanitizedLog]);
       }
     } catch (err) {
       console.error('Error saving Supabase activity log:', err);
@@ -551,9 +568,11 @@ export const api = {
         saveMockData(MOCK_STORAGE_KEYS.PROFILES, profiles);
         return profile;
       }
+      
+      const sanitizedProfile = sanitizePayload(profile, ALLOWED_PROFILE_KEYS);
       const { data, error } = await supabase!
         .from('profiles')
-        .upsert(profile)
+        .upsert(sanitizedProfile)
         .select()
         .single();
       if (error) throw error;
@@ -625,6 +644,8 @@ export const api = {
         saveMockData(MOCK_STORAGE_KEYS.SERVICES, services);
         return service;
       }
+      service.default_value = service.default_value || 0;
+      service.default_estimated_time = service.default_estimated_time || 0;
       const payload = sanitizePayload(service, ALLOWED_SERVICE_KEYS);
       const { data, error } = await supabase!
         .from('services')
@@ -803,6 +824,7 @@ export const api = {
         try {
           await api.notes.save({
             id: '',
+            case_id: caseItem.id,
             title: `Caso: ${caseItem.patient_name || caseItem.id}`,
             content: notesContent,
             pinned: false,
@@ -1032,9 +1054,15 @@ export const api = {
         saveMockData(MOCK_STORAGE_KEYS.ATTACHMENTS, list);
         return newAttachment;
       }
+      
+      const payload = {
+        ...attachment,
+        id: (attachment as any).id || genUUID()
+      };
+      const sanitizedAttachment = sanitizePayload(payload, ALLOWED_ATTACHMENT_KEYS);
       const { data, error } = await supabase!
-        .from('file_attachments')
-        .insert([{ ...attachment, id: genUUID() }])
+        .from('case_attachments')
+        .insert([sanitizedAttachment])
         .select()
         .single();
       if (error) throw error;
@@ -1084,7 +1112,7 @@ export const api = {
         return;
       }
       const { error } = await supabase!
-        .from('file_attachments')
+        .from('case_attachments')
         .delete()
         .eq('id', id);
       if (error) throw error;
@@ -1249,15 +1277,14 @@ export const api = {
         return note;
       }
 
-      const payload = {
+      // Prepare backwards compatible note mapping
+      const payload: any = {
         ...note,
+        note: note.content,
         created_by: isEdit ? note.created_by : userId,
         created_at: isEdit ? note.created_at : note.updated_at
       };
       
-      // Delete client-only field before saving
-      delete (payload as any).created_by_name;
-
       const sanitizedNote = sanitizePayload(payload, ALLOWED_NOTE_KEYS);
       const { data, error } = await supabase!
         .from('internal_notes')

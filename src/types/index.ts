@@ -186,6 +186,7 @@ export interface NoteHistoryEntry {
 
 export interface InternalNote {
   id: string;
+  case_id?: string;
   title: string;
   content: string;
   pinned: boolean;
