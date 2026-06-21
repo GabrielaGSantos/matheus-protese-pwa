@@ -140,6 +140,49 @@ if (useMockData) {
   seedMockDatabase();
 }
 
+// interface SyncStatus {
+//   lastSync: Date | null;
+//   pendingChanges: number;
+//   isOnline: boolean;
+// }
+
+// Payload Sanitizers
+const sanitizePayload = (payload: any, allowedKeys: string[]) => {
+  const cleanPayload: any = {};
+  for (const key of allowedKeys) {
+    if (payload[key] !== undefined) {
+      cleanPayload[key] = payload[key];
+    }
+  }
+  return cleanPayload;
+};
+
+const ALLOWED_SERVICE_KEYS = [
+  'id', 'name', 'description', 'billing_type', 'default_value', 'default_estimated_time',
+  'enters_matheus_value', 'enters_paschoal_value', 'default_paschoal_value',
+  'enters_andrey_value', 'default_andrey_value', 'is_internal_cost', 'is_active', 'created_at'
+];
+
+const ALLOWED_CALENDAR_KEYS = [
+  'id', 'title', 'start_date', 'end_date', 'start_time', 'end_time', 'type', 'notes', 'created_at', 'case_id', 'dentist_id', 'patient_name', 'date'
+];
+
+const ALLOWED_NOTE_KEYS = [
+  'id', 'title', 'content', 'pinned', 'important', 'created_at', 'updated_at', 'created_by', 'created_by_name', 'history'
+];
+
+const ALLOWED_CASE_KEYS = [
+  'id', 'case_number', 'dentist_id', 'patient_name', 'created_at', 'requested_delivery_date',
+  'final_delivery_date', 'created_by', 'status', 'financial_status', 'teeth_selection',
+  'dentist_notes', 'has_photo', 'has_file', 'google_drive_folder_id', 'google_drive_folder_url',
+  'drive_status', 'drive_dentist_folder_id', 'drive_case_folder_id', 'drive_images_folder_id',
+  'drive_scan_folder_id', 'drive_result_folder_id', 'drive_case_folder_url', 'drive_error_message',
+  'estimated_hours', 'value_matheus', 'value_planning', 'value_paschoal', 'cost_allan_matheus',
+  'cost_allan_solo', 'cost_andrey', 'cost_andrey_discounted', 'other_internal_costs',
+  'total_value', 'paid_value', 'remaining_value', 'financial_released', 'payment_receipt_url',
+  'pix_key', 'selected_services', 'is_manual_price', 'updated_at'
+];
+
 // Helper getter/setter helpers for LocalStorage
 const getMockData = <T>(key: string): T[] => {
   const data = localStorage.getItem(key);
@@ -582,9 +625,10 @@ export const api = {
         saveMockData(MOCK_STORAGE_KEYS.SERVICES, services);
         return service;
       }
+      const payload = sanitizePayload(service, ALLOWED_SERVICE_KEYS);
       const { data, error } = await supabase!
         .from('services')
-        .upsert(service)
+        .upsert(payload)
         .select()
         .single();
       if (error) throw error;
@@ -744,12 +788,32 @@ export const api = {
       }
 
       // Supabase logic: upsert case
+      const notesContent = caseItem.internal_notes;
+      const payload = sanitizePayload(caseItem, ALLOWED_CASE_KEYS);
+      
       const { data, error } = await supabase!
         .from('cases')
-        .upsert(caseItem)
+        .upsert(payload)
         .select()
         .single();
       if (error) throw error;
+      
+      // Save internal notes dynamically if present
+      if (notesContent && notesContent.trim() !== '') {
+        try {
+          await api.notes.save({
+            id: '',
+            title: `Caso: ${caseItem.patient_name || caseItem.id}`,
+            content: notesContent,
+            pinned: false,
+            important: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            history: []
+          }, _historyUser, 'Sistema');
+        } catch (e) { console.error('Erro ao salvar nota vinculada ao caso', e); }
+      }
+      
       return data;
     },
 
@@ -812,9 +876,10 @@ export const api = {
         recordActivity(isEdit ? 'edit_block' : 'create_block', event.id, JSON.parse(JSON.stringify(event)), oldEvent ? JSON.parse(JSON.stringify(oldEvent)) : null);
         return event;
       }
+      const payload = sanitizePayload(event, ALLOWED_CALENDAR_KEYS);
       const { data, error } = await supabase!
         .from('calendar_events')
-        .upsert(event)
+        .upsert(payload)
         .select()
         .single();
       if (error) throw error;
@@ -1193,9 +1258,10 @@ export const api = {
       // Delete client-only field before saving
       delete (payload as any).created_by_name;
 
+      const sanitizedNote = sanitizePayload(payload, ALLOWED_NOTE_KEYS);
       const { data, error } = await supabase!
         .from('internal_notes')
-        .upsert(payload)
+        .upsert(sanitizedNote)
         .select()
         .single();
       if (error) throw error;
