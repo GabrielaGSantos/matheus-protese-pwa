@@ -583,7 +583,17 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                             <td className="p-3 font-semibold text-slate-700">
                               {isAuxiliar ? (
                                 <span className="text-slate-400 italic text-[10px]">Restrito</span>
-                              ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
+                              ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[10px] text-slate-500 whitespace-nowrap">Matheus: <span className="text-slate-800 font-bold">R$ {c.value_matheus.toFixed(2)}</span></span>
+                                  {c.value_paschoal > 0 && (
+                                    <span className="text-[10px] text-slate-500 whitespace-nowrap">Paschoal: <span className="text-slate-800 font-bold">R$ {c.value_paschoal.toFixed(2)}</span></span>
+                                  )}
+                                  <span className="text-[11px] font-bold text-[#0F766E] whitespace-nowrap mt-1 border-t border-slate-200 pt-0.5">
+                                    Total: R$ {c.total_value.toFixed(2)}
+                                  </span>
+                                </div>
+                              ) : <span className="text-slate-400 italic text-[10px]">Aguardando liberação</span>}
                             </td>
                             <td className="p-3 text-right">
                               <div className="inline-flex items-center gap-1.5 justify-end">
@@ -662,11 +672,19 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                                 <div className="flex gap-4">
                                   <div>
                                     <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Valor Total</p>
-                                    <p className="text-xs font-bold text-slate-900">
-                                      {isAuxiliar ? (
-                                        <span className="text-slate-400 italic font-normal text-[10px]">Restrito</span>
-                                      ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? `R$ ${c.total_value.toFixed(2)}` : <span className="text-slate-400 italic font-normal text-[10px]">Aguardando liberação</span>}
-                                    </p>
+                                    {isAuxiliar ? (
+                                      <p className="text-xs font-bold text-slate-900"><span className="text-slate-400 italic font-normal text-[10px]">Restrito</span></p>
+                                    ) : (c.financial_released || c.financial_status === 'pago' || c.financial_status === 'isento') ? (
+                                      <div className="flex flex-col gap-0.5">
+                                        <p className="text-[10px] text-slate-500 whitespace-nowrap leading-none">Matheus: <span className="text-slate-800 font-bold">R$ {c.value_matheus.toFixed(2)}</span></p>
+                                        {c.value_paschoal > 0 && (
+                                          <p className="text-[10px] text-slate-500 whitespace-nowrap leading-none">Paschoal: <span className="text-slate-800 font-bold">R$ {c.value_paschoal.toFixed(2)}</span></p>
+                                        )}
+                                        <p className="text-[11px] font-bold text-slate-900 whitespace-nowrap mt-0.5 border-t border-slate-200 pt-0.5">
+                                          Total: R$ {c.total_value.toFixed(2)}
+                                        </p>
+                                      </div>
+                                    ) : <p className="text-xs font-bold text-slate-900"><span className="text-slate-400 italic font-normal text-[10px]">Aguardando liberação</span></p>}
                                   </div>
                                   <div>
                                     <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Valor Pago</p>
