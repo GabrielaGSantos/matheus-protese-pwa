@@ -85,7 +85,7 @@ export const ServicesScreen: React.FC = () => {
       const finalEstTime = hours + minutes / 60;
 
       const payload: Service = {
-        id: editingService?.id || '',
+        id: editingService?.id || crypto.randomUUID(),
         name,
         description,
         billing_type: billingType,
