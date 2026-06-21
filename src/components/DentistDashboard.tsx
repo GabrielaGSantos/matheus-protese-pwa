@@ -321,6 +321,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       setScanFiles([]);
       setSelectedServices({});
       setEditingCase(null);
+      setActiveTab('my-cases');
       setCurrentTab('dentist-cases');
       
       fetchData();
@@ -363,7 +364,6 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     setSelectedServices(servicesMap);
     setPhotoFiles([]);
     setScanFiles([]);
-    setCurrentTab('dentist-new-case');
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -775,6 +775,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                 type="button"
                 onClick={() => {
                   setEditingCase(null);
+                  setActiveTab('my-cases');
                   setCurrentTab('dentist-cases');
                   setPatientName('');
                   setDentistNotes('');

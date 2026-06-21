@@ -1286,6 +1286,13 @@ export const api = {
       };
       
       const sanitizedNote = sanitizePayload(payload, ALLOWED_NOTE_KEYS);
+      
+      if (!sanitizedNote.id) delete sanitizedNote.id;
+      if (!sanitizedNote.case_id) sanitizedNote.case_id = null;
+      if (!sanitizedNote.created_by) sanitizedNote.created_by = null;
+      
+      console.log('Payload de internal_notes antes do upsert:', sanitizedNote);
+
       const { data, error } = await supabase!
         .from('internal_notes')
         .upsert(sanitizedNote)
