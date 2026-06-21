@@ -624,8 +624,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         setPopupMessage('Caso salvo com sucesso!');
         setShowSuccessPopup(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert('Erro ao salvar o caso. Detalhes: ' + (err.message || 'Erro de comunicação'));
       setPopupMessage('Ocorreu um erro ao salvar o caso.');
       setShowErrorPopup(true);
     } finally {

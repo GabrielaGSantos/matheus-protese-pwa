@@ -328,9 +328,10 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       } else {
         setShowSuccessPopup(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-    } finally {
+      alert('Erro ao salvar o caso. Detalhes: ' + (err.message || 'Erro de comunicação'));
+      setShowErrorPopup(true);
       setSubmitting(false);
     }
   };
