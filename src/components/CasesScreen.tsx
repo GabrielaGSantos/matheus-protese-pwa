@@ -71,8 +71,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [editingCase, setEditingCase] = useState<Case | null>(null);
   const [activeEditorTab, setActiveEditorTab] = useState<'info' | 'financial' | 'history'>('info');
   const [isSaving, setIsSaving] = useState(false);
-  const [, setShowErrorPopup] = useState(false);
-
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
   // Case Form fields
   const [selectedDentistId, setSelectedDentistId] = useState('');
   const [patientName, setPatientName] = useState('');
@@ -110,7 +111,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     if (editingCase && payload.eventType === 'UPDATE' && payload.new.id === editingCase.id) {
       // Check if it was updated by someone else by comparing updated_at
       if (payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
-        alert('Atenção: Este caso acabou de ser modificado por outro usuário! Suas edições podem sobrescrever o que foi alterado. Recomendamos que você feche e abra novamente este caso.');
+        setPopupMessage('Atenção: Este caso acabou de ser modificado por outro usuário! Suas edições podem sobrescrever o que foi alterado. Recomendamos que você feche e abra novamente este caso.');
+        setShowErrorPopup(true);
       }
     }
   });
@@ -145,7 +147,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Erro ao excluir os casos selecionados.');
+      setPopupMessage('Erro ao excluir os casos selecionados.');
+      setShowErrorPopup(true);
     } finally {
       setLoading(false);
     }
@@ -175,10 +178,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       }
       setSelectedCaseIds({});
       await fetchData();
-      alert(`✅ Pagamento de ${idsToPay.length} caso(s) registrado com sucesso!`);
-    } catch (err: any) {
+      setPopupMessage(`✅ Pagamento de ${idsToPay.length} caso(s) registrado com sucesso!`);
+      setShowSuccessPopup(true);
+    } catch (err) {
       console.error(err);
-      alert('Erro ao registrar baixa dos pagamentos.');
+      setPopupMessage('Erro ao registrar baixa dos pagamentos.');
+      setShowErrorPopup(true);
     } finally {
       setLoading(false);
     }
@@ -461,12 +466,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
       setAttachments(prev => [...prev, newAtt]);
       setPendingUploads(prev => prev.filter(p => p !== item));
-      alert('✅ Arquivo enviado com sucesso!');
+      setPopupMessage('✅ Arquivo enviado com sucesso!');
+      setShowSuccessPopup(true);
     } catch (err: any) {
       item.status = 'error';
       item.error = err.message || 'Erro desconhecido';
       setPendingUploads([...pendingUploads]);
-      alert(`❌ Erro no envio: ${err.message}`);
+      setPopupMessage(`❌ Erro no envio: ${err.message}`);
+      setShowErrorPopup(true);
     }
   };
 
@@ -475,12 +482,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName || !selectedDentistId) {
-      alert('Preencha o nome do paciente e selecione o dentista.');
+      setPopupMessage('Preencha o nome do paciente e selecione o dentista.');
+      setShowErrorPopup(true);
       return;
     }
 
-    if (!teethSelection.type || teethSelection.teeth.length === 0) {
-      alert('É obrigatório selecionar o tipo de trabalho e ao menos um elemento no odontograma.');
+    if (!isManualPrice && (Object.keys(caseServicesSelected).length === 0 || !teethSelection || teethSelection.teeth.length === 0)) {
+      setPopupMessage('É obrigatório selecionar o tipo de trabalho e ao menos um elemento no odontograma.');
+      setShowErrorPopup(true);
       return;
     }
 
@@ -602,11 +611,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       fetchData();
       
       if (hasUploadError) {
+        setPopupMessage('Ocorreu um problema ao enviar alguns arquivos, mas o caso foi salvo.');
         setShowErrorPopup(true);
+      } else {
+        setPopupMessage('Caso salvo com sucesso!');
+        setShowSuccessPopup(true);
       }
     } catch (err) {
       console.error(err);
-      alert('Ocorreu um erro ao salvar o caso.');
+      setPopupMessage('Ocorreu um erro ao salvar o caso.');
+      setShowErrorPopup(true);
     } finally {
       setIsSaving(false);
     }
@@ -620,13 +634,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       const result = await api.gdrive.createCaseFolders(targetCase.id, targetCase.patient_name, dentistName);
 
       if (result.success) {
-        alert('✅ Pastas criadas com sucesso no Google Drive!');
+        setPopupMessage('✅ Pastas criadas com sucesso no Google Drive!');
+        setShowSuccessPopup(true);
         fetchData();
       } else {
-        alert(`❌ Erro ao criar pastas: ${result.error || 'Erro desconhecido'}`);
+        setPopupMessage(`❌ Erro ao criar pastas: ${result.error || 'Erro desconhecido'}`);
+        setShowErrorPopup(true);
       }
     } catch (err: any) {
-      alert(`❌ Erro: ${err.message}`);
+      setPopupMessage(`❌ Erro: ${err.message}`);
+      setShowErrorPopup(true);
     } finally {
       setDriveCreating(false);
     }
@@ -1287,10 +1304,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                 setAttachments(prev => [...prev, uploadRes.attachment]);
                               }
                               
-                              alert('✅ Arquivos de resultado entregues e salvos no Drive com sucesso!');
+                              setPopupMessage('✅ Arquivos de resultado entregues e salvos no Drive com sucesso!');
+                              setShowSuccessPopup(true);
                             } catch (err: any) {
                               console.error(err);
-                              alert(`❌ Erro ao entregar resultados: ${err.message}`);
+                              setPopupMessage(`❌ Erro ao entregar resultados: ${err.message}`);
+                              setShowErrorPopup(true);
                             } finally {
                               setLoading(false);
                             }
@@ -1900,6 +1919,47 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         </div>
 
       </div>
+
+      {/* Popups */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
+            <div className="w-12 h-12 rounded-full bg-[#ECFDF5] border border-emerald-100 flex items-center justify-center mx-auto mb-4 text-[#0F766E]">
+              <CheckCircle size={24} />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Sucesso!</h3>
+            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+              {popupMessage || 'Operação realizada com sucesso.'}
+            </p>
+            <button
+              onClick={() => setShowSuccessPopup(false)}
+              className="w-full py-2 bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold rounded-lg text-xs transition-all cursor-pointer"
+            >
+              OK, fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showErrorPopup && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_4px_24px_rgba(15,23,42,0.08)] relative text-slate-900">
+            <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto mb-4 text-rose-500">
+              <AlertTriangle size={24} />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Atenção</h3>
+            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+              {popupMessage || 'Ocorreu um erro durante a operação.'}
+            </p>
+            <button
+              onClick={() => setShowErrorPopup(false)}
+              className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-xs transition-all cursor-pointer"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Cases Table (desktop) / Cards (mobile) */}
       {loading ? (
