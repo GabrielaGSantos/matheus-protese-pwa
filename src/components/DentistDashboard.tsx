@@ -214,7 +214,8 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
         }
       }
 
-      const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
+      const caseId = editingCase?.id || crypto.randomUUID();
+      const caseNumber = editingCase?.case_number || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
       let driveStatus: 'not_created' | 'created' | 'error' = editingCase?.drive_status || 'not_created';
       let driveDentistFolderId = editingCase?.drive_dentist_folder_id;
       let driveCaseFolderId = editingCase?.drive_case_folder_id;
@@ -225,6 +226,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
 
       const payload: Case = {
           id: caseId,
+          case_number: caseNumber,
           dentist_id: fallbackDentistId,
           patient_name: patientName,
           created_at: editingCase?.created_at || new Date().toISOString(),
@@ -584,7 +586,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                       <tbody className="divide-y divide-[#E2E8F0]">
                         {filteredActiveCases.map(c => (
                           <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
-                            <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                            <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.case_number || c.id}</td>
                             <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
                             <td className="p-3 text-slate-600 font-medium">{getServiceNames(c)}</td>
                             <td className="p-3">{getStatusBadge(c.status)}</td>
@@ -671,7 +673,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                         <tbody className="divide-y divide-[#E2E8F0]">
                           {paginatedFinalizedCases.map(c => (
                             <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
-                              <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
+                              <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.case_number || c.id}</td>
                               <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
                               <td className="p-3 text-slate-600 font-medium">{getServiceNames(c)}</td>
                               <td className="p-3">

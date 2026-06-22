@@ -833,6 +833,10 @@ export const api = {
         .single();
       if (error) throw error;
       
+      const isEdit = !!payload.id;
+      // Record history
+      recordActivity(isEdit ? 'edit' : 'create', data.id, JSON.parse(JSON.stringify(data)), null);
+      
       // Save internal notes dynamically if present
       if (notesContent && notesContent.trim() !== '') {
         try {
@@ -872,11 +876,21 @@ export const api = {
         recordActivity('delete', id, null, oldCase ? JSON.parse(JSON.stringify(oldCase)) : null);
         return;
       }
+      const { data: oldData } = await supabase!
+        .from('cases')
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { error } = await supabase!
         .from('cases')
         .delete()
         .eq('id', id);
       if (error) throw error;
+      
+      if (oldData) {
+        recordActivity('delete', id, null, oldData);
+      }
     }
   },
 
