@@ -310,8 +310,8 @@ export const SettingsScreen: React.FC = () => {
           const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
 
           for (const row of rows) {
-            const clientName = String(row['Cliente'] || row['Dentista'] || '').trim();
-            const patientName = String(row['Paciente'] || '').trim();
+            const clientName = String(row['Cliente'] || row['Dentista'] || row['dentist'] || '').trim();
+            const patientName = String(row['Paciente'] || row['patient_name'] || '').trim();
             
             // Skip rows without enough data to be a case
             if (!clientName || !patientName) continue;
@@ -339,7 +339,7 @@ export const SettingsScreen: React.FC = () => {
               }
             }
 
-            const rawDate = row['Data Recebido'] || row['Data'] || row['data'] || row['Data recebido'];
+            const rawDate = row['Data Recebido'] || row['Data'] || row['data'] || row['Data recebido'] || row['requested_delivery_date'];
             const isoDateStr = getJsDate(rawDate);
             const datePart = isoDateStr.split('T')[0];
             const yearMonth = datePart.slice(0, 7).replace('-', '');
@@ -355,17 +355,30 @@ export const SettingsScreen: React.FC = () => {
             const costAndrey = parseFloat(row['Andrey']) || 0;
 
             const calculatedTotal = valueMatheus + valuePlanning + valuePaschoal;
-            const statusText = String(row['Status'] || 'Aguardando Pagamento').toLowerCase();
+            const statusText = String(row['Status'] || row['status'] || 'Aguardando Pagamento').toLowerCase();
 
             const caseYear = new Date(isoDateStr).getFullYear();
             let financialStatus: 'pago' | 'isento' | 'aguardando_pagamento' = 'aguardando_pagamento';
-            if (caseYear < 2026) {
+            
+            const rawFinancialStatus = String(row['financial_status'] || '').toLowerCase();
+            if (rawFinancialStatus === 'pago' || rawFinancialStatus === 'isento' || rawFinancialStatus === 'aguardando_pagamento') {
+                financialStatus = rawFinancialStatus as any;
+            } else if (caseYear < 2026) {
               financialStatus = 'pago';
             } else if (statusText.includes('pago')) {
               financialStatus = 'pago';
             } else if (statusText.includes('isento')) {
               financialStatus = 'isento';
             }
+            
+            let finalStatus = 'finalizado';
+            const validStatuses = ['em_analise', 'recebido', 'aguardando_arquivos', 'em_execucao', 'finalizado', 'entregue', 'cancelado'];
+            if (validStatuses.includes(statusText)) {
+                finalStatus = statusText;
+            }
+
+            const reqDelDate = row['requested_delivery_date'] ? getJsDate(row['requested_delivery_date']).split('T')[0] : datePart;
+            const finalDelDate = row['final_delivery_date'] ? getJsDate(row['final_delivery_date']).split('T')[0] : datePart;
 
             allCases.push({
               id: caseId,
@@ -373,13 +386,13 @@ export const SettingsScreen: React.FC = () => {
               dentist_id: dentistId,
               patient_name: patientName,
               created_at: isoDateStr,
-              requested_delivery_date: datePart,
-              final_delivery_date: datePart,
-              status: 'finalizado',
+              requested_delivery_date: reqDelDate,
+              final_delivery_date: finalDelDate,
+              status: finalStatus,
               financial_status: financialStatus,
               teeth_selection: { teeth: [], type: 'individual' },
-              dentist_notes: String(row['Observações'] || ''),
-              internal_notes: `Feito por: ${row['Feito por'] || 'N/A'}`,
+              dentist_notes: String(row['Observações'] || row['dentist_notes'] || ''),
+              internal_notes: `Feito por: ${row['Feito por'] || 'N/A'}\nTipo: ${row['Tipo'] || 'N/A'}`,
               has_photo: false,
               has_file: false,
               estimated_hours: 0,
