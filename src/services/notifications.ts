@@ -71,44 +71,8 @@ export const notificationService = {
       }
     }
 
-    // 2. Notificação via Telegram Bot API (apenas para ações de dentistas)
-    const currentUserStr = localStorage.getItem('matheus_protese_current_user');
-    const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-    const isDentist = currentUser?.role === 'dentist' || currentUser?.role === 'auxiliar';
-
-    const isSystemAlert = category === 'due_date';
-
-    if ((isDentist || isSystemAlert) && settings.enable_telegram && settings.telegram_bot_token && settings.telegram_chat_id) {
-      const text = `🔔 *${title}*\n\n${message}${caseId ? `\n\nCaso ID: \`${caseId}\`` : ''}`;
-      const url = `https://api.telegram.org/bot${settings.telegram_bot_token}/sendMessage`;
-      
-      const chatIds = settings.telegram_chat_id
-        .split(',')
-        .map(id => id.trim())
-        .filter(id => id.length > 0);
-
-      chatIds.forEach(chatId => {
-        fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text,
-            parse_mode: 'Markdown'
-          })
-        })
-        .then(res => {
-          if (!res.ok) {
-            console.error(`Falha ao enviar notificação para o Telegram chat_id ${chatId}: ${res.status}`);
-          }
-        })
-        .catch(err => {
-          console.error(`Erro na requisição para a API do Telegram chat_id ${chatId}:`, err);
-        });
-      });
-    }
+    // Notificação via Telegram Bot API - removido o envio client-side daqui.
+    // O envio agora ocorre através do sendTelegramEvent, chamado pelos componentes.
 
     // 3. Notificação via E-mail (Simulado)
     if (settings.enable_email) {
@@ -119,6 +83,38 @@ export const notificationService = {
     // Disparar evento de janela para re-renderização em tempo real do badge de sino
     window.dispatchEvent(new Event('new_notification_received'));
     return newNotif;
+  },
+
+  async sendTelegramEvent(payload: any) {
+    const settings = this.getSettings();
+    if (!settings.enable_telegram || !settings.telegram_bot_token || !settings.telegram_chat_id) {
+      return; // Telegram desabilitado
+    }
+
+    try {
+      const { supabase } = await import('./api');
+      if (!supabase) return;
+
+      const fullPayload = {
+        ...payload,
+        telegram_bot_token: settings.telegram_bot_token,
+        telegram_chat_id: settings.telegram_chat_id
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-telegram', {
+        body: fullPayload
+      });
+
+      if (error) {
+        console.error('Erro ao invocar Edge Function send-telegram:', error);
+      } else if (!data?.success) {
+        console.error('Falha interna no envio do Telegram:', data?.error);
+      } else {
+        console.debug('Telegram enviado com sucesso via Edge Function.');
+      }
+    } catch (err) {
+      console.error('Erro crítico ao despachar telegram:', err);
+    }
   },
 
   markAsRead(id: string) {

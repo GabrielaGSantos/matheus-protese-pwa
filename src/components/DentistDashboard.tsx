@@ -269,59 +269,107 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
 
         // Upload photos clinical to backend Google Drive integration
         let uploadError = false;
+        const uploadedPhotos: string[] = [];
         for (const f of photoFiles) {
           try {
             await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'imagens', fallbackDentistId);
-            notificationService.add(
-              'Novo Arquivo Enviado',
-              `O dentista "${dentistName}" enviou a foto "${f.name}" para o caso ${caseId}.`,
-              'file_uploaded',
-              caseId
-            );
+            uploadedPhotos.push(f.name);
           } catch (err: any) {
             console.error('Erro ao enviar foto para o Google Drive:', err);
             uploadError = true;
           }
         }
 
+        if (uploadedPhotos.length > 0) {
+          notificationService.sendTelegramEvent({
+            action: 'upload_file',
+            caseId: caseId,
+            caseNumber: caseNumber,
+            patientName: patientName,
+            dentistName: dentistName,
+            uploadDetails: {
+              sender: 'Dentista',
+              count: uploadedPhotos.length,
+              category: 'Fotos Clínicas',
+              fileNames: uploadedPhotos
+            }
+          });
+        }
+
         // Upload scans 3D to backend Google Drive integration
+        const uploadedScans: string[] = [];
         for (const f of scanFiles) {
           try {
             await api.attachments.uploadFile(f, caseId, patientName, dentistName, 'escaneamento', fallbackDentistId);
-          notificationService.add(
-            'Novo Arquivo Enviado',
-            `O dentista "${dentistName}" enviou o escaneamento "${f.name}" para o caso ${caseId}.`,
-            'file_uploaded',
-            caseId
-          );
-        } catch (err: any) {
-          console.error('Erro ao enviar escaneamento para o Google Drive:', err);
-          uploadError = true;
+            uploadedScans.push(f.name);
+          } catch (err: any) {
+            console.error('Erro ao enviar escaneamento para o Google Drive:', err);
+            uploadError = true;
+          }
         }
-      }
 
-      let hasUploadError = false;
+        if (uploadedScans.length > 0) {
+          notificationService.sendTelegramEvent({
+            action: 'upload_file',
+            caseId: caseId,
+            caseNumber: caseNumber,
+            patientName: patientName,
+            dentistName: dentistName,
+            uploadDetails: {
+              sender: 'Dentista',
+              count: uploadedScans.length,
+              category: 'Escaneamentos',
+              fileNames: uploadedScans
+            }
+          });
+        }
 
-      if (uploadError) {
-        hasUploadError = true;
-      }
-      
-      // Trigger notifications for new/modified cases
-      if (editingCase) {
-        notificationService.add(
-          'Solicitação de Caso Editada',
-          `O dentista "${dentistName}" atualizou a solicitação do caso ${caseId} (${patientName}).`,
-          'case_modified',
-          caseId
-        );
-      } else {
-        notificationService.add(
-          'Novo Caso Solicitado',
-          `O dentista "${dentistName}" solicitou um novo caso para o paciente "${patientName}".`,
-          'new_case',
-          caseId
-        );
-      }
+        let hasUploadError = false;
+
+        if (uploadError) {
+          hasUploadError = true;
+        }
+        
+        // Trigger notifications for new/modified cases
+        const selectedServicesNames = selectedIds.map(id => {
+          return services.find(s => s.id === id)?.name;
+        }).filter(Boolean).join(', ') || 'Nenhum';
+
+        if (editingCase) {
+          const changes: string[] = [];
+          if (editingCase.patient_name !== patientName) {
+            changes.push(`• Paciente: ${editingCase.patient_name} → ${patientName}`);
+          }
+          if (editingCase.requested_delivery_date !== requestedDate) {
+            changes.push(`• Entrega: ${editingCase.requested_delivery_date} → ${requestedDate}`);
+          }
+          const oldServices = editingCase.selected_services?.join(',') || '';
+          const newServices = selectedIds.join(',');
+          if (oldServices !== newServices) {
+            changes.push(`• Serviços modificados: agora são [${selectedServicesNames}]`);
+          }
+
+          if (changes.length > 0) {
+            notificationService.sendTelegramEvent({
+              action: 'edit_case',
+              caseId: caseId,
+              caseNumber: caseNumber,
+              patientName: patientName,
+              dentistName: dentistName,
+              changesText: changes.join('\n')
+            });
+          }
+        } else {
+          notificationService.sendTelegramEvent({
+            action: 'new_case',
+            caseId: caseId,
+            caseNumber: caseNumber,
+            patientName: patientName,
+            dentistName: dentistName,
+            dueDate: requestedDate,
+            services: selectedServicesNames
+          });
+        }
       
       // Reset form
       setPatientName('');

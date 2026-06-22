@@ -99,12 +99,15 @@ const AppContent: React.FC = () => {
         // Quando faltar 2 dias (incluindo o dia e 1 ou 2 dias antes)
         if (diffDays >= 0 && diffDays <= 2) {
           if (notifiedDates[c.id] !== todayStr) {
-            notificationService.add(
-              'Prazo Próximo do Vencimento',
-              `O caso do paciente "${c.patient_name}" vence em ${new Date(deliveryDateStr + 'T12:00:00').toLocaleDateString('pt-BR')} (faltam ${diffDays} dias).`,
-              'due_date',
-              c.id
-            );
+            notificationService.sendTelegramEvent({
+              action: 'due_date',
+              caseId: c.id,
+              caseNumber: c.case_number,
+              patientName: c.patient_name,
+              dentistName: c.dentist_id || 'Sem Dentista',
+              dueDate: new Date(deliveryDateStr + 'T12:00:00').toLocaleDateString('pt-BR'),
+              services: 'Ver no sistema' // App.tsx may not have services readily available mapped.
+            });
             notifiedDates[c.id] = todayStr;
             hasNewNotification = true;
           }

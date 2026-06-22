@@ -34,7 +34,7 @@ interface FileUploadState {
   name: string;
   size: number;
   file: File;
-  category: 'imagens' | 'escaneamento';
+  category: 'imagens' | 'escaneamento' | 'resultado';
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
   webViewLink?: string;
@@ -421,13 +421,6 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         item.status = 'success';
         item.webViewLink = newAtt.web_view_link;
         item.driveFileId = newAtt.google_drive_file_id;
-        
-        notificationService.add(
-          'Novo Arquivo Enviado',
-          `O arquivo "${newAtt.file_name}" foi enviado para a pasta do caso ${caseId} (${patientName}).`,
-          'file_uploaded',
-          caseId
-        );
 
         setAttachments(prev => [...prev, newAtt]);
       } catch (err: any) {
@@ -437,6 +430,39 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       }
       setPendingUploads([...pendingUploads]);
     }
+    
+    // Group and send Telegram notifications
+    const successfulUploads = filesToUpload.filter(p => p.status === 'success');
+    if (successfulUploads.length > 0) {
+      // Group by category
+      const byCategory = successfulUploads.reduce((acc, curr) => {
+        const cat = curr.category || 'Outros';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(curr.file.name);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      const editingCaseData = editingCase || cases.find(c => c.id === caseId);
+      const caseNumber = editingCaseData?.case_number || 'S/N';
+
+      for (const [cat, names] of Object.entries(byCategory)) {
+        const isResult = cat === 'resultado';
+        notificationService.sendTelegramEvent({
+          action: isResult ? 'upload_result' : 'upload_file',
+          caseId: caseId,
+          caseNumber: caseNumber,
+          patientName: patientName,
+          dentistName: dentistName,
+          uploadDetails: {
+            sender: user?.role === 'dentist' || user?.role === 'auxiliar' ? 'Dentista' : 'Laboratório',
+            count: names.length,
+            category: cat,
+            fileNames: names
+          }
+        });
+      }
+    }
+
     return hasError;
   };
 
@@ -464,12 +490,19 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       item.webViewLink = newAtt.web_view_link;
       item.driveFileId = newAtt.google_drive_file_id;
       
-      notificationService.add(
-        'Novo Arquivo Enviado',
-        `O arquivo "${newAtt.file_name}" foi enviado com sucesso para o caso ${editingCase.id}.`,
-        'file_uploaded',
-        editingCase.id
-      );
+      notificationService.sendTelegramEvent({
+        action: item.category === 'resultado' ? 'upload_result' : 'upload_file',
+        caseId: editingCase.id,
+        caseNumber: editingCase.case_number || 'S/N',
+        patientName: editingCase.patient_name,
+        dentistName: dentists.find(d => d.id === editingCase.dentist_id)?.full_name || 'Sem Dentista',
+        uploadDetails: {
+          sender: user?.role === 'dentist' || user?.role === 'auxiliar' ? 'Dentista' : 'Laboratório',
+          count: 1,
+          category: item.category || 'Outros',
+          fileNames: [newAtt.file_name]
+        }
+      });
 
       setAttachments(prev => [...prev, newAtt]);
       setPendingUploads(prev => prev.filter(p => p !== item));
@@ -579,38 +612,52 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       }
 
       // Envio de notificações baseados em eventos
-      if (editingCase) {
-        notificationService.add(
-          'Caso Alterado',
-          `O caso ${caseId} para o paciente "${patientName}" foi atualizado pelo laboratório.`,
-          'case_modified',
-          caseId
-        );
+      const selectedServicesNames = payload.selected_services?.map(id => {
+        return services.find(s => s.id === id)?.name;
+      }).filter(Boolean).join(', ') || 'Nenhum';
 
-        if (editingCase.status !== 'em_execucao' && payload.status === 'em_execucao') {
-          notificationService.add(
-            'Caso Aprovado',
-            `O caso ${caseId} (${patientName}) foi aprovado e está agora em execução.`,
-            'case_approved',
-            caseId
-          );
+      if (editingCase) {
+        // Build diff for Telegram
+        const changes: string[] = [];
+        if (editingCase.status !== payload.status) {
+          changes.push(`• Status: ${editingCase.status} → ${payload.status}`);
+        }
+        if (editingCase.patient_name !== payload.patient_name) {
+          changes.push(`• Paciente: ${editingCase.patient_name} → ${payload.patient_name}`);
+        }
+        if (editingCase.requested_delivery_date !== payload.requested_delivery_date) {
+          changes.push(`• Entrega: ${editingCase.requested_delivery_date} → ${payload.requested_delivery_date}`);
+        }
+        if (editingCase.dentist_id !== payload.dentist_id) {
+          changes.push(`• Dentista alterado`);
+        }
+        // Basic check for services change
+        const oldServices = editingCase.selected_services?.join(',') || '';
+        const newServices = payload.selected_services?.join(',') || '';
+        if (oldServices !== newServices) {
+          changes.push(`• Serviços modificados: agora são [${selectedServicesNames}]`);
         }
 
-        if (editingCase.status !== 'finalizado' && payload.status === 'finalizado') {
-          notificationService.add(
-            'Caso Finalizado',
-            `O caso ${caseId} (${patientName}) foi finalizado pelo laboratório!`,
-            'case_finished',
-            caseId
-          );
+        if (changes.length > 0) {
+          notificationService.sendTelegramEvent({
+            action: 'edit_case',
+            caseId: payload.id,
+            caseNumber: payload.case_number,
+            patientName: payload.patient_name,
+            dentistName: dentistName,
+            changesText: changes.join('\n')
+          });
         }
       } else {
-        notificationService.add(
-          'Novo Caso Cadastrado',
-          `O caso ${caseId} para o paciente "${patientName}" foi cadastrado com sucesso no sistema.`,
-          'new_case',
-          caseId
-        );
+        notificationService.sendTelegramEvent({
+          action: 'new_case',
+          caseId: payload.id,
+          caseNumber: payload.case_number,
+          patientName: payload.patient_name,
+          dentistName: dentistName,
+          dueDate: payload.requested_delivery_date,
+          services: selectedServicesNames
+        });
       }
 
       setShowEditor(false);

@@ -133,23 +133,43 @@ serve(async (req) => {
       });
     }
 
+    // Buscar informações do caso para formatação da pasta
+    const { data: caseData, error: caseError } = await supabase
+      .from('cases')
+      .select('case_number, drive_case_folder_id, drive_dentist_folder_id')
+      .eq('id', caseId)
+      .single();
+
+    if (caseError || !caseData) {
+      throw new Error('Erro ao buscar dados do caso no banco.');
+    }
+
     // Garantir pasta do dentista
-    const dentistFolderId = await findOrCreateFolder(accessToken, dentistName, rootFolderId);
+    let dentistFolderId = caseData.drive_dentist_folder_id;
+    if (!dentistFolderId) {
+      dentistFolderId = await findOrCreateFolder(accessToken, dentistName, rootFolderId);
+    }
 
     // Garantir pasta do caso
-    const caseFolderName = `${patientName} (Caso ${caseId})`;
-    const caseFolderId = await findOrCreateFolder(accessToken, caseFolderName, dentistFolderId);
+    let caseFolderId = caseData.drive_case_folder_id;
+    
+    if (!caseFolderId) {
+      const sanitizedPatientName = patientName.replace(/[<>:"/\\|?*]/g, '').trim();
+      const caseNumber = caseData.case_number || 'S/N';
+      const caseFolderName = `Paciente: ${sanitizedPatientName} - ${caseNumber} - ${caseId}`;
+      caseFolderId = await findOrCreateFolder(accessToken, caseFolderName, dentistFolderId);
 
-    // Atualizar tabela cases com a URL correta do Drive
-    await supabase
-      .from('cases')
-      .update({
-        google_drive_folder_url: `https://drive.google.com/drive/folders/${caseFolderId}`,
-        drive_case_folder_id: caseFolderId,
-        drive_dentist_folder_id: dentistFolderId,
-        drive_status: 'created'
-      })
-      .eq('id', caseId);
+      // Atualizar tabela cases com a URL correta do Drive e IDs
+      await supabase
+        .from('cases')
+        .update({
+          google_drive_folder_url: `https://drive.google.com/drive/folders/${caseFolderId}`,
+          drive_case_folder_id: caseFolderId,
+          drive_dentist_folder_id: dentistFolderId,
+          drive_status: 'created'
+        })
+        .eq('id', caseId);
+    }
 
     if (action === 'create_folders') {
       // Pré-criar as subpastas
