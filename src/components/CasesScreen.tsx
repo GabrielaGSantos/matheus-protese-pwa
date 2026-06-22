@@ -1380,7 +1380,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         Procedimentos / Serviços
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-[#E2E8F0]">
-                        {services.map(s => {
+                        {services.filter(s => s.is_active !== false || caseServicesSelected[s.id]?.selected).map(s => {
                           const isSelected = caseServicesSelected[s.id]?.selected || false;
                           const qty = caseServicesSelected[s.id]?.quantity || 1;
                           return (

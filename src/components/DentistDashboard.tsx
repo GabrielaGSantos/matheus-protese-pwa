@@ -477,7 +477,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     );
   };
 
-  const dentistServices = services.filter(s => !s.is_internal_cost);
+  const dentistServices = services.filter(s => !s.is_internal_cost && (s.is_active !== false || selectedServices[s.id]));
 
   const getServiceNames = (caseItem: Case) => {
     if (!caseItem.selected_services || caseItem.selected_services.length === 0) {
