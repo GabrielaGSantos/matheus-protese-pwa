@@ -87,22 +87,16 @@ export const notificationService = {
 
   async sendTelegramEvent(payload: any) {
     const settings = this.getSettings();
-    if (!settings.enable_telegram || !settings.telegram_bot_token || !settings.telegram_chat_id) {
-      return; // Telegram desabilitado
+    if (!settings.enable_telegram) {
+      return; // Telegram desabilitado localmente
     }
 
     try {
       const { supabase } = await import('./api');
       if (!supabase) return;
 
-      const fullPayload = {
-        ...payload,
-        telegram_bot_token: settings.telegram_bot_token,
-        telegram_chat_id: settings.telegram_chat_id
-      };
-
       const { data, error } = await supabase.functions.invoke('send-telegram', {
-        body: fullPayload
+        body: payload
       });
 
       if (error) {
