@@ -277,11 +277,8 @@ export const SettingsScreen: React.FC = () => {
         if (!fileData) return;
 
         const workbook = XLSX.read(fileData, { type: 'array' });
-        const targetSheets = [
-          'Maio26', 'Abril26', 'Março26', 'Fevereiro26', 'Janeiro26',
-          'Dezembro25', 'Novembro25', 'Outubro25', 'Setembro25', 'Agosto25',
-          'Junho e Julho25', 'Abril25', 'Março25'
-        ];
+        // We read all sheets
+        const targetSheets = workbook.SheetNames;
 
         const getJsDate = (excelSerial: any) => {
           if (!excelSerial) return new Date().toISOString();
@@ -293,7 +290,9 @@ export const SettingsScreen: React.FC = () => {
           return date.toISOString();
         };
 
-        const profiles: Profile[] = JSON.parse(localStorage.getItem('matheus_protese_profiles') || '[]');
+        // Fetch actual profiles from Supabase
+        const profilesList = await api.profiles.list();
+        const profiles: Profile[] = [...profilesList];
         const dentistNameMap: Record<string, string> = {};
 
         profiles.forEach(p => {
@@ -303,23 +302,25 @@ export const SettingsScreen: React.FC = () => {
           }
         });
 
-        const allCases: Case[] = [];
+        const allCases: any[] = [];
         let caseCount = 1;
 
-        workbook.SheetNames.forEach(sheetName => {
-          if (!targetSheets.includes(sheetName)) return;
+        for (const sheetName of targetSheets) {
           const worksheet = workbook.Sheets[sheetName];
           const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-          rows.forEach((row, idx) => {
-            const clientName = String(row['Cliente'] || '').trim();
-            if (!clientName) return;
+          for (const row of rows) {
+            const clientName = String(row['Cliente'] || row['Dentista'] || '').trim();
+            const patientName = String(row['Paciente'] || '').trim();
+            
+            // Skip rows without enough data to be a case
+            if (!clientName || !patientName) continue;
 
             const normClient = clientName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
             let dentistId = dentistNameMap[normClient];
 
             if (!dentistId) {
-              dentistId = `dentist-dynamic-${normClient || 'unknown'}`;
+              dentistId = crypto.randomUUID();
               const newProfile: Profile = {
                 id: dentistId,
                 role: 'dentist',
@@ -329,6 +330,13 @@ export const SettingsScreen: React.FC = () => {
               };
               profiles.push(newProfile);
               dentistNameMap[normClient] = dentistId;
+              
+              // Salvar novo perfil no Supabase
+              try {
+                await api.profiles.save(newProfile);
+              } catch (e) {
+                console.warn('Erro ao salvar dentista:', e);
+              }
             }
 
             const rawDate = row['Data Recebido'] || row['Data'] || row['data'] || row['Data recebido'];
@@ -336,7 +344,8 @@ export const SettingsScreen: React.FC = () => {
             const datePart = isoDateStr.split('T')[0];
             const yearMonth = datePart.slice(0, 7).replace('-', '');
 
-            const caseId = `CASE-${yearMonth}-${String(caseCount++).padStart(4, '0')}`;
+            const friendlyCaseNumber = `CASE-${yearMonth}-${String(caseCount++).padStart(4, '0')}`;
+            const caseId = crypto.randomUUID();
 
             const valueMatheus = parseFloat(row['Valor Matheus']) || 0;
             const valuePlanning = parseFloat(row['Valor Planning']) || 0;
@@ -360,8 +369,9 @@ export const SettingsScreen: React.FC = () => {
 
             allCases.push({
               id: caseId,
+              case_number: friendlyCaseNumber,
               dentist_id: dentistId,
-              patient_name: String(row['Paciente'] || 'Sem Nome'),
+              patient_name: patientName,
               created_at: isoDateStr,
               requested_delivery_date: datePart,
               final_delivery_date: datePart,
@@ -383,19 +393,33 @@ export const SettingsScreen: React.FC = () => {
               total_value: calculatedTotal,
               paid_value: financialStatus === 'pago' ? calculatedTotal : 0,
               remaining_value: financialStatus === 'pago' ? 0 : calculatedTotal,
-              google_drive_folder_id: `folder-imported-${idx}`,
-              google_drive_folder_url: 'https://drive.google.com/drive/folders/1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN?usp=sharing',
+              drive_status: 'not_created',
               updated_at: isoDateStr
             });
-          });
-        });
+          }
+        }
 
-        // Save
-        localStorage.setItem('matheus_protese_profiles', JSON.stringify(profiles));
-        localStorage.setItem('matheus_protese_cases', JSON.stringify(allCases));
+        if (allCases.length === 0) {
+          alert('Nenhum caso válido encontrado na planilha. Verifique se as colunas "Cliente" (ou "Dentista") e "Paciente" existem.');
+          return;
+        }
+
+        // Salvar tudo de uma vez no Supabase
+        const { supabase } = await import('../services/api');
+        if (supabase) {
+          // Chunk data into sizes of 500
+          for (let i = 0; i < allCases.length; i += 500) {
+             const chunk = allCases.slice(i, i + 500);
+             const { error } = await supabase.from('cases').insert(chunk);
+             if (error) {
+               console.error('Erro ao inserir casos:', error);
+               alert(`Erro parcial na importação: ${error.message}`);
+             }
+          }
+        }
 
         await recordActivity('importacao', '', { count: allCases.length });
-        alert(`Planilha importada com sucesso! ${allCases.length} casos e novos dentistas foram carregados.`);
+        alert(`Planilha processada! ${allCases.length} casos foram importados para o banco de dados.`);
         fetchLogs();
       } catch (err: any) {
         console.error(err);
