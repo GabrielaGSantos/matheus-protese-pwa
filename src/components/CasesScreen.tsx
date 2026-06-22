@@ -111,7 +111,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   }, (payload) => {
     if (editingCase && payload.eventType === 'UPDATE' && payload.new.id === editingCase.id) {
       // Check if it was updated by someone else by comparing updated_at
-      if (payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
+      if (!isSaving && payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
         setPopupMessage('Atenção: Este caso acabou de ser modificado por outro usuário! Suas edições podem sobrescrever o que foi alterado. Recomendamos que você feche e abra novamente este caso.');
         setShowErrorPopup(true);
       }

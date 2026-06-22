@@ -102,7 +102,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     fetchData();
   }, (payload) => {
     if (editingCase && payload.eventType === 'UPDATE' && payload.new.id === editingCase.id) {
-      if (payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
+      if (!submitting && payload.new.updated_at && payload.new.updated_at !== editingCase.updated_at) {
         alert('Atenção: O laboratório acabou de atualizar o status deste caso! Feche e abra novamente para ver as informações mais recentes.');
       }
     }
