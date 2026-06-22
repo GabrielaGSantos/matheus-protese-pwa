@@ -533,7 +533,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       return;
     }
 
-    if (!isManualPrice && userRole !== 'admin' && (!teethSelection || teethSelection.teeth.length === 0)) {
+    if (!isManualPrice && user?.role !== 'admin' && (!teethSelection || teethSelection.teeth.length === 0)) {
       setPopupMessage('É obrigatório selecionar ao menos um elemento no odontograma.');
       setShowErrorPopup(true);
       return;
