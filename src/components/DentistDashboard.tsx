@@ -1147,7 +1147,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
                 <Send size={20} className="animate-pulse" />
               </div>
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2">Enviando Arquivos...</h3>
+            <h3 className="text-base font-bold text-slate-900 mb-2">{(photoFiles.length > 0 || scanFiles.length > 0) ? 'Enviando Arquivos...' : 'Salvando caso...'}</h3>
             <p className="text-xs text-slate-500 leading-relaxed max-w-[250px]">
               Aguarde enquanto sincronizamos as informações e os arquivos com o Google Drive. Isso pode levar alguns minutos dependendo do tamanho.
             </p>
