@@ -107,7 +107,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
   const isUnapproved = (c: Case) => {
     const year = new Date(c.created_at).getFullYear();
     return year >= 2026 && 
-      (c.status === 'em_analise' || c.status === 'recebido') && 
+      (c.status === 'em_analise' || c.status === 'recebido' || c.status === 'aguardando_arquivos') && 
       c.dentist_id !== 'admin-1' && 
       c.dentist_id !== 'sec-1';
   };
