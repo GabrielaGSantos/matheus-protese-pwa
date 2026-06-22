@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api, recordActivity } from '../services/api';
 import { notificationService } from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
-import type { AppNotification, NotificationSettings, CaseHistory, Profile, Case } from '../types';
+import type { AppNotification, NotificationSettings, CaseHistory, Profile } from '../types';
 import { 
   Bell, 
   Send, 
