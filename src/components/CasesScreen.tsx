@@ -527,8 +527,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       return;
     }
 
-    if (!isManualPrice && (Object.keys(caseServicesSelected).length === 0 || !teethSelection || teethSelection.teeth.length === 0)) {
-      setPopupMessage('É obrigatório selecionar o tipo de trabalho e ao menos um elemento no odontograma.');
+    if (!isManualPrice && Object.keys(caseServicesSelected).length === 0) {
+      setPopupMessage('É obrigatório selecionar ao menos um tipo de trabalho.');
+      setShowErrorPopup(true);
+      return;
+    }
+
+    if (!isManualPrice && userRole !== 'admin' && (!teethSelection || teethSelection.teeth.length === 0)) {
+      setPopupMessage('É obrigatório selecionar ao menos um elemento no odontograma.');
       setShowErrorPopup(true);
       return;
     }
