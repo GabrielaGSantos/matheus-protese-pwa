@@ -303,6 +303,7 @@ export const SettingsScreen: React.FC = () => {
         });
 
         const allCases: any[] = [];
+        const allNotes: any[] = [];
         let caseCount = 1;
 
         for (const sheetName of targetSheets) {
@@ -392,7 +393,6 @@ export const SettingsScreen: React.FC = () => {
               financial_status: financialStatus,
               teeth_selection: { teeth: [], type: 'individual' },
               dentist_notes: String(row['Observações'] || row['dentist_notes'] || ''),
-              internal_notes: `Feito por: ${row['Feito por'] || 'N/A'}\nTipo: ${row['Tipo'] || 'N/A'}`,
               has_photo: false,
               has_file: false,
               estimated_hours: 0,
@@ -407,6 +407,13 @@ export const SettingsScreen: React.FC = () => {
               paid_value: financialStatus === 'pago' ? calculatedTotal : 0,
               remaining_value: financialStatus === 'pago' ? 0 : calculatedTotal,
               drive_status: 'not_created',
+              updated_at: isoDateStr
+            });
+
+            allNotes.push({
+              case_id: caseId,
+              content: `Feito por: ${row['Feito por'] || 'N/A'}\nTipo: ${row['Tipo'] || 'N/A'}`,
+              created_at: isoDateStr,
               updated_at: isoDateStr
             });
           }
@@ -426,7 +433,17 @@ export const SettingsScreen: React.FC = () => {
              const { error } = await supabase.from('cases').insert(chunk);
              if (error) {
                console.error('Erro ao inserir casos:', error);
-               alert(`Erro parcial na importação: ${error.message}`);
+               alert(`Erro parcial na importação de casos: ${error.message}`);
+               return; // Stop if case insertion fails
+             }
+          }
+          
+          for (let i = 0; i < allNotes.length; i += 500) {
+             const chunk = allNotes.slice(i, i + 500);
+             const { error } = await supabase.from('internal_notes').insert(chunk);
+             if (error) {
+               console.error('Erro ao inserir notas internas:', error);
+               alert(`Erro parcial na importação de notas: ${error.message}`);
              }
           }
         }
