@@ -172,7 +172,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       return;
     }
 
-    if (!teethSelection || !teethSelection.teeth || teethSelection.teeth.length === 0) {
+    if (user?.role !== 'admin' && (!teethSelection || !teethSelection.teeth || teethSelection.teeth.length === 0)) {
       alert('Por favor, selecione pelo menos um elemento (dente) no odontograma.');
       return;
     }
