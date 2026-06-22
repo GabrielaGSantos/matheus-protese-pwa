@@ -323,6 +323,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       setEditingCase(null);
       setActiveTab('my-cases');
       setCurrentTab('dentist-cases');
+      setSubmitting(false);
       
       fetchData();
       if (hasUploadError) {
