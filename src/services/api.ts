@@ -473,6 +473,20 @@ export const api = {
       return data;
     },
 
+    async get(id: string): Promise<Profile | null> {
+      if (useMockData) {
+        const list = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);
+        return list.find(p => p.id === id) || null;
+      }
+      const { data, error } = await supabase!
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) return null;
+      return data;
+    },
+
     async create(profile: Omit<Profile, 'id' | 'created_at'>, userLogin?: string): Promise<Profile> {
       if (useMockData) {
         const profiles = getMockData<Profile>(MOCK_STORAGE_KEYS.PROFILES);

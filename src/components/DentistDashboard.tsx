@@ -202,8 +202,19 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
         }
       });
 
+      const fallbackDentistId = activeDentistId || '';
+      let dentistName = user?.full_name || 'Dentista';
+
+      if (isAuxiliar && fallbackDentistId) {
+        try {
+          const profile = await api.profiles.get(fallbackDentistId);
+          if (profile) dentistName = profile.full_name;
+        } catch (e) {
+          console.warn('Could not fetch linked dentist profile', e);
+        }
+      }
+
       const caseId = editingCase?.id || `CASE-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(cases.length + 1).padStart(4, '0')}`;
-      const dentistName = user?.full_name || 'Dentista';
       let driveStatus: 'not_created' | 'created' | 'error' = editingCase?.drive_status || 'not_created';
       let driveDentistFolderId = editingCase?.drive_dentist_folder_id;
       let driveCaseFolderId = editingCase?.drive_case_folder_id;
@@ -212,8 +223,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       let driveCaseFolderUrl = editingCase?.drive_case_folder_url;
       let driveErrorMessage = editingCase?.drive_error_message;
 
-        const fallbackDentistId = activeDentistId || '';
-        const payload: Case = {
+      const payload: Case = {
           id: caseId,
           dentist_id: fallbackDentistId,
           patient_name: patientName,

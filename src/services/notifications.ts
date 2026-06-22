@@ -74,7 +74,7 @@ export const notificationService = {
     // 2. Notificação via Telegram Bot API (apenas para ações de dentistas)
     const currentUserStr = localStorage.getItem('matheus_protese_current_user');
     const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-    const isDentist = currentUser?.role === 'dentist';
+    const isDentist = currentUser?.role === 'dentist' || currentUser?.role === 'auxiliar';
 
     const isSystemAlert = category === 'due_date';
 
