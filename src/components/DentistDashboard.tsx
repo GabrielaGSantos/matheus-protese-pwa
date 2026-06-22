@@ -232,9 +232,11 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
           created_at: editingCase?.created_at || new Date().toISOString(),
           requested_delivery_date: requestedDate,
           final_delivery_date: editingCase?.final_delivery_date, 
-          status: editingCase ? editingCase.status : ((photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
-            ? 'aguardando_arquivos'
-            : 'em_analise'),
+          status: editingCase 
+            ? (editingCase.status === 'aguardando_arquivos' && (hasPhoto || photoFiles.length > 0 || hasFile || scanFiles.length > 0) ? 'em_analise' : editingCase.status) 
+            : ((photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
+              ? 'aguardando_arquivos'
+              : 'em_analise'),
           financial_status: editingCase?.financial_status || 'aguardando_pagamento',
           teeth_selection: teethSelection,
           dentist_notes: dentistNotes,
