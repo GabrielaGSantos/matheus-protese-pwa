@@ -228,10 +228,19 @@ export const FinanceScreen: React.FC = () => {
         ? `Serviço: ${serviceNames}\n  Elementos: ${elemCount}`
         : `Serviço: ${serviceNames}`;
 
-      const dateObj = new Date(c.created_at);
-      const formattedDate = !isNaN(dateObj.getTime())
-        ? ` [${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}]`
-        : '';
+      const targetDate = c.final_delivery_date || c.requested_delivery_date;
+      let formattedDate = '';
+      if (targetDate) {
+        const dateParts = targetDate.split('T')[0].split('-');
+        if (dateParts.length === 3) {
+          formattedDate = ` [${dateParts[2]}/${dateParts[1]}]`;
+        }
+      } else {
+        const dateObj = new Date(c.created_at);
+        formattedDate = !isNaN(dateObj.getTime())
+          ? ` [${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}]`
+          : '';
+      }
       itemsText += `• Paciente: ${c.patient_name}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n  ${serviceDesc}\n\n`;
       totalOpen += c.remaining_value;
       totalMatheus += c.value_matheus;
@@ -274,7 +283,7 @@ export const FinanceScreen: React.FC = () => {
       pixSection = `Pix para pagamento: *${pixMatheus}*`;
     }
 
-    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos em aberto:\n\n${itemsText}${totalOpenText}\n\n${pixSection}\nFavor enviar o comprovante após a transação. Obrigado!`;
+    return `Olá, ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos em aberto:\n\n${itemsText}${totalOpenText}\n\n${pixSection}\nFavor enviar o comprovante após a transação. Obrigado!`;
   };
 
   const handleCopyText = (text: string, dentistId: string) => {
