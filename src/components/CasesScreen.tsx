@@ -2174,7 +2174,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         <td className="p-3.5 text-slate-600 font-medium">{dentist?.full_name || 'Desconhecido'}</td>
                         <td className="p-3.5 font-bold text-[#0F172A]">{c.patient_name}</td>
                         <td className="p-3.5">{getStatusBadge(c.status)}</td>
-                        <td className="p-3.5">{getFinancialBadge(c.financial_status)}</td>
+                        <td className="p-3.5">
+                          <div className="flex flex-col gap-1.5 items-start">
+                            {getFinancialBadge(c.financial_status)}
+                            {c.financial_released && (
+                              <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-widest rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                Liberado
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3.5 text-center font-medium text-slate-600">
                           {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                         </td>
@@ -2262,7 +2271,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Financeiro</span>
-                        {getFinancialBadge(c.financial_status)}
+                        <div className="flex flex-col gap-1.5 mt-0.5 items-start">
+                          {getFinancialBadge(c.financial_status)}
+                          {c.financial_released && (
+                            <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-widest rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                              Liberado
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
  
