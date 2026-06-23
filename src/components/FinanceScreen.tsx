@@ -215,8 +215,11 @@ export const FinanceScreen: React.FC = () => {
     
     pendingCases.forEach((c) => {
       // Build service description with element count
-      const serviceNames = getServiceNames(c);
-      const elemCount = c.teeth_selection.teeth.length;
+      let serviceNames = getServiceNames(c);
+      if ((!c.selected_services || c.selected_services.length === 0) && c.dentist_notes) {
+        serviceNames = c.dentist_notes;
+      }
+      const elemCount = c.teeth_selection?.teeth?.length || 0;
       const serviceDesc = elemCount > 0
         ? `Serviço: ${serviceNames}\n  Elementos: ${elemCount}`
         : `Serviço: ${serviceNames}`;
