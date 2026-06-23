@@ -101,7 +101,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
 
   const awaitingPaymentCount = cases.filter(c => {
     const year = new Date(c.created_at).getFullYear();
-    return year >= 2026 && c.financial_status === 'aguardando_pagamento';
+    return year >= 2026 && (c.financial_status === 'aguardando_pagamento' || c.financial_status === 'cobrar');
   }).length;
 
   const isUnapproved = (c: Case) => {

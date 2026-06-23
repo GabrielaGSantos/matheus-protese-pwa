@@ -382,10 +382,10 @@ export const SettingsScreen: React.FC = () => {
             const statusText = String(row['Status'] || row['status'] || 'Aguardando Pagamento').toLowerCase();
 
             const caseYear = new Date(isoDateStr).getFullYear();
-            let financialStatus: 'pago' | 'isento' | 'aguardando_pagamento' = 'aguardando_pagamento';
+            let financialStatus: 'pago' | 'isento' | 'aguardando_pagamento' | 'cobrar' = 'cobrar';
             
             const rawFinancialStatus = String(row['financial_status'] || '').toLowerCase();
-            if (rawFinancialStatus === 'pago' || rawFinancialStatus === 'isento' || rawFinancialStatus === 'aguardando_pagamento') {
+            if (rawFinancialStatus === 'pago' || rawFinancialStatus === 'isento' || rawFinancialStatus === 'aguardando_pagamento' || rawFinancialStatus === 'cobrar') {
                 financialStatus = rawFinancialStatus as any;
             } else if (caseYear < 2026) {
               financialStatus = 'pago';

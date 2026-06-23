@@ -187,6 +187,7 @@ export const DEFAULT_CASE_STATUSES: CustomStatus[] = [
 ];
 
 export const DEFAULT_FINANCIAL_STATUSES: CustomStatus[] = [
+  { id: 'cobrar', label: 'Cobrar', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
   { id: 'aguardando_pagamento', label: 'Aguardando Pagamento', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
   { id: 'pago_parcial', label: 'Pago Parcial', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' },
   { id: 'pago', label: 'Pago', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },

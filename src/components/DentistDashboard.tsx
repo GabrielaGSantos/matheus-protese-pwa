@@ -238,7 +238,7 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
             : ((photoFiles.length === 0 && !hasPhoto && scanFiles.length === 0 && !hasFile)
               ? 'aguardando_arquivos'
               : 'em_analise'),
-          financial_status: editingCase?.financial_status || 'aguardando_pagamento',
+          financial_status: editingCase?.financial_status || 'cobrar',
           teeth_selection: teethSelection,
           dentist_notes: dentistNotes,
           has_photo: hasPhoto || photoFiles.length > 0,

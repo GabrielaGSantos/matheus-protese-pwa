@@ -79,9 +79,9 @@ export const FinanceScreen: React.FC = () => {
       const newPaidValue = payingCase.paid_value + amt;
       const newRemainingValue = Math.max(0, payingCase.total_value - newPaidValue);
       
-      const newFinStatus = newRemainingValue === 0 
+      const newFinStatus = newPaidValue >= payingCase.total_value 
         ? 'pago' 
-        : newPaidValue > 0 ? 'pago_parcial' : 'aguardando_pagamento';
+        : newPaidValue > 0 ? 'pago_parcial' : 'cobrar';
 
       const updatedCase: Case = {
         ...payingCase,

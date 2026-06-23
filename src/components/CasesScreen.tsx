@@ -86,7 +86,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState('');
   const [finalDeliveryDate, setFinalDeliveryDate] = useState('');
   const [caseStatus, setCaseStatus] = useState<CaseStatus>('recebido');
-  const [financialStatus, setFinancialStatus] = useState<FinancialStatus>('aguardando_pagamento');
+  const [financialStatus, setFinancialStatus] = useState<FinancialStatus>('cobrar');
   const [financialReleased, setFinancialReleased] = useState(false);
   const [teethSelection, setTeethSelection] = useState<OdontogramSelection>({ teeth: [], type: 'individual' });
   const [dentistNotes, setDentistNotes] = useState('');
@@ -275,12 +275,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   useEffect(() => {
     if (!editingCase) {
       // Reset to defaults
-      if (dentists.length > 0) setSelectedDentistId(dentists[0].id);
+      setSelectedDentistId('');
       setPatientName('');
       setRequestedDeliveryDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
       setFinalDeliveryDate('');
-      setCaseStatus(isMatheus ? 'em_execucao' : 'recebido');
-      setFinancialStatus('aguardando_pagamento');
+      setCaseStatus('recebido');
+      setFinancialStatus('cobrar');
       setFinancialReleased(false);
       setTeethSelection({ teeth: [], type: 'individual' });
       setDentistNotes('');
@@ -1052,6 +1052,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           onChange={(e) => setSelectedDentistId(e.target.value)}
                           className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         >
+                          <option value="">(Selecione um Dentista)</option>
                           {dentists.map(d => (
                             <option key={d.id} value={d.id}>{d.full_name}</option>
                           ))}
