@@ -302,7 +302,7 @@ export const FinanceScreen: React.FC = () => {
       });
       
       const pendingCases = dentistCases.filter(c => c.financial_status !== 'pago' && c.financial_status !== 'isento');
-      const totalPending = pendingCases.reduce((sum, c) => sum + c.remaining_value, 0);
+      const totalPending = pendingCases.reduce((sum, c) => sum + c.value_matheus, 0);
       const totalBilled = dentistCases.filter(c => c.created_at.startsWith(selectedMonth)).reduce((sum, c) => sum + c.total_value, 0);
 
       // Calculate total credit discount for Dr. Andrey
@@ -706,7 +706,16 @@ export const FinanceScreen: React.FC = () => {
                                         )}
                                       </div>
                                     </td>
-                                    <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
+                                    <td className="p-3">
+                                      <div className="font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</div>
+                                      {(c.value_paschoal > 0 || c.value_planning > 0) && (
+                                        <div className="text-[9px] text-slate-500 font-normal mt-0.5 space-y-0.5 whitespace-nowrap">
+                                          {c.value_matheus > 0 && <div>Matheus: R$ {c.value_matheus.toFixed(2)}</div>}
+                                          {c.value_paschoal > 0 && <div>Paschoal: R$ {c.value_paschoal.toFixed(2)}</div>}
+                                          {c.value_planning > 0 && <div>Planning: R$ {c.value_planning.toFixed(2)}</div>}
+                                        </div>
+                                      )}
+                                    </td>
                                     <td className={`p-3 font-semibold ${c.paid_value === 0 ? 'text-rose-600' : 'text-emerald-600'}`}>R$ {c.paid_value.toFixed(2)}</td>
                                     <td className="p-3 font-semibold text-amber-600">R$ {c.remaining_value.toFixed(2)}</td>
                                     <td className="p-3 text-center">
