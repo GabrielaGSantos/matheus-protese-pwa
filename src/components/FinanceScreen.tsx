@@ -274,7 +274,7 @@ export const FinanceScreen: React.FC = () => {
       pixSection = `Pix para pagamento: *${pixMatheus}*`;
     }
 
-    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos de ${monthLabel}:\n\n${itemsText}${totalOpenText}\n\n${pixSection}\nFavor enviar o comprovante após a transação. Obrigado!`;
+    return `Olá, Dr(a). ${dentist.full_name.replace('Dr. ', '').replace('Dra. ', '')}! Segue o fechamento dos casos em aberto:\n\n${itemsText}${totalOpenText}\n\n${pixSection}\nFavor enviar o comprovante após a transação. Obrigado!`;
   };
 
   const handleCopyText = (text: string, dentistId: string) => {
