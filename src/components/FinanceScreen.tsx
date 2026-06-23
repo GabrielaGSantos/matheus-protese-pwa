@@ -207,13 +207,6 @@ export const FinanceScreen: React.FC = () => {
 
   // Generate WhatsApp Message
   const getWhatsAppText = (dentist: Profile, pendingCases: Case[], andreyDiscountCredit: number = 0) => {
-    const monthNames = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
-    const [year, month] = selectedMonth.split('-');
-    const monthLabel = `${monthNames[parseInt(month) - 1]} de ${year}`;
-    
     let totalOpen = 0;
     let totalMatheus = 0;
     let totalPlanning = 0;
