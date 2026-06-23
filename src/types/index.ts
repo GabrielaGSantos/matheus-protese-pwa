@@ -158,6 +158,7 @@ export interface CustomStatus {
   id: string;
   label: string;
   colorClass: string;
+  hexColor?: string;
 }
 
 export interface NotificationSettings {

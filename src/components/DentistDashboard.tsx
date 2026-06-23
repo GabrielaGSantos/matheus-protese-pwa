@@ -467,6 +467,17 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
     const label = customMatch ? customMatch.label : status.replace('_', ' ');
 
+    if (customMatch?.hexColor) {
+      return (
+        <span 
+          className="px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide rounded-full border"
+          style={{ backgroundColor: `${customMatch.hexColor}1A`, color: customMatch.hexColor, borderColor: `${customMatch.hexColor}33` }}
+        >
+          {status === 'em_analise' ? 'Aguardando Análise' : status === 'aguardando_arquivos' ? 'Pendente Envio de Arquivo' : label}
+        </span>
+      );
+    }
+
     return (
       <span className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide rounded-full border ${style}`}>
         {status === 'em_analise' ? 'Aguardando Análise' : status === 'aguardando_arquivos' ? 'Pendente Envio de Arquivo' : label}

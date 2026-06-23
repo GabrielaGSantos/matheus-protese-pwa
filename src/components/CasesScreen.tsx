@@ -737,6 +737,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     const customMatch = caseStatuses.find(s => s.id === status);
     const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
     const label = customMatch ? customMatch.label : status.replace('_', ' ');
+    if (customMatch?.hexColor) {
+      return (
+        <span 
+          className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border"
+          style={{ backgroundColor: `${customMatch.hexColor}1A`, color: customMatch.hexColor, borderColor: `${customMatch.hexColor}33` }}
+        >
+          {label}
+        </span>
+      );
+    }
     return (
       <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${style}`}>
         {label}
@@ -749,6 +759,16 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     const customMatch = finStatuses.find(s => s.id === status);
     const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
     const label = customMatch ? customMatch.label : status.replace('_', ' ');
+    if (customMatch?.hexColor) {
+      return (
+        <span 
+          className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border"
+          style={{ backgroundColor: `${customMatch.hexColor}1A`, color: customMatch.hexColor, borderColor: `${customMatch.hexColor}33` }}
+        >
+          {label}
+        </span>
+      );
+    }
     return (
       <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${style}`}>
         {label}

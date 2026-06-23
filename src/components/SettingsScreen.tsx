@@ -66,8 +66,11 @@ export const SettingsScreen: React.FC = () => {
   // Dynamic Status States
   const [newCaseStatus, setNewCaseStatus] = useState('');
   const [newCaseColor, setNewCaseColor] = useState('bg-slate-500/10 text-slate-500 border-slate-500/20');
+  const [newCaseHexColor, setNewCaseHexColor] = useState('#0F766E');
+  
   const [newFinStatus, setNewFinStatus] = useState('');
   const [newFinColor, setNewFinColor] = useState('bg-slate-500/10 text-slate-500 border-slate-500/20');
+  const [newFinHexColor, setNewFinHexColor] = useState('#0F766E');
 
   const colorOptions = [
     { label: 'Cinza', value: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
@@ -77,7 +80,8 @@ export const SettingsScreen: React.FC = () => {
     { label: 'Vermelho', value: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },
     { label: 'Roxo', value: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
     { label: 'Ciano', value: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
-    { label: 'Rosa', value: 'bg-pink-500/10 text-pink-500 border-pink-500/20' }
+    { label: 'Rosa', value: 'bg-pink-500/10 text-pink-500 border-pink-500/20' },
+    { label: 'Personalizada (Hex)', value: 'custom' }
   ];
 
   useEffect(() => {
@@ -597,7 +601,12 @@ export const SettingsScreen: React.FC = () => {
     const id = newCaseStatus.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
     const updatedStatuses = [...(notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES)];
     if (!updatedStatuses.find(s => s.id === id)) {
-      updatedStatuses.push({ id, label: newCaseStatus.trim(), colorClass: newCaseColor });
+      updatedStatuses.push({ 
+        id, 
+        label: newCaseStatus.trim(), 
+        colorClass: newCaseColor === 'custom' ? '' : newCaseColor,
+        hexColor: newCaseColor === 'custom' ? newCaseHexColor : undefined
+      });
       const newSettings = { ...notifSettings, custom_case_statuses: updatedStatuses };
       setNotifSettings(newSettings);
       notificationService.saveSettings(newSettings);
@@ -619,7 +628,12 @@ export const SettingsScreen: React.FC = () => {
     const id = newFinStatus.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
     const updatedStatuses = [...(notifSettings.custom_financial_statuses || DEFAULT_FINANCIAL_STATUSES)];
     if (!updatedStatuses.find(s => s.id === id)) {
-      updatedStatuses.push({ id, label: newFinStatus.trim(), colorClass: newFinColor });
+      updatedStatuses.push({ 
+        id, 
+        label: newFinStatus.trim(), 
+        colorClass: newFinColor === 'custom' ? '' : newFinColor,
+        hexColor: newFinColor === 'custom' ? newFinHexColor : undefined
+      });
       const newSettings = { ...notifSettings, custom_financial_statuses: updatedStatuses };
       setNotifSettings(newSettings);
       notificationService.saveSettings(newSettings);
@@ -1433,6 +1447,15 @@ export const SettingsScreen: React.FC = () => {
                     <option key={c.label} value={c.value}>{c.label}</option>
                   ))}
                 </select>
+                {newCaseColor === 'custom' && (
+                  <input
+                    type="color"
+                    value={newCaseHexColor}
+                    onChange={e => setNewCaseHexColor(e.target.value)}
+                    className="w-10 h-10 p-1 rounded-lg bg-slate-50 border border-[#E2E8F0] cursor-pointer"
+                    title="Escolha a cor hexadecimal"
+                  />
+                )}
                 <button
                   onClick={handleAddCaseStatus}
                   className="bg-[#0F766E] hover:bg-[#115E59] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
@@ -1444,9 +1467,18 @@ export const SettingsScreen: React.FC = () => {
               <div className="space-y-2 max-w-xl">
                 {(notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES).map(s => (
                   <div key={s.id} className="flex justify-between items-center p-3 bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
-                    <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${s.colorClass}`}>
-                      {s.label}
-                    </span>
+                    {s.hexColor ? (
+                      <span 
+                        className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border"
+                        style={{ backgroundColor: `${s.hexColor}1A`, color: s.hexColor, borderColor: `${s.hexColor}33` }}
+                      >
+                        {s.label}
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${s.colorClass}`}>
+                        {s.label}
+                      </span>
+                    )}
                     <button
                       onClick={() => handleRemoveCaseStatus(s.id)}
                       className="text-rose-500 hover:text-rose-700 transition-colors p-1"
@@ -1480,6 +1512,15 @@ export const SettingsScreen: React.FC = () => {
                     <option key={c.label} value={c.value}>{c.label}</option>
                   ))}
                 </select>
+                {newFinColor === 'custom' && (
+                  <input
+                    type="color"
+                    value={newFinHexColor}
+                    onChange={e => setNewFinHexColor(e.target.value)}
+                    className="w-10 h-10 p-1 rounded-lg bg-slate-50 border border-[#E2E8F0] cursor-pointer"
+                    title="Escolha a cor hexadecimal"
+                  />
+                )}
                 <button
                   onClick={handleAddFinStatus}
                   className="bg-[#0F766E] hover:bg-[#115E59] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
@@ -1491,9 +1532,18 @@ export const SettingsScreen: React.FC = () => {
               <div className="space-y-2 max-w-xl">
                 {(notifSettings.custom_financial_statuses || DEFAULT_FINANCIAL_STATUSES).map(s => (
                   <div key={s.id} className="flex justify-between items-center p-3 bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
-                    <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${s.colorClass}`}>
-                      {s.label}
-                    </span>
+                    {s.hexColor ? (
+                      <span 
+                        className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border"
+                        style={{ backgroundColor: `${s.hexColor}1A`, color: s.hexColor, borderColor: `${s.hexColor}33` }}
+                      >
+                        {s.label}
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${s.colorClass}`}>
+                        {s.label}
+                      </span>
+                    )}
                     <button
                       onClick={() => handleRemoveFinStatus(s.id)}
                       className="text-rose-500 hover:text-rose-700 transition-colors p-1"
