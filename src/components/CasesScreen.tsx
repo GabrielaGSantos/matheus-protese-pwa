@@ -94,6 +94,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
   // Financial override fields
   const [overrideValueMatheus, setOverrideValueMatheus] = useState('');
+  const [overrideValuePlanning, setOverrideValuePlanning] = useState('');
   const [overrideValuePaschoal, setOverrideValuePaschoal] = useState('');
   const [costAndrey, setCostAndrey] = useState('');
   const [costAndreyDiscounted, setCostAndreyDiscounted] = useState(false);
@@ -282,6 +283,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       setHasPhoto(false);
       setHasFile(false);
       setOverrideValueMatheus('');
+      setOverrideValuePlanning('');
       setOverrideValuePaschoal('');
       setCostAndrey('0');
       setCostAndreyDiscounted(false);
@@ -327,6 +329,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
     // Overrides
     setOverrideValueMatheus(editingCase.value_matheus === 0 ? '' : String(editingCase.value_matheus));
+    setOverrideValuePlanning(editingCase.value_planning === 0 ? '' : String(editingCase.value_planning));
     setOverrideValuePaschoal(editingCase.value_paschoal === 0 ? '' : String(editingCase.value_paschoal));
     setCostAndrey(String(editingCase.cost_andrey));
     setCostAndreyDiscounted(!!editingCase.cost_andrey_discounted);
@@ -343,6 +346,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   useEffect(() => {
     if (!isManualPrice) {
       setOverrideValueMatheus('');
+      setOverrideValuePlanning('');
       setOverrideValuePaschoal('');
       setCostAndrey('0');
     }
@@ -385,16 +389,17 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     });
 
     const matheusVal = overrideValueMatheus === '' ? computedMatheusVal : parseFloat(overrideValueMatheus) || 0;
+    const planningVal = overrideValuePlanning === '' ? 0 : parseFloat(overrideValuePlanning) || 0;
     const paschoalVal = overrideValuePaschoal === '' ? computedPaschoalVal : parseFloat(overrideValuePaschoal) || 0;
     const andreyVal = costAndrey === '' || costAndrey === '0' ? computedAndreyVal : parseFloat(costAndrey) || 0;
 
     return {
       estimated_hours: defaultEstHours,
       value_matheus: matheusVal,
-      value_planning: 0,
+      value_planning: planningVal,
       value_paschoal: paschoalVal,
       cost_andrey: andreyVal,
-      total_value: overrideValueMatheus === '' && overrideValuePaschoal === '' ? computedTotalVal : (matheusVal + paschoalVal)
+      total_value: overrideValueMatheus === '' && overrideValuePaschoal === '' && overrideValuePlanning === '' ? computedTotalVal : (matheusVal + paschoalVal + planningVal)
     };
   };
 
@@ -580,7 +585,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         has_file: hasFile || pendingUploads.some(p => p.category === 'escaneamento'),
         estimated_hours: calculated.estimated_hours,
         value_matheus: calculated.value_matheus,
-        value_planning: 0,
+        value_planning: calculated.value_planning,
         value_paschoal: calculated.value_paschoal,
         cost_allan_matheus: 0,
         cost_allan_solo: 0,
@@ -1487,6 +1492,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                               setIsManualPrice(next);
                               if (!next) {
                                 setOverrideValueMatheus('');
+                                setOverrideValuePlanning('');
                                 setOverrideValuePaschoal('');
                                 setCostAndrey('0');
                               }
@@ -1507,7 +1513,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           : 'Os valores são recalculados automaticamente quando você altera os elementos ou serviços selecionados.'}
                       </p>
                       
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-500 mb-1">
                             Valor Matheus (R$)
@@ -1520,6 +1526,24 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                             disabled={!canEditFinancials}
                             onChange={(e) => {
                               setOverrideValueMatheus(e.target.value);
+                              if (e.target.value !== '') setIsManualPrice(true);
+                            }}
+                            className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all disabled:bg-slate-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                            Valor Planning (R$)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Valor fixo"
+                            value={overrideValuePlanning}
+                            disabled={!canEditFinancials}
+                            onChange={(e) => {
+                              setOverrideValuePlanning(e.target.value);
                               if (e.target.value !== '') setIsManualPrice(true);
                             }}
                             className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0F766E] transition-all disabled:bg-slate-100"

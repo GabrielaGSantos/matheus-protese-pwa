@@ -175,6 +175,7 @@ export interface NotificationSettings {
   telegram_bot_token?: string;
   telegram_chat_id?: string;
   pix_matheus?: string;
+  pix_planning?: string;
   pix_paschoal?: string;
 }
 

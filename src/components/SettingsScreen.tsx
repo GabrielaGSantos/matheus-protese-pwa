@@ -816,6 +816,22 @@ export const SettingsScreen: React.FC = () => {
 
               <div>
                 <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+                  Pix Planning
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: CNPJ, E-mail ou Celular do Planning"
+                  value={notifSettings.pix_planning || ''}
+                  onChange={(e) => {
+                    const updated = { ...notifSettings, pix_planning: e.target.value };
+                    setNotifSettings(updated);
+                  }}
+                  className="w-full px-3.5 py-2 rounded-[10px] bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
                   Pix Dr. Paschoal
                 </label>
                 <input

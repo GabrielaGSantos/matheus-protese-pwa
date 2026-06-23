@@ -152,6 +152,7 @@ export const FinanceScreen: React.FC = () => {
     
     let totalOpen = 0;
     let totalMatheus = 0;
+    let totalPlanning = 0;
     let totalPaschoal = 0;
     let itemsText = '';
     
@@ -170,12 +171,14 @@ export const FinanceScreen: React.FC = () => {
       itemsText += `• Paciente: ${c.patient_name}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n  ${serviceDesc}\n\n`;
       totalOpen += c.remaining_value;
       totalMatheus += c.value_matheus;
+      totalPlanning += c.value_planning || 0;
       totalPaschoal += c.value_paschoal;
     });
 
     // Read configured PIX keys
     const globalSettings = notificationService.getSettings();
     const pixMatheus = globalSettings.pix_matheus || dentist.pix_key || 'matheus@pix.com';
+    const pixPlanning = globalSettings.pix_planning || '';
     const pixPaschoal = globalSettings.pix_paschoal || '';
 
     let totalOpenText = '';
@@ -186,15 +189,23 @@ export const FinanceScreen: React.FC = () => {
       totalOpenText = `Total em aberto: *R$ ${totalOpen.toFixed(2)}*`;
     }
 
-    // Build PIX section (Option A: both PIX keys with subtotals if mixed)
+    // Build PIX section
     let pixSection = '';
     const hasMatheusValue = totalMatheus > 0;
+    const hasPlanningValue = totalPlanning > 0 && pixPlanning;
     const hasPaschoalValue = totalPaschoal > 0 && pixPaschoal;
 
-    if (hasMatheusValue && hasPaschoalValue) {
-      pixSection = `Pix Dr. Matheus: *${pixMatheus}*\n  Valor: R$ ${totalMatheus.toFixed(2)}\nPix Dr. Paschoal: *${pixPaschoal}*\n  Valor: R$ ${totalPaschoal.toFixed(2)}`;
-    } else if (hasPaschoalValue && !hasMatheusValue) {
+    const sections = [];
+    if (hasMatheusValue) sections.push(`Pix Dr. Matheus: *${pixMatheus}*\n  Valor: R$ ${totalMatheus.toFixed(2)}`);
+    if (hasPlanningValue) sections.push(`Pix Planning: *${pixPlanning}*\n  Valor: R$ ${totalPlanning.toFixed(2)}`);
+    if (hasPaschoalValue) sections.push(`Pix Dr. Paschoal: *${pixPaschoal}*\n  Valor: R$ ${totalPaschoal.toFixed(2)}`);
+
+    if (sections.length > 1) {
+      pixSection = sections.join('\n');
+    } else if (hasPaschoalValue && !hasMatheusValue && !hasPlanningValue) {
       pixSection = `Pix para pagamento: *${pixPaschoal}*`;
+    } else if (hasPlanningValue && !hasMatheusValue && !hasPaschoalValue) {
+      pixSection = `Pix para pagamento: *${pixPlanning}*`;
     } else {
       pixSection = `Pix para pagamento: *${pixMatheus}*`;
     }
@@ -265,6 +276,7 @@ export const FinanceScreen: React.FC = () => {
     const openTotal = monthCases.reduce((sum, c) => sum + c.remaining_value, 0);
     
     const matheusBillings = monthCases.reduce((sum, c) => sum + c.value_matheus, 0);
+    const planningBillings = monthCases.reduce((sum, c) => sum + (c.value_planning || 0), 0);
     const paschoalBillings = monthCases.reduce((sum, c) => sum + c.value_paschoal, 0);
 
     const costAndreyTotal = monthCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
@@ -282,6 +294,7 @@ export const FinanceScreen: React.FC = () => {
       paidTotal,
       openTotal,
       matheusBillings,
+      planningBillings,
       paschoalBillings,
       costAndreyTotal,
       otherCostsTotal,
@@ -797,6 +810,14 @@ export const FinanceScreen: React.FC = () => {
                     <span className="text-[10px] text-slate-400 block">Projetos atribuídos ao Matheus</span>
                   </div>
                   <span className="font-bold text-sm text-slate-900">R$ {summary.matheusBillings.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-slate-700">Fração Planning</span>
+                    <span className="text-[10px] text-slate-400 block">Projetos atribuídos ao Planning</span>
+                  </div>
+                  <span className="font-bold text-sm text-slate-900">R$ {summary.planningBillings.toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
