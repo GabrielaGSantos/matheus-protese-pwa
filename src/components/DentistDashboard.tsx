@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 import type { Case, Service, OdontogramSelection, CaseStatus } from '../types';
+import { DEFAULT_CASE_STATUSES } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
 import { 
@@ -460,19 +461,15 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
     .reduce((sum, c) => sum + c.remaining_value, 0);
 
   const getStatusBadge = (status: CaseStatus) => {
-    const styles: Record<CaseStatus, string> = {
-      recebido: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-      em_analise: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-      aguardando_aprovacao: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-      aguardando_arquivos: 'bg-rose-600 text-white border-rose-700 animate-pulse font-black shadow-xs shadow-rose-200',
-      em_execucao: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
-      finalizado: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-      entregue: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
-      cancelado: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-    };
+    const notifSettings = notificationService.getSettings();
+    const caseStatuses = notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES;
+    const customMatch = caseStatuses.find(s => s.id === status);
+    const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+    const label = customMatch ? customMatch.label : status.replace('_', ' ');
+
     return (
-      <span className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide rounded-full border ${styles[status]}`}>
-        {status === 'em_analise' ? 'Aguardando Análise' : status === 'aguardando_arquivos' ? 'Pendente Envio de Arquivo' : status.replace('_', ' ')}
+      <span className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide rounded-full border ${style}`}>
+        {status === 'em_analise' ? 'Aguardando Análise' : status === 'aguardando_arquivos' ? 'Pendente Envio de Arquivo' : label}
       </span>
     );
   };

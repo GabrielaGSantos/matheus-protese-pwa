@@ -11,6 +11,7 @@ import {
 // Google Drive is now managed by the backend
 import { notificationService } from '../services/notifications';
 import { useRealtime } from '../hooks/useRealtime';
+import { DEFAULT_CASE_STATUSES, DEFAULT_FINANCIAL_STATUSES } from '../types';
 const isDriveFolderValid = (c: Case) => {
   if (c.drive_status !== 'created' || !c.google_drive_folder_url) return false;
   const rootId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
@@ -55,6 +56,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const { user } = useAuth();
   const isMatheus = user?.role === 'admin' || user?.full_name?.toLowerCase().includes('matheus');
   const canEditFinancials = user?.role === 'admin' || user?.role === 'secretary' || user?.full_name?.toLowerCase().includes('matheus');
+  const notifSettings = notificationService.getSettings();
+  const caseStatuses = notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES;
+  const finStatuses = notifSettings.custom_financial_statuses || DEFAULT_FINANCIAL_STATUSES;
+  
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   const [cases, setCases] = useState<Case[]>([]);
@@ -729,35 +734,24 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
 
   // Status Badge coloring
   const getStatusBadge = (status: CaseStatus) => {
-    const styles: Record<CaseStatus, string> = {
-      recebido: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-      em_analise: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-      aguardando_aprovacao: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-      aguardando_arquivos: 'bg-rose-600 text-white border-rose-700 animate-pulse font-black shadow-xs shadow-rose-200',
-      em_execucao: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
-      finalizado: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-      entregue: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
-      cancelado: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-    };
+    const customMatch = caseStatuses.find(s => s.id === status);
+    const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+    const label = customMatch ? customMatch.label : status.replace('_', ' ');
     return (
-      <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${styles[status]}`}>
-        {status === 'aguardando_arquivos' ? 'Pendente Envio de Arquivo' : status.replace('_', ' ')}
+      <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${style}`}>
+        {label}
       </span>
     );
   };
 
   // Financial Status Badge coloring
   const getFinancialBadge = (status: FinancialStatus) => {
-    const styles: Record<FinancialStatus, string> = {
-      aguardando_pagamento: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-      pago_parcial: 'bg-sky-500/10 text-sky-500 border-sky-500/20',
-      pago: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-      isento: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-      cancelado: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-    };
+    const customMatch = finStatuses.find(s => s.id === status);
+    const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+    const label = customMatch ? customMatch.label : status.replace('_', ' ');
     return (
-      <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${styles[status]}`}>
-        {status.replace('_', ' ')}
+      <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${style}`}>
+        {label}
       </span>
     );
   };
@@ -1096,14 +1090,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           onChange={(e: any) => setCaseStatus(e.target.value)}
                           className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         >
-                          <option value="recebido">Recebido</option>
-                          <option value="em_analise">Em Análise</option>
-                          <option value="aguardando_aprovacao">Aguardando Aprovação</option>
-                          <option value="aguardando_arquivos">Aguardando Arquivos</option>
-                          <option value="em_execucao">Em Execução</option>
-                          <option value="finalizado">Finalizado</option>
-                          <option value="entregue">Entregue</option>
-                          <option value="cancelado">Cancelado</option>
+                          {caseStatuses.map(s => (
+                            <option key={s.id} value={s.id}>{s.label}</option>
+                          ))}
                         </select>
                       </div>
 
@@ -1440,11 +1429,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           onChange={(e: any) => setFinancialStatus(e.target.value)}
                           className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
                         >
-                          <option value="aguardando_pagamento">Aguardando Pagamento</option>
-                          <option value="pago_parcial">Pago Parcial</option>
-                          <option value="pago">Pago</option>
-                          <option value="isento">Isento</option>
-                          <option value="cancelado">Cancelado</option>
+                          {finStatuses.map(s => (
+                            <option key={s.id} value={s.id}>{s.label}</option>
+                          ))}
                         </select>
                       </div>
 

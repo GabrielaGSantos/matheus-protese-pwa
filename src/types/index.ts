@@ -38,22 +38,9 @@ export interface DentistCustomPrice {
   created_at: string;
 }
 
-export type CaseStatus = 
-  | 'recebido' 
-  | 'em_analise' 
-  | 'aguardando_aprovacao' 
-  | 'aguardando_arquivos' 
-  | 'em_execucao' 
-  | 'finalizado' 
-  | 'entregue' 
-  | 'cancelado';
+export type CaseStatus = string;
 
-export type FinancialStatus = 
-  | 'aguardando_pagamento' 
-  | 'pago_parcial' 
-  | 'pago' 
-  | 'isento' 
-  | 'cancelado';
+export type FinancialStatus = string;
 
 export interface OdontogramSelection {
   teeth: number[]; // FDI teeth numbers (e.g., 11, 21, etc.)
@@ -167,6 +154,12 @@ export interface AppNotification {
   created_at: string;
 }
 
+export interface CustomStatus {
+  id: string;
+  label: string;
+  colorClass: string;
+}
+
 export interface NotificationSettings {
   enable_push: boolean;
   enable_email: boolean;
@@ -177,7 +170,28 @@ export interface NotificationSettings {
   pix_matheus?: string;
   pix_planning?: string;
   pix_paschoal?: string;
+  custom_case_statuses?: CustomStatus[];
+  custom_financial_statuses?: CustomStatus[];
 }
+
+export const DEFAULT_CASE_STATUSES: CustomStatus[] = [
+  { id: 'recebido', label: 'Recebido', colorClass: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  { id: 'em_analise', label: 'Em Análise', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  { id: 'aguardando_aprovacao', label: 'Aguardando Aprovação', colorClass: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+  { id: 'aguardando_arquivos', label: 'Pendente Envio de Arquivo', colorClass: 'bg-rose-600 text-white border-rose-700 animate-pulse font-black shadow-xs shadow-rose-200' },
+  { id: 'em_execucao', label: 'Em Execução', colorClass: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
+  { id: 'finalizado', label: 'Finalizado', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+  { id: 'entregue', label: 'Entregue', colorClass: 'bg-teal-500/10 text-teal-500 border-teal-500/20' },
+  { id: 'cancelado', label: 'Cancelado', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' }
+];
+
+export const DEFAULT_FINANCIAL_STATUSES: CustomStatus[] = [
+  { id: 'aguardando_pagamento', label: 'Aguardando Pagamento', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  { id: 'pago_parcial', label: 'Pago Parcial', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' },
+  { id: 'pago', label: 'Pago', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+  { id: 'isento', label: 'Isento', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  { id: 'cancelado', label: 'Cancelado', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' }
+];
 
 export interface NoteHistoryEntry {
   user_name: string;

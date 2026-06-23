@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api, recordActivity } from '../services/api';
 import { notificationService } from '../services/notifications';
 import { useAuth } from '../context/AuthContext';
-import type { AppNotification, NotificationSettings, CaseHistory, Profile } from '../types';
+import type { AppNotification, NotificationSettings, CaseHistory, Profile, CustomStatus } from '../types';
+import { DEFAULT_CASE_STATUSES, DEFAULT_FINANCIAL_STATUSES } from '../types';
 import { 
   Bell, 
   Send, 
@@ -19,7 +20,8 @@ import {
   ChevronRight,
   User,
   Search,
-  X
+  X,
+  List
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -28,7 +30,7 @@ export const SettingsScreen: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'profile' | 'gdrive' | 'import' | 'notifications' | 'telegram' | 'logs'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'gdrive' | 'import' | 'notifications' | 'telegram' | 'logs' | 'status'>('profile');
 
   // General Data State
   const [fullName, setFullName] = useState(user?.full_name || '');
@@ -60,6 +62,23 @@ export const SettingsScreen: React.FC = () => {
   const [logsSearch, setLogsSearch] = useState('');
   const [logsCurrentPage, setLogsCurrentPage] = useState(1);
   const logsItemsPerPage = 20;
+
+  // Dynamic Status States
+  const [newCaseStatus, setNewCaseStatus] = useState('');
+  const [newCaseColor, setNewCaseColor] = useState('bg-slate-500/10 text-slate-500 border-slate-500/20');
+  const [newFinStatus, setNewFinStatus] = useState('');
+  const [newFinColor, setNewFinColor] = useState('bg-slate-500/10 text-slate-500 border-slate-500/20');
+
+  const colorOptions = [
+    { label: 'Cinza', value: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+    { label: 'Azul', value: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+    { label: 'Amarelo', value: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+    { label: 'Verde', value: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+    { label: 'Vermelho', value: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },
+    { label: 'Roxo', value: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+    { label: 'Ciano', value: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
+    { label: 'Rosa', value: 'bg-pink-500/10 text-pink-500 border-pink-500/20' }
+  ];
 
   useEffect(() => {
     const id = extractFolderId(driveRootLink);
@@ -573,6 +592,50 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
+  const handleAddCaseStatus = () => {
+    if (!newCaseStatus.trim()) return;
+    const id = newCaseStatus.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const updatedStatuses = [...(notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES)];
+    if (!updatedStatuses.find(s => s.id === id)) {
+      updatedStatuses.push({ id, label: newCaseStatus.trim(), colorClass: newCaseColor });
+      const newSettings = { ...notifSettings, custom_case_statuses: updatedStatuses };
+      setNotifSettings(newSettings);
+      notificationService.saveSettings(newSettings);
+      setNewCaseStatus('');
+    } else {
+      alert('Já existe um status de caso com este nome.');
+    }
+  };
+
+  const handleRemoveCaseStatus = (id: string) => {
+    const updatedStatuses = (notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES).filter(s => s.id !== id);
+    const newSettings = { ...notifSettings, custom_case_statuses: updatedStatuses };
+    setNotifSettings(newSettings);
+    notificationService.saveSettings(newSettings);
+  };
+
+  const handleAddFinStatus = () => {
+    if (!newFinStatus.trim()) return;
+    const id = newFinStatus.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const updatedStatuses = [...(notifSettings.custom_financial_statuses || DEFAULT_FINANCIAL_STATUSES)];
+    if (!updatedStatuses.find(s => s.id === id)) {
+      updatedStatuses.push({ id, label: newFinStatus.trim(), colorClass: newFinColor });
+      const newSettings = { ...notifSettings, custom_financial_statuses: updatedStatuses };
+      setNotifSettings(newSettings);
+      notificationService.saveSettings(newSettings);
+      setNewFinStatus('');
+    } else {
+      alert('Já existe um status financeiro com este nome.');
+    }
+  };
+
+  const handleRemoveFinStatus = (id: string) => {
+    const updatedStatuses = (notifSettings.custom_financial_statuses || DEFAULT_FINANCIAL_STATUSES).filter(s => s.id !== id);
+    const newSettings = { ...notifSettings, custom_financial_statuses: updatedStatuses };
+    setNotifSettings(newSettings);
+    notificationService.saveSettings(newSettings);
+  };
+
   // Activity Logs Handlers
   const fetchLogs = async () => {
     setLogsLoading(true);
@@ -738,6 +801,19 @@ export const SettingsScreen: React.FC = () => {
           <History size={15} />
           Logs de Auditoria
         </button>
+        {user?.role === 'admin' && (
+          <button
+            onClick={() => setActiveTab('status')}
+            className={`pb-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'status'
+                ? 'border-[#0F766E] text-[#0F766E]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <List size={15} />
+            Status Dinâmicos
+          </button>
+        )}
       </div>
 
       {/* Tabs Content */}
@@ -1330,6 +1406,105 @@ export const SettingsScreen: React.FC = () => {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* DYNAMIC STATUS TAB */}
+        {activeTab === 'status' && user?.role === 'admin' && (
+          <div className="space-y-8 animate-fade-in">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 mb-1">Status do Caso</h3>
+              <p className="text-xs text-slate-500 mb-4">Gerencie as opções de status exibidas nos casos.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <input
+                  type="text"
+                  placeholder="Nome do novo status..."
+                  value={newCaseStatus}
+                  onChange={e => setNewCaseStatus(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-semibold focus:outline-none focus:border-[#0F766E]"
+                />
+                <select
+                  value={newCaseColor}
+                  onChange={e => setNewCaseColor(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-semibold focus:outline-none focus:border-[#0F766E]"
+                >
+                  {colorOptions.map(c => (
+                    <option key={c.label} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddCaseStatus}
+                  className="bg-[#0F766E] hover:bg-[#115E59] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                >
+                  Adicionar
+                </button>
+              </div>
+
+              <div className="space-y-2 max-w-xl">
+                {(notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES).map(s => (
+                  <div key={s.id} className="flex justify-between items-center p-3 bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
+                    <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${s.colorClass}`}>
+                      {s.label}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveCaseStatus(s.id)}
+                      className="text-rose-500 hover:text-rose-700 transition-colors p-1"
+                      title="Remover Status"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-[#E2E8F0] pt-6">
+              <h3 className="text-sm font-bold text-slate-900 mb-1">Status Financeiro</h3>
+              <p className="text-xs text-slate-500 mb-4">Gerencie as opções de status financeiro exibidas nos casos.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <input
+                  type="text"
+                  placeholder="Nome do novo status financeiro..."
+                  value={newFinStatus}
+                  onChange={e => setNewFinStatus(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-semibold focus:outline-none focus:border-[#0F766E]"
+                />
+                <select
+                  value={newFinColor}
+                  onChange={e => setNewFinColor(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-semibold focus:outline-none focus:border-[#0F766E]"
+                >
+                  {colorOptions.map(c => (
+                    <option key={c.label} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddFinStatus}
+                  className="bg-[#0F766E] hover:bg-[#115E59] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                >
+                  Adicionar
+                </button>
+              </div>
+
+              <div className="space-y-2 max-w-xl">
+                {(notifSettings.custom_financial_statuses || DEFAULT_FINANCIAL_STATUSES).map(s => (
+                  <div key={s.id} className="flex justify-between items-center p-3 bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
+                    <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide rounded-full border ${s.colorClass}`}>
+                      {s.label}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveFinStatus(s.id)}
+                      className="text-rose-500 hover:text-rose-700 transition-colors p-1"
+                      title="Remover Status"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
