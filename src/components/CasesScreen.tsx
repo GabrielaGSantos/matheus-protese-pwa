@@ -2178,8 +2178,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         <td className="p-3.5 text-center font-medium text-slate-600">
                           {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                         </td>
-                        <td className="p-3.5 text-right font-bold text-[#0F172A]">
-                          R$ {c.total_value.toFixed(2)}
+                        <td className="p-3.5 text-right">
+                          <div className="flex flex-col items-end font-bold text-[#0F172A]">
+                            <span className="mb-0.5">R$ {c.total_value.toFixed(2)}</span>
+                            {c.value_matheus > 0 && <span className="text-[9px] font-medium text-slate-500 whitespace-nowrap">Dr Matheus: R$ {c.value_matheus.toFixed(2)}</span>}
+                            {c.value_planning > 0 && <span className="text-[9px] font-medium text-slate-500 whitespace-nowrap">Planning: R$ {c.value_planning.toFixed(2)}</span>}
+                            {c.value_paschoal > 0 && <span className="text-[9px] font-medium text-slate-500 whitespace-nowrap">Dr Paschoal: R$ {c.value_paschoal.toFixed(2)}</span>}
+                          </div>
                         </td>
                         <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
@@ -2266,9 +2271,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         <Calendar size={13} />
                         Fim: {c.final_delivery_date ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
                       </span>
-                      <span className="text-slate-900 font-bold text-sm">
-                        R$ {c.total_value.toFixed(2)}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-slate-900 font-bold text-sm">
+                          R$ {c.total_value.toFixed(2)}
+                        </span>
+                        {c.value_matheus > 0 && <span className="text-[9px] font-medium text-slate-500">Dr Matheus: R$ {c.value_matheus.toFixed(2)}</span>}
+                        {c.value_planning > 0 && <span className="text-[9px] font-medium text-slate-500">Planning: R$ {c.value_planning.toFixed(2)}</span>}
+                        {c.value_paschoal > 0 && <span className="text-[9px] font-medium text-slate-500">Dr Paschoal: R$ {c.value_paschoal.toFixed(2)}</span>}
+                      </div>
                     </div>
                   </div>
                 );
