@@ -127,6 +127,70 @@ export const FinanceScreen: React.FC = () => {
     }
   };
 
+  const handleBulkRelease = async (casesToRelease: Case[]) => {
+    if (casesToRelease.length === 0) return;
+    try {
+      for (const c of casesToRelease) {
+        const updatedCase: Case = {
+          ...c,
+          financial_released: true,
+          updated_at: new Date().toISOString()
+        };
+        await api.cases.save(updatedCase, 'admin-1');
+      }
+      setSelectedFinanceCaseIds({});
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao liberar casos em lote.');
+    }
+  };
+
+  const handleToggleRelease = async (c: Case) => {
+    try {
+      const updatedCase: Case = {
+        ...c,
+        financial_released: !c.financial_released,
+        updated_at: new Date().toISOString()
+      };
+      await api.cases.save(updatedCase, 'admin-1');
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao alterar liberação do caso.');
+    }
+  };
+
+  const getFinancialBadge = (status: string) => {
+    const notifSettings = notificationService.getSettings();
+    const finStatuses = notifSettings.custom_financial_statuses || [
+      { id: 'cobrar', label: 'Cobrar', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+      { id: 'aguardando_pagamento', label: 'Aguardando Pagamento', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+      { id: 'pago_parcial', label: 'Pago Parcial', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' },
+      { id: 'pago', label: 'Pago', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+      { id: 'isento', label: 'Isento', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+      { id: 'cancelado', label: 'Cancelado', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' }
+    ];
+    const customMatch = finStatuses.find(s => s.id === status);
+    const style = customMatch ? customMatch.colorClass : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+    const label = customMatch ? customMatch.label : status.replace('_', ' ');
+    if (customMatch?.hexColor) {
+      return (
+        <span 
+          className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide rounded-full border whitespace-nowrap"
+          style={{ backgroundColor: `${customMatch.hexColor}1A`, color: customMatch.hexColor, borderColor: `${customMatch.hexColor}33` }}
+        >
+          {label}
+        </span>
+      );
+    }
+    return (
+      <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide rounded-full border whitespace-nowrap ${style}`}>
+        {label}
+      </span>
+    );
+  };
+
   const handleToggleExpand = (dentistId: string, pendingCases: Case[]) => {
     if (expandedDentistId === dentistId) {
       setExpandedDentistId(null);
@@ -538,16 +602,28 @@ export const FinanceScreen: React.FC = () => {
                           </div>
 
                           {pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length > 0 && (
-                            <button
-                              onClick={() => {
-                                const selectedCases = pendingCases.filter(c => selectedFinanceCaseIds[c.id]);
-                                handleBulkPaymentFinance(selectedCases);
-                              }}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer animate-fade-in"
-                            >
-                              <Check size={12} />
-                              Dar Baixa em Lote ({pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length})
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  const selectedCases = pendingCases.filter(c => selectedFinanceCaseIds[c.id]);
+                                  handleBulkRelease(selectedCases);
+                                }}
+                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer animate-fade-in"
+                              >
+                                <ShieldCheck size={12} />
+                                Liberar em Lote ({pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length})
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const selectedCases = pendingCases.filter(c => selectedFinanceCaseIds[c.id]);
+                                  handleBulkPaymentFinance(selectedCases);
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer animate-fade-in"
+                              >
+                                <Check size={12} />
+                                Dar Baixa em Lote ({pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length})
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -577,7 +653,8 @@ export const FinanceScreen: React.FC = () => {
                                 </th>
                                 <th className="p-3">ID do Caso</th>
                                 <th className="p-3">Paciente</th>
-                                <th className="p-3">Status</th>
+                                <th className="p-3">Status Clínico</th>
+                                <th className="p-3">Status Financeiro</th>
                                 <th className="p-3">Total</th>
                                 <th className="p-3">Pago</th>
                                 <th className="p-3">Aberto</th>
@@ -619,16 +696,34 @@ export const FinanceScreen: React.FC = () => {
                                         {c.status}
                                       </span>
                                     </td>
+                                    <td className="p-3">
+                                      <div className="flex flex-col gap-1.5 items-start">
+                                        {getFinancialBadge(c.financial_status)}
+                                        {c.financial_released && (
+                                          <span className="px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-widest rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                            Liberado
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
                                     <td className="p-3 font-bold text-slate-900">R$ {c.total_value.toFixed(2)}</td>
                                     <td className={`p-3 font-semibold ${c.paid_value === 0 ? 'text-rose-600' : 'text-emerald-600'}`}>R$ {c.paid_value.toFixed(2)}</td>
                                     <td className="p-3 font-semibold text-amber-600">R$ {c.remaining_value.toFixed(2)}</td>
                                     <td className="p-3 text-center">
-                                      <button
-                                        onClick={() => setPayingCase(c)}
-                                        className="px-2.5 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-semibold rounded-md transition-all"
-                                      >
-                                        Baixa Pagamento
-                                      </button>
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button
+                                          onClick={() => handleToggleRelease(c)}
+                                          className={`px-2.5 py-1 ${c.financial_released ? 'bg-rose-50 hover:bg-rose-100 text-rose-600' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'} text-[10px] font-semibold rounded-md transition-all`}
+                                        >
+                                          {c.financial_released ? 'Bloquear Valor' : 'Liberar Valor'}
+                                        </button>
+                                        <button
+                                          onClick={() => setPayingCase(c)}
+                                          className="px-2.5 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-semibold rounded-md transition-all"
+                                        >
+                                          Baixa Pagamento
+                                        </button>
+                                      </div>
                                     </td>
                                   </tr>
                                 ))
