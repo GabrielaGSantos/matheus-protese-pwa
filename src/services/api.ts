@@ -711,6 +711,15 @@ export const api = {
         saveMockData(MOCK_STORAGE_KEYS.CUSTOM_PRICES, prices);
         return newPrice;
       }
+      if (price.custom_value < 0) {
+        const { error } = await supabase!
+          .from('dentist_custom_prices')
+          .delete()
+          .match({ dentist_id: price.dentist_id, service_id: price.service_id });
+        if (error) throw error;
+        return { id: '', dentist_id: price.dentist_id, service_id: price.service_id, custom_value: 0, created_at: '' };
+      }
+
       const { data, error } = await supabase!
         .from('dentist_custom_prices')
         .upsert(price, { onConflict: 'dentist_id,service_id' })

@@ -167,8 +167,8 @@ export const ServicesScreen: React.FC = () => {
     setSavingPrices(true);
     try {
       for (const serviceId of Object.keys(customPriceInputs)) {
-        const val = customPriceInputs[serviceId];
-        const numValue = val.trim() === '' ? -1 : parseFloat(val);
+        const val = customPriceInputs[serviceId] || '';
+        const numValue = val.trim() === '' ? -1 : parseFloat(val.replace(',', '.'));
         await api.customPrices.save({
           dentist_id: selectedDentistId,
           service_id: serviceId,
