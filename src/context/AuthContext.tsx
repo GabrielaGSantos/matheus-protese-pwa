@@ -78,14 +78,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(loggedUser);
       await syncGDriveSettings();
       
-      // Registrar login no log (via Telegram se configurado)
+      // Registrar login no log (Banco de dados e Telegram)
       try {
+        const { supabase } = await import('../services/api');
+        if (supabase) {
+          await supabase.from('case_history').insert({
+            case_id: null,
+            user_id: loggedUser.id,
+            action: 'system_login',
+            new_data: { details: 'Acessou o sistema' }
+          });
+        }
+        
         const { notificationService } = await import('../services/notifications');
         notificationService.sendTelegramEvent({
           action: 'system_login',
-          userName: loggedUser.full_name,
-          email: email,
-          role: loggedUser.role
+          caseNumber: 'Acesso ao Sistema',
+          caseId: `${loggedUser.full_name} (${loggedUser.role === 'secretary' ? 'Secretária' : 'Dentista'})`,
+          userName: loggedUser.full_name
         });
       } catch(e) {
         console.error('Erro ao registrar log de acesso', e);
