@@ -289,7 +289,8 @@ export const FinanceScreen: React.FC = () => {
         serviceNames = c.dentist_notes;
       }
       const elemCount = c.teeth_selection?.teeth?.length || 0;
-      const serviceDesc = elemCount > 0
+      const isPlaca = serviceNames.toLowerCase().includes('placa');
+      const serviceDesc = (elemCount > 0 && !isPlaca)
         ? `Serviço: ${serviceNames}\n  Elementos: ${elemCount}`
         : `Serviço: ${serviceNames}`;
 
