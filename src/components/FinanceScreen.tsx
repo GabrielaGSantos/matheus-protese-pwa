@@ -194,6 +194,22 @@ export const FinanceScreen: React.FC = () => {
     }
   };
 
+  const handleToggleAguardandoPagamento = async (c: Case) => {
+    try {
+      const newStatus = c.financial_status === 'aguardando_pagamento' ? 'cobrar' : 'aguardando_pagamento';
+      const updatedCase: Case = {
+        ...c,
+        financial_status: newStatus as any,
+        updated_at: new Date().toISOString()
+      };
+      await api.cases.save(updatedCase, 'admin-1');
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao alterar status financeiro do caso.');
+    }
+  };
+
   const getFinancialBadge = (status: string) => {
     const notifSettings = notificationService.getSettings();
     const finStatuses = notifSettings.custom_financial_statuses || [
@@ -762,10 +778,16 @@ export const FinanceScreen: React.FC = () => {
                                     <td className={`p-3 font-semibold ${c.paid_value === 0 ? 'text-rose-600' : 'text-emerald-600'}`}>R$ {c.paid_value.toFixed(2)}</td>
                                     <td className="p-3 font-semibold text-amber-600">R$ {c.remaining_value.toFixed(2)}</td>
                                     <td className="p-3 text-center">
-                                      <div className="flex items-center justify-center gap-1.5">
+                                      <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                        <button
+                                          onClick={() => handleToggleAguardandoPagamento(c)}
+                                          className={`px-2.5 py-1 ${c.financial_status === 'aguardando_pagamento' ? 'bg-amber-100 hover:bg-amber-200 text-amber-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'} text-[10px] font-semibold rounded-md transition-all whitespace-nowrap`}
+                                        >
+                                          {c.financial_status === 'aguardando_pagamento' ? 'Voltar p/ Cobrar' : 'Aguardando Pgto'}
+                                        </button>
                                         <button
                                           onClick={() => handleToggleRelease(c)}
-                                          className={`px-2.5 py-1 ${c.financial_released ? 'bg-rose-50 hover:bg-rose-100 text-rose-600' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'} text-[10px] font-semibold rounded-md transition-all`}
+                                          className={`px-2.5 py-1 ${c.financial_released ? 'bg-rose-50 hover:bg-rose-100 text-rose-600' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'} text-[10px] font-semibold rounded-md transition-all whitespace-nowrap`}
                                         >
                                           {c.financial_released ? 'Bloquear Valor' : 'Liberar Valor'}
                                         </button>
