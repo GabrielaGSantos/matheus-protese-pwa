@@ -720,13 +720,32 @@ export const api = {
         return { id: '', dentist_id: price.dentist_id, service_id: price.service_id, custom_value: 0, created_at: '' };
       }
 
-      const { data, error } = await supabase!
+      const { data: existing, error: findError } = await supabase!
         .from('dentist_custom_prices')
-        .upsert(price, { onConflict: 'dentist_id,service_id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+        .select('id')
+        .match({ dentist_id: price.dentist_id, service_id: price.service_id })
+        .maybeSingle();
+      
+      if (findError) throw findError;
+
+      if (existing) {
+        const { data, error } = await supabase!
+          .from('dentist_custom_prices')
+          .update({ custom_value: price.custom_value })
+          .match({ id: existing.id })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase!
+          .from('dentist_custom_prices')
+          .insert([price])
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
     }
   },
 
