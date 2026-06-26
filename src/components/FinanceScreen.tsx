@@ -309,9 +309,15 @@ export const FinanceScreen: React.FC = () => {
       }
       const elemCount = c.teeth_selection?.teeth?.length || 0;
       const isPlaca = serviceNames.toLowerCase().includes('placa');
-      const serviceDesc = (elemCount > 0 && !isPlaca)
+      let serviceDesc = (elemCount > 0 && !isPlaca)
         ? `Serviço: ${serviceNames}\n  Elementos: ${elemCount}`
         : `Serviço: ${serviceNames}`;
+
+      const addedCosts = (c.other_internal_costs || []).filter(cost => cost.add_to_total);
+      if (addedCosts.length > 0) {
+        const costsText = addedCosts.map(cost => `${cost.name} (R$ ${parseFloat(String(cost.value) || '0').toFixed(2)})`).join(' + ');
+        serviceDesc += `\n  Taxas Adicionais: ${costsText}`;
+      }
 
       const targetDate = c.final_delivery_date || c.requested_delivery_date;
       let formattedDate = '';
