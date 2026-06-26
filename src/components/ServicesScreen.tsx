@@ -163,24 +163,39 @@ export const ServicesScreen: React.FC = () => {
   };
 
   const handleSaveCustomPrices = async () => {
-    if (!selectedDentistId) return;
+    if (!selectedDentistId) {
+      alert("Erro: Nenhum dentista selecionado.");
+      return;
+    }
     setSavingPrices(true);
+    let count = 0;
     try {
       for (const serviceId of Object.keys(customPriceInputs)) {
-        const val = customPriceInputs[serviceId] || '';
+        const rawVal = customPriceInputs[serviceId];
+        const val = rawVal !== undefined && rawVal !== null ? String(rawVal) : '';
         const numValue = val.trim() === '' ? -1 : parseFloat(val.replace(',', '.'));
-        await api.customPrices.save({
-          dentist_id: selectedDentistId,
-          service_id: serviceId,
-          custom_value: isNaN(numValue) ? -1 : numValue
-        });
+        
+        // Verifica o valor atual
+        const existing = customPrices.find(p => p.dentist_id === selectedDentistId && p.service_id === serviceId);
+        const existingVal = existing ? existing.custom_value : -1;
+        
+        // Só salva se o valor mudou
+        if (existingVal !== numValue) {
+          count++;
+          await api.customPrices.save({
+            dentist_id: selectedDentistId,
+            service_id: serviceId,
+            custom_value: isNaN(numValue) ? -1 : numValue
+          });
+        }
       }
       // Refresh
       const cp = await api.customPrices.list();
       setCustomPrices(cp);
-      alert('Tabela de preços personalizados salva com sucesso!');
-    } catch (err) {
+      alert(`Tabela salva com sucesso! (${count} preços atualizados)`);
+    } catch (err: any) {
       console.error(err);
+      alert('Erro grave ao salvar preços: ' + (err.message || 'Erro desconhecido.'));
     } finally {
       setSavingPrices(false);
     }

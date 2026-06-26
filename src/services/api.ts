@@ -722,7 +722,7 @@ export const api = {
 
       const { data, error } = await supabase!
         .from('dentist_custom_prices')
-        .upsert(price, { onConflict: 'dentist_id,service_id' })
+        .upsert(price, { onConflict: 'dentist_service_unique' })
         .select()
         .single();
       if (error) throw error;
