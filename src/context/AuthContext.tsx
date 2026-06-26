@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notificationService.sendTelegramEvent({
           action: 'system_login',
           userName: loggedUser.full_name,
-          email: loggedUser.email || email,
+          email: email,
           role: loggedUser.role
         });
       } catch(e) {
