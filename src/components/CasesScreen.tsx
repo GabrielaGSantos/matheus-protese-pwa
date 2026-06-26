@@ -777,6 +777,9 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   };
 
   const filteredCases = cases.filter(c => {
+    // Hide Repasse Avulso cases from the normal listing
+    if (c.patient_name.startsWith('[Repasse Avulso]')) return false;
+
     const dentist = dentists.find(d => d.id === c.dentist_id);
     const searchMatch = c.patient_name.toLowerCase().includes(search.toLowerCase()) || 
       (dentist?.full_name.toLowerCase().includes(search.toLowerCase()) ?? false) || 

@@ -37,6 +37,11 @@ export const FinanceScreen: React.FC = () => {
   // Selection state for finance batch conciliation
   const [selectedFinanceCaseIds, setSelectedFinanceCaseIds] = useState<Record<string, boolean>>({});
 
+  // Repasse Avulso modal state
+  const [isAvulsoModalOpen, setIsAvulsoModalOpen] = useState(false);
+  const [avulsoDesc, setAvulsoDesc] = useState('');
+  const [avulsoValue, setAvulsoValue] = useState('');
+
   useRealtime('cases', () => {
     fetchData();
   });
@@ -538,6 +543,44 @@ export const FinanceScreen: React.FC = () => {
     }
     return data;
   }, [cases, chartStartDate, chartEndDate, showUndeliveredCases]);
+  const handleAddAvulso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!avulsoDesc || !avulsoValue) return;
+
+    const andrey = dentists.find(d => d.full_name.toLowerCase().includes('andrey'));
+    if (!andrey) {
+      alert("Dentista Andrey não encontrado no sistema.");
+      return;
+    }
+
+    try {
+      const val = parseFloat(avulsoValue.replace(',', '.'));
+      if (isNaN(val) || val <= 0) return;
+
+      const newCase: Partial<Case> = {
+        patient_name: `[Repasse Avulso] ${avulsoDesc}`,
+        dentist_id: andrey.id,
+        status: 'entregue',
+        financial_status: 'pago',
+        total_value: 0,
+        value_matheus: 0,
+        value_paschoal: 0,
+        cost_andrey: val,
+        cost_andrey_discounted: false,
+        selected_services: [],
+        created_at: new Date(selectedMonth + '-05T12:00:00Z').toISOString()
+      };
+
+      await api.cases.save(newCase as Case, 'admin-1');
+      fetchData();
+      setIsAvulsoModalOpen(false);
+      setAvulsoDesc('');
+      setAvulsoValue('');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao adicionar lançamento avulso.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1399,6 +1442,12 @@ export const FinanceScreen: React.FC = () => {
               <h3 className="font-semibold text-sm text-slate-900">Custos de Repasse — Dr. Andrey</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">Gerencie os descontos de repasse do Dr. Andrey nos casos do mês selecionado.</p>
             </div>
+            <button
+              onClick={() => setIsAvulsoModalOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              Adicionar Avulso
+            </button>
           </div>
 
           {(() => {
@@ -1515,6 +1564,71 @@ export const FinanceScreen: React.FC = () => {
           })()}
         </div>
       ) : null}
+      {/* Repasse Avulso Modal */}
+      {isAvulsoModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white border border-[#E2E8F0] rounded-2xl shadow-xl p-6 relative animate-fade-in">
+            <button
+              onClick={() => setIsAvulsoModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Adicionar Lançamento Avulso</h3>
+            <p className="text-[11px] text-slate-500 mb-5">
+              Cria um registro independente de desconto (Repasse Dr. Andrey) para o mês {selectedMonth}.
+            </p>
+
+            <form onSubmit={handleAddAvulso} className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                  Descrição do Desconto
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={avulsoDesc}
+                  onChange={(e) => setAvulsoDesc(e.target.value)}
+                  placeholder="Ex: Compra de Resina, Adiantamento..."
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 placeholder:text-slate-400 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                  Valor a Descontar (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={avulsoValue}
+                  onChange={(e) => setAvulsoValue(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0F766E] transition-all"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAvulsoModalOpen(false)}
+                  className="px-4 py-2 bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#0F766E] hover:bg-[#115E59] text-white rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  Salvar Lançamento
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
