@@ -171,11 +171,31 @@ export const FinanceScreen: React.FC = () => {
         };
         await api.cases.save(updatedCase, 'admin-1');
       }
-      setSelectedFinanceCaseIds({});
       fetchData();
+      alert(`Valor liberado em lote para ${casesToRelease.length} caso(s)!`);
     } catch (err) {
       console.error(err);
-      alert('Erro ao liberar casos em lote.');
+      alert('Erro ao liberar valores em lote.');
+    }
+  };
+
+  const handleDiscountAndrey = async (casesToDiscount: Case[]) => {
+    if (!casesToDiscount.length) return;
+    if (!window.confirm(`Confirmar o desconto de repasse para ${casesToDiscount.length} caso(s)?`)) return;
+    try {
+      for (const c of casesToDiscount) {
+        const updatedCase: Case = {
+          ...c,
+          cost_andrey_discounted: true,
+          updated_at: new Date().toISOString()
+        };
+        await api.cases.save(updatedCase, 'admin-1');
+      }
+      fetchData();
+      alert('Repasses descontados com sucesso!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao descontar repasses.');
     }
   };
 
@@ -365,6 +385,8 @@ export const FinanceScreen: React.FC = () => {
 
       // Calculate total credit discount for Dr. Andrey
       let andreyDiscountCredit = 0;
+      let andreyPendingCredit = 0;
+      let andreyPendingCases: Case[] = [];
       const isAndrey = d.full_name.toLowerCase().includes('andrey');
       if (isAndrey) {
         // Find all cases that have cost_andrey_discounted === true
@@ -375,6 +397,14 @@ export const FinanceScreen: React.FC = () => {
           return false;
         });
         andreyDiscountCredit = discountedCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
+
+        andreyPendingCases = cases.filter(c => {
+          if (c.status === 'cancelado' || c.cost_andrey_discounted) return false;
+          if (c.created_at.startsWith(selectedMonth)) return true;
+          if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
+          return false;
+        });
+        andreyPendingCredit = andreyPendingCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
       }
 
       return {
@@ -383,9 +413,11 @@ export const FinanceScreen: React.FC = () => {
         totalPending: Math.max(0, totalPending - andreyDiscountCredit),
         pendingCases,
         allCases: dentistCases,
-        andreyDiscountCredit
+        andreyDiscountCredit,
+        andreyPendingCredit,
+        andreyPendingCases
       };
-    }).filter(x => x.allCases.length > 0 || x.andreyDiscountCredit > 0) // show Dr. Andrey even if he has no cases but has credit
+    }).filter(x => x.allCases.length > 0 || x.andreyDiscountCredit > 0 || x.andreyPendingCredit > 0) // show Dr. Andrey even if he has no cases but has credit
       .sort((a, b) => b.totalPending - a.totalPending);
   };
 
@@ -594,7 +626,7 @@ export const FinanceScreen: React.FC = () => {
                 Nenhum faturamento registrado para a competência selecionada.
               </div>
             ) : (
-              dentistsBalances.map(({ dentist, totalBilled, totalPending, pendingCases, andreyDiscountCredit }) => {
+              dentistsBalances.map(({ dentist, totalBilled, totalPending, pendingCases, andreyDiscountCredit, andreyPendingCredit, andreyPendingCases }) => {
                 const isExpanded = expandedDentistId === dentist.id;
                 const selectedCasesForDentist = isExpanded ? pendingCases.filter(c => selectedFinanceCaseIds[c.id]) : pendingCases;
                 const whatsappText = getWhatsAppText(dentist, selectedCasesForDentist, andreyDiscountCredit);
@@ -614,7 +646,12 @@ export const FinanceScreen: React.FC = () => {
                         </span>
                         {andreyDiscountCredit > 0 && (
                           <span className="text-[11px] text-emerald-600 font-semibold block">
-                            Créditos de Repasse Andrey: -R$ {andreyDiscountCredit.toFixed(2)}
+                            Créditos de Repasse Andrey (Já descontados): -R$ {andreyDiscountCredit.toFixed(2)}
+                          </span>
+                        )}
+                        {andreyPendingCredit > 0 && (
+                          <span className="text-[11px] text-amber-600 font-semibold block">
+                            Repasses pendentes p/ descontar: R$ {andreyPendingCredit.toFixed(2)}
                           </span>
                         )}
                       </div>
@@ -641,11 +678,23 @@ export const FinanceScreen: React.FC = () => {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleCopyText(whatsappText, dentist.id)}
-                              className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-lg flex items-center gap-1.5 transition-all"
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border ${
+                                copiedId === dentist.id
+                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                  : 'bg-white text-slate-700 hover:bg-slate-50 border-[#E2E8F0]'
+                              }`}
                             >
-                              {copiedId === dentist.id ? <Check size={12} /> : <Copy size={12} />}
+                              {copiedId === dentist.id ? <Check size={14} /> : <Copy size={14} />}
                               {copiedId === dentist.id ? 'Copiado!' : 'Copiar Mensagem'}
                             </button>
+                            {andreyPendingCredit > 0 && (
+                              <button
+                                onClick={() => handleDiscountAndrey(andreyPendingCases)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-200"
+                              >
+                                Descontar Valores Andrey (R$ {andreyPendingCredit.toFixed(2)})
+                              </button>
+                            )}
                             
                             {dentist.whatsapp && (
                               <a
