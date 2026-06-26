@@ -26,6 +26,10 @@ export const FinanceScreen: React.FC = () => {
   const [receiptUrl, setReceiptUrl] = useState('');
   const [isFullPayment, setIsFullPayment] = useState(true);
 
+  // Edit Payment modal state
+  const [editingPaymentCase, setEditingPaymentCase] = useState<Case | null>(null);
+  const [editPaymentValue, setEditPaymentValue] = useState('');
+
   // Clipboard feedback state
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -96,6 +100,35 @@ export const FinanceScreen: React.FC = () => {
       setPayingCase(null);
       setPayAmount('');
       setReceiptUrl('');
+      fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEditPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPaymentCase) return;
+
+    try {
+      const newPaidValue = parseFloat(editPaymentValue) || 0;
+      const newRemainingValue = Math.max(0, editingPaymentCase.total_value - newPaidValue);
+      
+      const newFinStatus = newPaidValue >= editingPaymentCase.total_value 
+        ? 'pago' 
+        : newPaidValue > 0 ? 'pago_parcial' : 'cobrar';
+
+      const updatedCase: Case = {
+        ...editingPaymentCase,
+        paid_value: newPaidValue,
+        remaining_value: newRemainingValue,
+        financial_status: newFinStatus as any,
+        updated_at: new Date().toISOString()
+      };
+
+      await api.cases.save(updatedCase, 'admin-1');
+      setEditingPaymentCase(null);
+      setEditPaymentValue('');
       fetchData();
     } catch (err) {
       console.error(err);
@@ -731,6 +764,17 @@ export const FinanceScreen: React.FC = () => {
                                         >
                                           {c.financial_released ? 'Bloquear Valor' : 'Liberar Valor'}
                                         </button>
+                                        {c.paid_value > 0 && (
+                                          <button
+                                            onClick={() => {
+                                              setEditingPaymentCase(c);
+                                              setEditPaymentValue(c.paid_value.toString());
+                                            }}
+                                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 text-[10px] font-semibold rounded-md transition-all"
+                                          >
+                                            Editar Baixa
+                                          </button>
+                                        )}
                                         <button
                                           onClick={() => setPayingCase(c)}
                                           className="px-2.5 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[10px] font-semibold rounded-md transition-all"
@@ -859,6 +903,66 @@ export const FinanceScreen: React.FC = () => {
                       className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all"
                     >
                       Confirmar Pagamento
+                    </button>
+                  </div>
+                </form>
+            </div>
+          )}
+
+          {/* Edit Payment Conciliation Modal overlay */}
+          {editingPaymentCase && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative">
+                <button
+                  onClick={() => setEditingPaymentCase(null)}
+                  className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all"
+                >
+                  <X size={16} />
+                </button>
+
+                <h3 className="text-sm font-bold text-slate-900 mb-1">Editar Baixa de Pagamento</h3>
+                <p className="text-[11px] text-slate-500 mb-4">
+                  Corrigir valor pago do paciente: <strong className="text-slate-700">{editingPaymentCase.patient_name}</strong>
+                </p>
+
+                <form onSubmit={handleEditPayment} className="space-y-4">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-[#E2E8F0] space-y-1 text-xs mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Valor Total do Caso:</span>
+                      <span className="font-bold text-slate-900">R$ {editingPaymentCase.total_value.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                      Novo Valor Pago (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={editPaymentValue}
+                      onChange={(e) => setEditPaymentValue(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 font-semibold text-xs focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Digite o valor total que já foi recebido. O saldo devedor será atualizado automaticamente.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPaymentCase(null)}
+                      className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all"
+                    >
+                      Salvar Correção
                     </button>
                   </div>
                 </form>
@@ -1096,11 +1200,20 @@ export const FinanceScreen: React.FC = () => {
                                 {dentist?.full_name} · <span className="font-mono">{c.id}</span>
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <span className="font-bold text-emerald-600 block">R$ {c.total_value.toFixed(2)}</span>
-                              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider bg-slate-100 px-1.5 py-0.5 rounded-md mt-1 inline-block">
+                              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider bg-slate-100 px-1.5 py-0.5 rounded-md inline-block">
                                 {c.financial_status}
                               </span>
+                              <button
+                                onClick={() => {
+                                  setEditingPaymentCase(c);
+                                  setEditPaymentValue(c.paid_value.toString());
+                                }}
+                                className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 text-[9px] font-bold rounded-md transition-all cursor-pointer mt-1"
+                              >
+                                Editar Baixa
+                              </button>
                             </div>
                           </div>
                         );
@@ -1149,12 +1262,25 @@ export const FinanceScreen: React.FC = () => {
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <span className="font-bold text-slate-700">R$ {c.total_value.toFixed(2)}</span>
-                              <button
-                                onClick={() => setPayingCase(c)}
-                                className="px-2 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[9px] font-bold rounded-md transition-all cursor-pointer"
-                              >
-                                Dar Baixa
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                {c.paid_value > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      setEditingPaymentCase(c);
+                                      setEditPaymentValue(c.paid_value.toString());
+                                    }}
+                                    className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 text-[9px] font-bold rounded-md transition-all cursor-pointer"
+                                  >
+                                    Editar
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => setPayingCase(c)}
+                                  className="px-2 py-1 bg-[#0F766E] hover:bg-[#115E59] text-white text-[9px] font-bold rounded-md transition-all cursor-pointer"
+                                >
+                                  Dar Baixa
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
