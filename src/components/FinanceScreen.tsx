@@ -501,7 +501,7 @@ export const FinanceScreen: React.FC = () => {
       const valPaschoal = (c.value_paschoal || 0).toFixed(2).replace('.', ',');
       const valTotal = (c.total_value || 0).toFixed(2).replace('.', ',');
       const statusText = c.status === 'em_analise' ? 'Aguardando Análise' : c.status;
-      const elementos = c.teeth_selection.teeth.join(', ');
+      const elementos = c.teeth_selection && c.teeth_selection.teeth ? c.teeth_selection.teeth.join(', ') : '';
       const observacoes = c.dentist_notes || '';
 
       csvContent += `${dataRecebido};${dataEntrega};${feitoPor};${cliente};${paciente};${tipo};${valMatheus};${valPlanning};${valPaschoal};${valTotal};${statusText};${elementos};${observacoes}\n`;
@@ -535,13 +535,12 @@ export const FinanceScreen: React.FC = () => {
       'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
     ];
 
-    const start = new Date(chartStartDate + '-01');
-    const end = new Date(chartEndDate + '-01');
+    let [startYear, startMonth] = chartStartDate.split('-').map(Number);
+    const [endYear, endMonth] = chartEndDate.split('-').map(Number);
     const data: { name: string; matheus: number; planning: number; paschoal: number; custos_internos: number; total: number }[] = [];
 
-    const current = new Date(start);
-    while (current <= end) {
-      const ym = current.toISOString().slice(0, 7);
+    while (startYear < endYear || (startYear === endYear && startMonth <= endMonth)) {
+      const ym = `${startYear}-${String(startMonth).padStart(2, '0')}`;
       const monthCases = cases.filter(c => c.created_at.startsWith(ym) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
 
       const matheus = monthCases.reduce((s, c) => s + (c.value_matheus || 0), 0);
@@ -556,7 +555,7 @@ export const FinanceScreen: React.FC = () => {
       const total = monthCases.reduce((s, c) => s + (c.total_value || 0), 0);
 
       data.push({
-        name: `${monthNames[current.getMonth()]}/${String(current.getFullYear()).slice(2)}`,
+        name: `${monthNames[startMonth - 1]}/${String(startYear).slice(2)}`,
         matheus,
         planning,
         paschoal,
@@ -564,7 +563,11 @@ export const FinanceScreen: React.FC = () => {
         total
       });
 
-      current.setMonth(current.getMonth() + 1);
+      startMonth++;
+      if (startMonth > 12) {
+        startMonth = 1;
+        startYear++;
+      }
     }
     return data;
   }, [cases, chartStartDate, chartEndDate, showUndeliveredCases]);
