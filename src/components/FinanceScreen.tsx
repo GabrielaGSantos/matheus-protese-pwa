@@ -576,7 +576,8 @@ export const FinanceScreen: React.FC = () => {
             ) : (
               dentistsBalances.map(({ dentist, totalBilled, totalPending, pendingCases, andreyDiscountCredit }) => {
                 const isExpanded = expandedDentistId === dentist.id;
-                const whatsappText = getWhatsAppText(dentist, pendingCases, andreyDiscountCredit);
+                const selectedCasesForDentist = isExpanded ? pendingCases.filter(c => selectedFinanceCaseIds[c.id]) : pendingCases;
+                const whatsappText = getWhatsAppText(dentist, selectedCasesForDentist, andreyDiscountCredit);
                 
                 return (
                   <div key={dentist.id} className="glass-panel overflow-hidden transition-all">
