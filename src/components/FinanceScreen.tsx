@@ -270,7 +270,11 @@ export const FinanceScreen: React.FC = () => {
           ? ` [${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}]`
           : '';
       }
-      itemsText += `• Paciente: ${c.patient_name}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n  ${serviceDesc}\n\n`;
+      const partialPaymentDesc = c.paid_value > 0 
+        ? `\n  (Valor Total: R$ ${c.total_value.toFixed(2)} | Já pago: R$ ${c.paid_value.toFixed(2)})` 
+        : '';
+      
+      itemsText += `• Paciente: ${c.patient_name}${formattedDate} — R$ ${c.remaining_value.toFixed(2)}\n  ${serviceDesc}${partialPaymentDesc}\n\n`;
       totalOpen += c.remaining_value;
       totalMatheus += c.value_matheus;
       totalPlanning += c.value_planning || 0;
