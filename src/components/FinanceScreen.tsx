@@ -309,11 +309,14 @@ export const FinanceScreen: React.FC = () => {
       }
       const elemCount = c.teeth_selection?.teeth?.length || 0;
       const isPlaca = serviceNames.toLowerCase().includes('placa');
-      let serviceDesc = (elemCount > 0 && !isPlaca)
-        ? `Serviço: ${serviceNames}\n  Elementos: ${elemCount}`
-        : `Serviço: ${serviceNames}`;
-
       const addedCosts = (c.other_internal_costs || []).filter(cost => cost.add_to_total);
+      const addedCostsTotal = addedCosts.reduce((s, cost) => s + (parseFloat(String(cost.value)) || 0), 0);
+      const serviceBaseValue = c.total_value - addedCostsTotal;
+
+      let serviceDesc = (elemCount > 0 && !isPlaca)
+        ? `Serviço: ${serviceNames} (R$ ${serviceBaseValue.toFixed(2)})\n  Elementos: ${elemCount}`
+        : `Serviço: ${serviceNames} (R$ ${serviceBaseValue.toFixed(2)})`;
+
       if (addedCosts.length > 0) {
         const costsText = addedCosts.map(cost => `${cost.name} (R$ ${parseFloat(String(cost.value) || '0').toFixed(2)})`).join(' + ');
         serviceDesc += `\n  Taxas Adicionais: ${costsText}`;
