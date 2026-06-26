@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
   TrendingUp, ShieldCheck, X, Download, CalendarRange 
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useRealtime } from '../hooks/useRealtime';
 
 export const FinanceScreen: React.FC = () => {
@@ -41,6 +41,9 @@ export const FinanceScreen: React.FC = () => {
   const [isAvulsoModalOpen, setIsAvulsoModalOpen] = useState(false);
   const [avulsoDesc, setAvulsoDesc] = useState('');
   const [avulsoValue, setAvulsoValue] = useState('');
+
+  // Chart hidden lines state
+  const [hiddenLines, setHiddenLines] = useState<string[]>([]);
 
   // Date range for Reports
   const [reportStartDate, setReportStartDate] = useState(() => {
@@ -1289,7 +1292,7 @@ export const FinanceScreen: React.FC = () => {
 
             <div className="w-full" style={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <LineChart data={revenueChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} />
                   <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} tickFormatter={(v: number) => `R$${v}`} />
@@ -1314,7 +1317,13 @@ export const FinanceScreen: React.FC = () => {
                     }}
                   />
                   <Legend
-                    formatter={(value: string) => {
+                    onClick={(e: any) => {
+                      if (!e || !e.dataKey) return;
+                      setHiddenLines(prev =>
+                        prev.includes(e.dataKey) ? prev.filter(k => k !== e.dataKey) : [...prev, e.dataKey]
+                      );
+                    }}
+                    formatter={(value: string, entry: any) => {
                       const labels: Record<string, string> = {
                         matheus: 'Dr. Matheus',
                         planning: 'Planning',
@@ -1322,16 +1331,18 @@ export const FinanceScreen: React.FC = () => {
                         custos_internos: 'Custos Internos',
                         total: 'Total Faturado'
                       };
-                      return labels[value] || value;
+                      const isHidden = hiddenLines.includes(entry.dataKey);
+                      const color = isHidden ? '#CBD5E1' : entry.color;
+                      return <span style={{ color, cursor: 'pointer', opacity: isHidden ? 0.6 : 1 }}>{labels[value] || value}</span>;
                     }}
-                    wrapperStyle={{ fontSize: '10px', fontWeight: 700 }}
+                    wrapperStyle={{ fontSize: '10px', fontWeight: 700, paddingTop: '10px' }}
                   />
-                  <Bar dataKey="matheus" fill="#0F766E" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="planning" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="paschoal" fill="#0EA5E9" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="custos_internos" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="total" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Line type="monotone" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} hide={hiddenLines.includes('matheus')} dataKey="matheus" stroke="#0F766E" />
+                  <Line type="monotone" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} hide={hiddenLines.includes('planning')} dataKey="planning" stroke="#F59E0B" />
+                  <Line type="monotone" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} hide={hiddenLines.includes('paschoal')} dataKey="paschoal" stroke="#0EA5E9" />
+                  <Line type="monotone" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} hide={hiddenLines.includes('custos_internos')} dataKey="custos_internos" stroke="#EF4444" />
+                  <Line type="monotone" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} hide={hiddenLines.includes('total')} dataKey="total" stroke="#94A3B8" />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
