@@ -906,6 +906,7 @@ export const FinanceScreen: React.FC = () => {
                     </button>
                   </div>
                 </form>
+              </div>
             </div>
           )}
 
