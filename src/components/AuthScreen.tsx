@@ -23,7 +23,11 @@ export const AuthScreen: React.FC = () => {
     setSubmitting(true);
     setErrorMsg('');
     try {
-      await login(email, password);
+      let loginEmail = email.trim();
+      if (!loginEmail.includes('@')) {
+        loginEmail = `${loginEmail}@iorclab.com`;
+      }
+      await login(loginEmail, password);
     } catch (err: any) {
       setErrorMsg('Falha na autenticação. Verifique usuário e senha.');
     } finally {

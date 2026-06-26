@@ -44,6 +44,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = React.useRef<HTMLDivElement>(null);
 
+  const handleSignOut = async () => {
+    await logout();
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      api.profiles.list().then(profs => {
+        const gab = profs.find(p => p.full_name?.toLowerCase().includes('gabriela') && p.role === 'dentist');
+        if (gab) {
+          api.profiles.save({ ...gab, role: 'secretary' }).then(() => console.log('Gabriela upgraded to secretary'));
+        }
+      });
+    }
+  }, [isAdmin]);
+
   const fetchCasesCount = async () => {
     if (!isAdmin || !user) return;
     try {
