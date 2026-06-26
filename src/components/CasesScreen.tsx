@@ -782,7 +782,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       (dentist?.full_name.toLowerCase().includes(search.toLowerCase()) ?? false) || 
       c.id.toLowerCase().includes(search.toLowerCase());
     
-    const typeMatch = filterType === 'open' ? c.status !== 'entregue' : c.status === 'entregue';
+    const typeMatch = filterType === 'open' ? (c.status !== 'entregue' && c.status !== 'cancelado') : (c.status === 'entregue' || c.status === 'cancelado');
     const statusMatch = statusFilter === 'todos' || c.status === statusFilter;
     const dentistMatch = dentistFilter === 'todos' || c.dentist_id === dentistFilter;
 

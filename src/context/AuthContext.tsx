@@ -77,6 +77,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const loggedUser = await api.auth.login(email, password);
       setUser(loggedUser);
       await syncGDriveSettings();
+      
+      // Registrar login no log (via Telegram se configurado)
+      try {
+        const { notificationService } = await import('../services/notifications');
+        notificationService.sendTelegramEvent({
+          action: 'system_login',
+          userName: loggedUser.full_name,
+          email: loggedUser.email || email,
+          role: loggedUser.role
+        });
+      } catch(e) {
+        console.error('Erro ao registrar log de acesso', e);
+      }
+      
     } catch (err) {
       console.error('Erro de login:', err);
       throw err;
