@@ -18,6 +18,7 @@ export const FinanceScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [expandedDentistId, setExpandedDentistId] = useState<string | null>(null);
   const [showAllOutstanding, setShowAllOutstanding] = useState(false);
+  const [showUndeliveredCases, setShowUndeliveredCases] = useState(false);
   const [statusDentistFilter, setStatusDentistFilter] = useState('todos');
 
   // Payment modal state
@@ -368,6 +369,7 @@ export const FinanceScreen: React.FC = () => {
       // filter cases of this dentist that belong to selected month and are active
       const dentistCases = cases.filter(c => {
         if (c.dentist_id !== d.id || c.status === 'cancelado') return false;
+        if (!showUndeliveredCases && c.status !== 'entregue') return false;
         
         // Include cases of the selected month
         if (c.created_at.startsWith(selectedMonth)) return true;
@@ -393,6 +395,7 @@ export const FinanceScreen: React.FC = () => {
         // Find all cases that have cost_andrey_discounted === true
         const discountedCases = cases.filter(c => {
           if (c.status === 'cancelado' || !c.cost_andrey_discounted) return false;
+          if (!showUndeliveredCases && c.status !== 'entregue') return false;
           if (c.created_at.startsWith(selectedMonth)) return true;
           if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
           return false;
@@ -401,6 +404,7 @@ export const FinanceScreen: React.FC = () => {
 
         andreyPendingCases = cases.filter(c => {
           if (c.status === 'cancelado' || c.cost_andrey_discounted) return false;
+          if (!showUndeliveredCases && c.status !== 'entregue') return false;
           if (c.created_at.startsWith(selectedMonth)) return true;
           if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
           return false;
@@ -424,7 +428,7 @@ export const FinanceScreen: React.FC = () => {
 
   // Report calculations for selected month
   const getReportSummary = () => {
-    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado');
+    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
     
     const billedTotal = monthCases.reduce((sum, c) => sum + c.total_value, 0);
     const paidTotal = monthCases.reduce((sum, c) => sum + c.paid_value, 0);
@@ -459,7 +463,7 @@ export const FinanceScreen: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado');
+    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
     
     let csvContent = '\uFEFF'; // UTF-8 BOM
     csvContent += `Data Recebido;Data Entrega;Feito por;Cliente;Paciente;Tipo;Valor Matheus;Valor Planning;Valor Paschoal;Valor Total;Status;Elementos;Observações\n`;
@@ -517,7 +521,7 @@ export const FinanceScreen: React.FC = () => {
     const current = new Date(start);
     while (current <= end) {
       const ym = current.toISOString().slice(0, 7);
-      const monthCases = cases.filter(c => c.created_at.startsWith(ym) && c.status !== 'cancelado');
+      const monthCases = cases.filter(c => c.created_at.startsWith(ym) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
 
       const matheus = monthCases.reduce((s, c) => s + c.value_matheus, 0);
       const paschoal = monthCases.reduce((s, c) => s + c.value_paschoal, 0);
@@ -533,7 +537,7 @@ export const FinanceScreen: React.FC = () => {
       current.setMonth(current.getMonth() + 1);
     }
     return data;
-  }, [cases, chartStartDate, chartEndDate]);
+  }, [cases, chartStartDate, chartEndDate, showUndeliveredCases]);
 
   return (
     <div className="space-y-6">
@@ -557,17 +561,31 @@ export const FinanceScreen: React.FC = () => {
               className="px-3 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="show-all-outstanding"
-              checked={showAllOutstanding}
-              onChange={(e) => setShowAllOutstanding(e.target.checked)}
-              className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
-            />
-            <label htmlFor="show-all-outstanding" className="text-[10px] font-semibold text-slate-500 cursor-pointer select-none">
-              Incluir atrasados de outros meses
-            </label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="show-all-outstanding"
+                checked={showAllOutstanding}
+                onChange={(e) => setShowAllOutstanding(e.target.checked)}
+                className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
+              />
+              <label htmlFor="show-all-outstanding" className="text-[10px] font-semibold text-slate-500 cursor-pointer select-none">
+                Incluir atrasados de outros meses
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="show-undelivered"
+                checked={showUndeliveredCases}
+                onChange={(e) => setShowUndeliveredCases(e.target.checked)}
+                className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
+              />
+              <label htmlFor="show-undelivered" className="text-[10px] font-semibold text-slate-500 cursor-pointer select-none">
+                Incluir não entregues
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -1250,9 +1268,10 @@ export const FinanceScreen: React.FC = () => {
               const paid = cases.filter(c => {
                 const isMonth = c.created_at.startsWith(selectedMonth);
                 const notCancelled = c.status !== 'cancelado';
+                const isDeliveredOrShowAll = showUndeliveredCases || c.status === 'entregue';
                 const isPaid = c.financial_status === 'pago' || c.financial_status === 'isento';
                 const dentistMatch = statusDentistFilter === 'todos' || c.dentist_id === statusDentistFilter;
-                return isMonth && notCancelled && isPaid && dentistMatch;
+                return isMonth && notCancelled && isDeliveredOrShowAll && isPaid && dentistMatch;
               });
 
               return (
@@ -1307,9 +1326,10 @@ export const FinanceScreen: React.FC = () => {
               const pending = cases.filter(c => {
                 const isMonth = c.created_at.startsWith(selectedMonth);
                 const notCancelled = c.status !== 'cancelado';
+                const isDeliveredOrShowAll = showUndeliveredCases || c.status === 'entregue';
                 const isOpen = c.financial_status !== 'pago' && c.financial_status !== 'isento';
                 const dentistMatch = statusDentistFilter === 'todos' || c.dentist_id === statusDentistFilter;
-                return isMonth && notCancelled && isOpen && dentistMatch;
+                return isMonth && notCancelled && isDeliveredOrShowAll && isOpen && dentistMatch;
               });
 
               return (
@@ -1384,6 +1404,7 @@ export const FinanceScreen: React.FC = () => {
           {(() => {
             const andreyCases = cases.filter(c => {
               if (c.status === 'cancelado') return false;
+              if (!showUndeliveredCases && c.status !== 'entregue') return false;
               if (!c.created_at.startsWith(selectedMonth) && !showAllOutstanding) return false;
               if (showAllOutstanding && !c.created_at.startsWith(selectedMonth) && (c.cost_andrey || 0) <= 0) return false;
               return (c.cost_andrey || 0) > 0;
