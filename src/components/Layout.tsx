@@ -44,9 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = React.useRef<HTMLDivElement>(null);
 
-  const handleSignOut = async () => {
-    await logout();
-  };
+
 
   useEffect(() => {
     if (isAdmin) {
