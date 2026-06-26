@@ -103,7 +103,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [overrideValuePaschoal, setOverrideValuePaschoal] = useState('');
   const [costAndrey, setCostAndrey] = useState('');
   const [costAndreyDiscounted, setCostAndreyDiscounted] = useState(false);
-  const [dynamicCosts, setDynamicCosts] = useState<{ name: string; value: number }[]>([]);
+  const [dynamicCosts, setDynamicCosts] = useState<{ name: string; value: number; add_to_total?: boolean }[]>([]);
   const [paidValue, setPaidValue] = useState('');
   const [isManualPrice, setIsManualPrice] = useState(false);
   const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'id-desc' | 'id-asc'>('date-desc');
@@ -393,18 +393,22 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       }
     });
 
-    const matheusVal = overrideValueMatheus === '' ? computedMatheusVal : parseFloat(overrideValueMatheus) || 0;
+
     const planningVal = overrideValuePlanning === '' ? 0 : parseFloat(overrideValuePlanning) || 0;
     const paschoalVal = overrideValuePaschoal === '' ? computedPaschoalVal : parseFloat(overrideValuePaschoal) || 0;
     const andreyVal = costAndrey === '' || costAndrey === '0' ? computedAndreyVal : parseFloat(costAndrey) || 0;
 
+    const addedDynamicCosts = dynamicCosts.reduce((s, c) => s + (c.add_to_total ? (parseFloat(String(c.value)) || 0) : 0), 0);
+    const finalMatheusVal = overrideValueMatheus === '' ? (computedMatheusVal + addedDynamicCosts) : (parseFloat(overrideValueMatheus) || 0);
+    const finalTotalVal = overrideValueMatheus === '' && overrideValuePaschoal === '' && overrideValuePlanning === '' ? (computedTotalVal + addedDynamicCosts) : (finalMatheusVal + paschoalVal + planningVal);
+
     return {
       estimated_hours: defaultEstHours,
-      value_matheus: matheusVal,
+      value_matheus: finalMatheusVal,
       value_planning: planningVal,
       value_paschoal: paschoalVal,
       cost_andrey: andreyVal,
-      total_value: overrideValueMatheus === '' && overrideValuePaschoal === '' && overrideValuePlanning === '' ? computedTotalVal : (matheusVal + paschoalVal + planningVal)
+      total_value: finalTotalVal
     };
   };
 
@@ -1660,7 +1664,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         {/* Dynamic Costs */}
                         {dynamicCosts.map((cost, idx) => (
                           <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-slate-50 p-3 rounded-xl border border-[#E2E8F0]">
-                            <div className="sm:col-span-6">
+                            <div className="sm:col-span-5">
                               <label className="block text-[10px] text-slate-400 mb-1">Descrição / Nome do Custo</label>
                               <input
                                 type="text"
@@ -1675,7 +1679,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                 className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold disabled:bg-slate-100"
                               />
                             </div>
-                            <div className="sm:col-span-4">
+                            <div className="sm:col-span-3">
                               <label className="block text-[10px] text-slate-400 mb-1">Valor (R$)</label>
                               <input
                                 type="number"
@@ -1691,7 +1695,24 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                 className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold text-right disabled:bg-slate-100"
                               />
                             </div>
-                            <div className="sm:col-span-2 text-right">
+                            <div className="sm:col-span-3 flex items-center gap-1.5 pb-1.5">
+                              <input
+                                type="checkbox"
+                                id={`cost_add_${idx}`}
+                                disabled={!canEditFinancials}
+                                checked={!!cost.add_to_total}
+                                onChange={(e) => {
+                                  const updated = [...dynamicCosts];
+                                  updated[idx].add_to_total = e.target.checked;
+                                  setDynamicCosts(updated);
+                                }}
+                                className="w-3.5 h-3.5 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300 disabled:opacity-50"
+                              />
+                              <label htmlFor={`cost_add_${idx}`} className="text-[9px] font-semibold text-slate-500 cursor-pointer disabled:opacity-50 leading-tight">
+                                Somar ao valor final<br/>(Para Dr. Matheus)
+                              </label>
+                            </div>
+                            <div className="sm:col-span-1 text-right">
                               <button
                                 type="button"
                                 disabled={!canEditFinancials}

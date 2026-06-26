@@ -92,7 +92,7 @@ export interface Case {
   cost_allan_solo: number;
   cost_andrey: number;
   cost_andrey_discounted?: boolean;
-  other_internal_costs: { name: string; value: number }[];
+  other_internal_costs: { name: string; value: number; add_to_total?: boolean }[];
   total_value: number;
   paid_value: number;
   remaining_value: number;
