@@ -42,6 +42,16 @@ export const FinanceScreen: React.FC = () => {
   const [avulsoDesc, setAvulsoDesc] = useState('');
   const [avulsoValue, setAvulsoValue] = useState('');
 
+  // Date range for Reports
+  const [reportStartDate, setReportStartDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [reportEndDate, setReportEndDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
+
   useRealtime('cases', () => {
     fetchData();
   });
@@ -433,7 +443,10 @@ export const FinanceScreen: React.FC = () => {
 
   // Report calculations for selected month
   const getReportSummary = () => {
-    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
+    const monthCases = cases.filter(c => {
+      const caseDate = c.created_at.split('T')[0];
+      return caseDate >= reportStartDate && caseDate <= reportEndDate && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue');
+    });
     
     const billedTotal = monthCases.reduce((sum, c) => sum + c.total_value, 0);
     const paidTotal = monthCases.reduce((sum, c) => sum + c.paid_value, 0);
@@ -468,7 +481,10 @@ export const FinanceScreen: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const monthCases = cases.filter(c => c.created_at.startsWith(selectedMonth) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
+    const monthCases = cases.filter(c => {
+      const caseDate = c.created_at.split('T')[0];
+      return caseDate >= reportStartDate && caseDate <= reportEndDate && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue');
+    });
     
     let csvContent = '\uFEFF'; // UTF-8 BOM
     csvContent += `Data Recebido;Data Entrega;Feito por;Cliente;Paciente;Tipo;Valor Matheus;Valor Planning;Valor Paschoal;Valor Total;Status;Elementos;Observações\n`;
@@ -480,10 +496,10 @@ export const FinanceScreen: React.FC = () => {
       const cliente = dentists.find(d => d.id === c.dentist_id)?.full_name || 'Desconhecido';
       const paciente = c.patient_name;
       const tipo = getServiceNames(c);
-      const valMatheus = c.value_matheus.toFixed(2).replace('.', ',');
-      const valPlanning = c.value_planning.toFixed(2).replace('.', ',');
-      const valPaschoal = c.value_paschoal.toFixed(2).replace('.', ',');
-      const valTotal = c.total_value.toFixed(2).replace('.', ',');
+      const valMatheus = (c.value_matheus || 0).toFixed(2).replace('.', ',');
+      const valPlanning = (c.value_planning || 0).toFixed(2).replace('.', ',');
+      const valPaschoal = (c.value_paschoal || 0).toFixed(2).replace('.', ',');
+      const valTotal = (c.total_value || 0).toFixed(2).replace('.', ',');
       const statusText = c.status === 'em_analise' ? 'Aguardando Análise' : c.status;
       const elementos = c.teeth_selection.teeth.join(', ');
       const observacoes = c.dentist_notes || '';
@@ -521,21 +537,30 @@ export const FinanceScreen: React.FC = () => {
 
     const start = new Date(chartStartDate + '-01');
     const end = new Date(chartEndDate + '-01');
-    const data: { name: string; matheus: number; paschoal: number; total: number }[] = [];
+    const data: { name: string; matheus: number; planning: number; paschoal: number; custos_internos: number; total: number }[] = [];
 
     const current = new Date(start);
     while (current <= end) {
       const ym = current.toISOString().slice(0, 7);
       const monthCases = cases.filter(c => c.created_at.startsWith(ym) && c.status !== 'cancelado' && (showUndeliveredCases || c.status === 'entregue'));
 
-      const matheus = monthCases.reduce((s, c) => s + c.value_matheus, 0);
-      const paschoal = monthCases.reduce((s, c) => s + c.value_paschoal, 0);
-      const total = monthCases.reduce((s, c) => s + c.total_value, 0);
+      const matheus = monthCases.reduce((s, c) => s + (c.value_matheus || 0), 0);
+      const planning = monthCases.reduce((s, c) => s + (c.value_planning || 0), 0);
+      const paschoal = monthCases.reduce((s, c) => s + (c.value_paschoal || 0), 0);
+      const andrey = monthCases.reduce((s, c) => s + (c.cost_andrey || 0), 0);
+      const otherCosts = monthCases.reduce((sum, c) => {
+        const caseOther = c.other_internal_costs || [];
+        return sum + caseOther.reduce((s, o) => s + (o.value || 0), 0);
+      }, 0);
+      const custos_internos = andrey + otherCosts;
+      const total = monthCases.reduce((s, c) => s + (c.total_value || 0), 0);
 
       data.push({
         name: `${monthNames[current.getMonth()]}/${String(current.getFullYear()).slice(2)}`,
         matheus,
+        planning,
         paschoal,
+        custos_internos,
         total
       });
 
@@ -1114,7 +1139,24 @@ export const FinanceScreen: React.FC = () => {
         /* GENERAL MONTHLY REPORT TAB */
         <div className="space-y-6 animate-fade-in">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">Métricas Detalhadas do Mês</h3>
+            <div className="flex flex-col">
+              <h3 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">Métricas Detalhadas</h3>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="date"
+                  value={reportStartDate}
+                  onChange={(e) => setReportStartDate(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+                <span className="text-xs font-bold text-slate-400">até</span>
+                <input
+                  type="date"
+                  value={reportEndDate}
+                  onChange={(e) => setReportEndDate(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+            </div>
             <button
               onClick={handleExportCSV}
               className="px-3.5 py-2 bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
@@ -1260,7 +1302,9 @@ export const FinanceScreen: React.FC = () => {
                     formatter={(value: any, name: any) => {
                       const labels: Record<string, string> = {
                         matheus: 'Dr. Matheus',
+                        planning: 'Planning',
                         paschoal: 'Dr. Paschoal',
+                        custos_internos: 'Custos Internos',
                         total: 'Total Faturado'
                       };
                       return [`R$ ${value.toFixed(2)}`, labels[name] || name];
@@ -1270,7 +1314,9 @@ export const FinanceScreen: React.FC = () => {
                     formatter={(value: string) => {
                       const labels: Record<string, string> = {
                         matheus: 'Dr. Matheus',
+                        planning: 'Planning',
                         paschoal: 'Dr. Paschoal',
+                        custos_internos: 'Custos Internos',
                         total: 'Total Faturado'
                       };
                       return labels[value] || value;
@@ -1278,7 +1324,9 @@ export const FinanceScreen: React.FC = () => {
                     wrapperStyle={{ fontSize: '10px', fontWeight: 700 }}
                   />
                   <Bar dataKey="matheus" fill="#0F766E" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="planning" fill="#F59E0B" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="paschoal" fill="#0EA5E9" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="custos_internos" fill="#EF4444" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="total" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
