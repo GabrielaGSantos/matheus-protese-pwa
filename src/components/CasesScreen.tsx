@@ -399,7 +399,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     const andreyVal = costAndrey === '' || costAndrey === '0' ? computedAndreyVal : parseFloat(costAndrey) || 0;
 
     const addedDynamicCosts = dynamicCosts.reduce((s, c) => s + (c.add_to_total ? (parseFloat(String(c.value)) || 0) : 0), 0);
-    const finalMatheusVal = overrideValueMatheus === '' ? (computedMatheusVal + addedDynamicCosts) : (parseFloat(overrideValueMatheus) || 0);
+    const baseMatheusVal = overrideValueMatheus === '' ? computedMatheusVal : (parseFloat(overrideValueMatheus) || 0);
+    const finalMatheusVal = baseMatheusVal + addedDynamicCosts;
     const finalTotalVal = overrideValueMatheus === '' && overrideValuePaschoal === '' && overrideValuePlanning === '' ? (computedTotalVal + addedDynamicCosts) : (finalMatheusVal + paschoalVal + planningVal);
 
     return {
