@@ -106,7 +106,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [dynamicCosts, setDynamicCosts] = useState<{ name: string; value: number; add_to_total?: boolean }[]>([]);
   const [paidValue, setPaidValue] = useState('');
   const [isManualPrice, setIsManualPrice] = useState(false);
-  const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'id-desc' | 'id-asc'>('date-desc');
+  const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'insert-desc' | 'insert-asc' | 'id-desc' | 'id-asc'>('insert-desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCaseIds, setSelectedCaseIds] = useState<Record<string, boolean>>({});
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -798,11 +798,17 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   });
 
   const sortedCases = [...filteredCases].sort((a, b) => {
-    if (sortOrder === 'date-desc') {
+    if (sortOrder === 'insert-desc') {
       return b.created_at.localeCompare(a.created_at);
     }
-    if (sortOrder === 'date-asc') {
+    if (sortOrder === 'insert-asc') {
       return a.created_at.localeCompare(b.created_at);
+    }
+    if (sortOrder === 'date-desc') {
+      return b.requested_delivery_date.localeCompare(a.requested_delivery_date);
+    }
+    if (sortOrder === 'date-asc') {
+      return a.requested_delivery_date.localeCompare(b.requested_delivery_date);
     }
     if (sortOrder === 'id-desc') {
       return b.id.localeCompare(a.id);
@@ -2028,8 +2034,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
               onChange={(e) => setSortOrder(e.target.value as any)}
               className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
             >
-              <option value="date-desc">Data (Mais recente)</option>
-              <option value="date-asc">Data (Mais antiga)</option>
+              <option value="insert-desc">Data de Inserção (Mais recente)</option>
+              <option value="insert-asc">Data de Inserção (Mais antiga)</option>
+              <option value="date-desc">Data de Entrega (Mais recente)</option>
+              <option value="date-asc">Data de Entrega (Mais antiga)</option>
               <option value="id-desc">ID do Caso (Z-A)</option>
               <option value="id-asc">ID do Caso (A-Z)</option>
             </select>
