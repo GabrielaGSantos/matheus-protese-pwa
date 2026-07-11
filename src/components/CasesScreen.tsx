@@ -368,6 +368,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     let computedPaschoalVal = 0;
     let computedAndreyVal = 0;
     let computedTotalVal = 0;
+    const servicesBreakdown: { name: string; qty: number; value: number }[] = [];
 
     services.forEach(s => {
       // Find if selected
@@ -401,6 +402,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         if (s.enters_andrey_value) {
           computedAndreyVal += lineAndreyTotal;
         }
+        servicesBreakdown.push({ name: s.name, qty: qtyMultiplier, value: lineTotal });
       }
     });
 
@@ -420,7 +422,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       value_planning: planningVal,
       value_paschoal: paschoalVal,
       cost_andrey: andreyVal,
-      total_value: finalTotalVal
+      total_value: finalTotalVal,
+      breakdown: servicesBreakdown
     };
   };
 
@@ -1637,7 +1640,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           {(() => {
                             const calc = calculateDerivedValues();
                             return (
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              <>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div>
                                   <span className="text-[9px] text-slate-400 block">Matheus</span>
                                   <span className="text-xs font-bold text-slate-900">R$ {calc.value_matheus.toFixed(2)}</span>
@@ -1652,9 +1656,27 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                 </div>
                                 <div>
                                   <span className="text-[9px] text-slate-400 block">Total</span>
-                                  <span className="text-xs font-bold text-emerald-700">R$ {calc.total_value.toFixed(2)}</span>
+                                  <span className="text-xs font-bold text-[#0F766E]">R$ {calc.total_value.toFixed(2)}</span>
                                 </div>
                               </div>
+                              {calc.breakdown.length > 0 && (
+                                <div className="mt-4 pt-3 border-t border-teal-100">
+                                  <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wider mb-2">Detalhamento dos Serviços</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {calc.breakdown.map((item, idx) => (
+                                      <div key={idx} className="flex justify-between items-center bg-white/60 p-2 rounded text-[10px]">
+                                        <span className="text-slate-600 font-medium">
+                                          {item.qty}x {item.name}
+                                        </span>
+                                        <span className="font-bold text-slate-800">
+                                          R$ {item.value.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              </>
                             );
                           })()}
                         </div>
