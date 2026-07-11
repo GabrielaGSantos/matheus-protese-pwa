@@ -632,8 +632,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         selected_services: Object.keys(caseServicesSelected)
           .filter(id => caseServicesSelected[id]?.selected)
           .map(id => {
+            const s = services.find(srv => srv.id === id);
             const qty = caseServicesSelected[id].quantity;
-            return qty > 0 ? `${id}:${qty}` : id;
+            let finalQty = qty;
+            if (s?.billing_type === 'per_element' && qty === 0) {
+              finalQty = teethSelection.teeth.length || 1;
+            }
+            return finalQty > 0 ? `${id}:${finalQty}` : id;
           }),
         is_manual_price: isManualPrice,
         updated_at: new Date().toISOString()
@@ -1472,8 +1477,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                   <input 
                                     type="number"
                                     min="1"
-                                    placeholder={String(teethSelection.teeth.length || 1)}
-                                    value={qty || ''}
+                                    value={qty > 0 ? qty : (teethSelection.teeth.length || 1)}
                                     onChange={(e) => {
                                       const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
                                       setCaseServicesSelected({
@@ -1481,7 +1485,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                                         [s.id]: { selected: true, quantity: val }
                                       });
                                     }}
-                                    className="w-16 px-2 py-1 text-xs border border-slate-200 rounded text-center focus:outline-none focus:border-[#0F766E]"
+                                    className="w-16 px-2 py-1 text-xs border border-slate-200 rounded text-center focus:outline-none focus:border-[#0F766E] text-slate-800 font-semibold"
                                   />
                                 </div>
                               )}
