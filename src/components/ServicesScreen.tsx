@@ -150,62 +150,60 @@ export const ServicesScreen: React.FC = () => {
       return;
     }
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Tabela de Preços - ${dentist.full_name}</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #334155; padding: 40px; }
-          h1 { color: #0F766E; margin-bottom: 5px; font-size: 24px; }
-          p { color: #64748B; margin-top: 0; margin-bottom: 30px; font-size: 14px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #E2E8F0; }
-          th { background-color: #F8FAFC; color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-          td { font-size: 13px; color: #334155; }
-          .price { font-weight: 700; color: #0F766E; text-align: right; }
-          .right { text-align: right; }
-          .type { font-size: 12px; color: #94A3B8; }
-        </style>
-      </head>
-      <body>
-        <h1>Tabela de Preços</h1>
-        <p>Valores exclusivos para Dr(a). ${dentist.full_name}</p>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Procedimento / Serviço</th>
-              <th>Tipo de Cobrança</th>
-              <th class="right">Valor (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${services.filter(s => s.is_active !== false).map(s => {
-              const cp = customPrices.find(p => p.dentist_id === selectedDentistId && p.service_id === s.id);
-              const finalPrice = cp ? cp.custom_value : s.default_value;
-              return \`
-                <tr>
-                  <td>\${s.name}</td>
-                  <td class="type">\${s.billing_type === 'per_element' ? 'Por Elemento' : 'Fixo'}</td>
-                  <td class="price">R$ \${finalPrice.toFixed(2)}</td>
-                </tr>
-              \`;
-            }).join('')}
-          </tbody>
-        </table>
-        
-        <script>
-          window.onload = () => {
-            document.title = "Tabela_Precos_${dentist.full_name.replace(/\\s+/g, '_')}";
-            setTimeout(() => {
-              window.print();
-            }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `;
+    const html = [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <title>Tabela de Preços - ' + dentist.full_name + '</title>',
+      '  <style>',
+      '    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; color: #334155; padding: 40px; }',
+      '    h1 { color: #0F766E; margin-bottom: 5px; font-size: 24px; }',
+      '    p { color: #64748B; margin-top: 0; margin-bottom: 30px; font-size: 14px; }',
+      '    table { width: 100%; border-collapse: collapse; margin-top: 20px; }',
+      '    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #E2E8F0; }',
+      '    th { background-color: #F8FAFC; color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }',
+      '    td { font-size: 13px; color: #334155; }',
+      '    .price { font-weight: 700; color: #0F766E; text-align: right; }',
+      '    .right { text-align: right; }',
+      '    .type { font-size: 12px; color: #94A3B8; }',
+      '  </style>',
+      '</head>',
+      '<body>',
+      '  <h1>Tabela de Preços</h1>',
+      '  <p>Valores exclusivos para Dr(a). ' + dentist.full_name + '</p>',
+      '  <table>',
+      '    <thead>',
+      '      <tr>',
+      '        <th>Procedimento / Serviço</th>',
+      '        <th>Tipo de Cobrança</th>',
+      '        <th class="right">Valor (R$)</th>',
+      '      </tr>',
+      '    </thead>',
+      '    <tbody>',
+      services.filter(s => s.is_active !== false).map(s => {
+        const cp = customPrices.find(p => p.dentist_id === selectedDentistId && p.service_id === s.id);
+        const finalPrice = cp ? cp.custom_value : s.default_value;
+        return (
+          '<tr>' +
+            '<td>' + s.name + '</td>' +
+            '<td class="type">' + (s.billing_type === 'per_element' ? 'Por Elemento' : 'Fixo') + '</td>' +
+            '<td class="price">R$ ' + finalPrice.toFixed(2) + '</td>' +
+          '</tr>'
+        );
+      }).join(''),
+      '    </tbody>',
+      '  </table>',
+      '  <script>',
+      '    window.onload = () => {',
+      '      document.title = "Tabela_Precos_' + dentist.full_name.replace(/\s+/g, '_') + '";',
+      '      setTimeout(() => {',
+      '        window.print();',
+      '      }, 500);',
+      '    };',
+      '  </script>',
+      '</body>',
+      '</html>'
+    ].join('\n');
 
     printWindow.document.write(html);
     printWindow.document.close();
