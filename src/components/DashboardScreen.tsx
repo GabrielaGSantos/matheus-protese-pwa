@@ -355,12 +355,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
         </div>
       )}
 
-      {/* Grid: Alertas e Fila de Produção */}
+      {/* Grid: Alertas, Últimos Casos e Fila de Produção */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
-        {/* Alertas Odontológicos */}
-        <div className="glass-panel p-5 space-y-4">
-          <h4 className="font-bold text-sm text-slate-900 border-b border-[#E2E8F0] pb-2.5">Alertas Laboratoriais</h4>
+        {/* Coluna Esquerda: Alertas e Últimos Casos */}
+        <div className="space-y-5">
+          {/* Alertas Laboratoriais */}
+          <div className="glass-panel p-5 space-y-4">
+            <h4 className="font-bold text-sm text-slate-900 border-b border-[#E2E8F0] pb-2.5">Alertas Laboratoriais</h4>
           
           <div className="space-y-2.5">
             {/* Casos em atraso */}
@@ -401,8 +403,43 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
           </div>
         </div>
 
-        {/* Fila de Produção / Prioridade */}
-        <div className="glass-panel p-5 lg:col-span-2 space-y-4">
+        {/* Últimos Casos Cadastrados */}
+        <div className="glass-panel p-5 space-y-4">
+          <h4 className="font-bold text-sm text-slate-900 border-b border-[#E2E8F0] pb-2.5">Últimos Casos Cadastrados</h4>
+          <div className="space-y-3">
+            {[...cases]
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .slice(0, 2)
+              .map(c => {
+                const dentist = dentists.find(d => d.id === c.dentist_id);
+                return (
+                  <div 
+                    key={c.id} 
+                    className="p-3 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors" 
+                    onClick={() => onSelectCase && onSelectCase(c.id)}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-bold text-xs text-slate-900 truncate max-w-[150px]">{c.patient_name}</span>
+                      <span className="text-[10px] text-slate-500 font-mono shrink-0">{c.id.substring(0, 8)}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-[10px] text-slate-600 truncate max-w-[120px]">{dentist?.full_name || 'Desconhecido'}</span>
+                      <span className="text-[10px] text-slate-500 font-medium bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            {cases.length === 0 && (
+              <div className="text-xs text-slate-500 text-center py-2">Nenhum caso cadastrado.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Fila de Produção / Prioridade */}
+      <div className="glass-panel p-5 lg:col-span-2 space-y-4">
           <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-2.5">
             <h4 className="font-bold text-sm text-slate-900">Fila de Produção e Prazos</h4>
             <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Ordenado por data limite</span>
