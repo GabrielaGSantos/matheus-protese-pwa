@@ -180,7 +180,7 @@ const ALLOWED_CASE_KEYS = [
   'estimated_hours', 'value_matheus', 'value_planning', 'value_paschoal', 'cost_allan_matheus',
   'cost_allan_solo', 'cost_andrey', 'cost_andrey_discounted', 'other_internal_costs',
   'total_value', 'paid_value', 'remaining_value', 'financial_released', 'payment_receipt_url',
-  'pix_key', 'selected_services', 'is_manual_price', 'updated_at'
+  'pix_key', 'selected_services', 'services_quantities', 'is_manual_price', 'updated_at'
 ];
 
 const ALLOWED_PROFILE_KEYS = [

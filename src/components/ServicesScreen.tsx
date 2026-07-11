@@ -170,7 +170,7 @@ export const ServicesScreen: React.FC = () => {
       '</head>',
       '<body>',
       '  <h1>Tabela de Preços</h1>',
-      '  <p>Valores exclusivos para Dr(a). ' + dentist.full_name + '</p>',
+      '  <p>Valores exclusivos para ' + dentist.full_name + '</p>',
       '  <table>',
       '    <thead>',
       '      <tr>',
