@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../services/api';
-import type { Case, Profile, Service, CaseStatus, FinancialStatus, OdontogramSelection, CaseHistory, FileAttachment, CalendarEvent } from '../types';
+import type { Case, Profile, Service, CaseStatus, FinancialStatus, OdontogramSelection, CaseHistory, FileAttachment, CalendarEvent, DentistCustomPrice } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
 import { 
@@ -65,6 +65,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [customPrices, setCustomPrices] = useState<DentistCustomPrice[]>([]);
   
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -247,6 +248,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       const c = await api.cases.list('admin', 'admin-1');
       const p = await api.profiles.list();
       const s = await api.services.list();
+      const cp = await api.customPrices.list();
       
       let ev: CalendarEvent[] = [];
       try {
@@ -260,6 +262,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       const dentistList = p.filter(x => x.role === 'dentist');
       setDentists(dentistList);
       setServices(s);
+      setCustomPrices(cp);
       
       if (dentistList.length > 0) {
         setSelectedDentistId(dentistList[0].id);
@@ -321,13 +324,14 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     const servicesMap: Record<string, { selected: boolean; quantity: number }> = {};
     if (editingCase.selected_services) {
       editingCase.selected_services.forEach(id => {
-        servicesMap[id] = { selected: true, quantity: 1 };
+        const qty = editingCase.services_quantities?.[id] || 0;
+        servicesMap[id] = { selected: true, quantity: qty };
       });
     } else {
       // Fallback match by value or if we don't have selected_services
       const matched = services.find(s => s.default_value === editingCase.total_value);
       if (matched) {
-        servicesMap[matched.id] = { selected: true, quantity: 1 };
+        servicesMap[matched.id] = { selected: true, quantity: 0 };
       }
     }
     setCaseServicesSelected(servicesMap);
@@ -370,15 +374,22 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       const isSelected = caseServicesSelected[s.id]?.selected;
       if (isSelected) {
         const qty = caseServicesSelected[s.id]?.quantity || 1;
-        const serviceValue = s.default_value;
+        const customPriceObj = customPrices.find(cp => cp.dentist_id === selectedDentistId && cp.service_id === s.id);
+        const serviceValue = customPriceObj ? customPriceObj.custom_value : s.default_value;
 
         // Multiply by quantity if element-based
-        const qtyMultiplier = s.billing_type === 'per_element' ? (teethSelection.teeth.length || 1) : 1;
-        const lineTotal = serviceValue * qty * qtyMultiplier;
-        const linePaschoalTotal = (s.default_paschoal_value || 0) * qty * qtyMultiplier;
-        const lineAndreyTotal = (s.default_andrey_value || 0) * qty * qtyMultiplier;
+        let qtyMultiplier = 1;
+        if (s.billing_type === 'per_element') {
+          qtyMultiplier = qty > 0 ? qty : (teethSelection.teeth.length || 1);
+        } else {
+          qtyMultiplier = qty > 0 ? qty : 1;
+        }
 
-        defaultEstHours += s.default_estimated_time * qty * qtyMultiplier;
+        const lineTotal = serviceValue * qtyMultiplier;
+        const linePaschoalTotal = (s.default_paschoal_value || 0) * qtyMultiplier;
+        const lineAndreyTotal = (s.default_andrey_value || 0) * qtyMultiplier;
+
+        defaultEstHours += s.default_estimated_time * qtyMultiplier;
         computedTotalVal += lineTotal;
 
         if (s.enters_matheus_value) {
@@ -614,6 +625,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         drive_scan_folder_id: editingCase?.drive_scan_folder_id,
         drive_case_folder_url: editingCase?.drive_case_folder_url,
         selected_services: Object.keys(caseServicesSelected).filter(id => caseServicesSelected[id]?.selected),
+        services_quantities: Object.keys(caseServicesSelected).reduce((acc, id) => {
+          if (caseServicesSelected[id]?.selected && caseServicesSelected[id]?.quantity > 0) {
+            acc[id] = caseServicesSelected[id].quantity;
+          }
+          return acc;
+        }, {} as Record<string, number>),
         is_manual_price: isManualPrice,
         updated_at: new Date().toISOString()
       };
@@ -1419,27 +1436,49 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                           const isSelected = caseServicesSelected[s.id]?.selected || false;
                           const qty = caseServicesSelected[s.id]?.quantity || 1;
                           return (
-                            <div key={s.id} className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all">
-                              <div className="flex items-center gap-2.5">
-                                <input
-                                  type="checkbox"
-                                  id={`serv-${s.id}`}
-                                  checked={isSelected}
-                                  onChange={(e) => {
-                                    setCaseServicesSelected({
-                                      ...caseServicesSelected,
-                                      [s.id]: { selected: e.target.checked, quantity: qty }
-                                    });
-                                  }}
-                                  className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
-                                />
-                                <label htmlFor={`serv-${s.id}`} className="text-xs font-medium text-slate-700 cursor-pointer">
-                                  {s.name}
-                                </label>
+                            <div key={s.id} className="flex flex-col gap-2 p-2.5 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                  <input
+                                    type="checkbox"
+                                    id={`serv-${s.id}`}
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      setCaseServicesSelected({
+                                        ...caseServicesSelected,
+                                        [s.id]: { selected: e.target.checked, quantity: qty }
+                                      });
+                                    }}
+                                    className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E] border-slate-300"
+                                  />
+                                  <label htmlFor={`serv-${s.id}`} className="text-xs font-medium text-slate-700 cursor-pointer">
+                                    {s.name}
+                                  </label>
+                                </div>
+                                {isSelected && (
+                                  <div className="text-[10px] px-2.5 py-1 text-slate-400 font-bold uppercase tracking-wider bg-slate-50 border border-[#E2E8F0] rounded-lg">
+                                    Selecionado
+                                  </div>
+                                )}
                               </div>
-                              {isSelected && (
-                                <div className="text-[10px] px-2.5 py-1 text-slate-400 font-bold uppercase tracking-wider bg-slate-50 border border-[#E2E8F0] rounded-lg">
-                                  Selecionado
+                              
+                              {isSelected && s.billing_type === 'per_element' && (
+                                <div className="pl-6 flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-slate-500 font-semibold">Qtd de elementos:</span>
+                                  <input 
+                                    type="number"
+                                    min="1"
+                                    placeholder={String(teethSelection.teeth.length || 1)}
+                                    value={qty || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                                      setCaseServicesSelected({
+                                        ...caseServicesSelected,
+                                        [s.id]: { selected: true, quantity: val }
+                                      });
+                                    }}
+                                    className="w-16 px-2 py-1 text-xs border border-slate-200 rounded text-center focus:outline-none focus:border-[#0F766E]"
+                                  />
                                 </div>
                               )}
                             </div>
