@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Service, Profile, DentistCustomPrice } from '../types';
-import { Search, Plus, Save, Edit, X } from 'lucide-react';
+import { Search, Plus, Save, Edit, X, Printer } from 'lucide-react';
 import { useRealtime } from '../hooks/useRealtime';
 
 export const ServicesScreen: React.FC = () => {
@@ -138,6 +138,77 @@ export const ServicesScreen: React.FC = () => {
         alert('Erro ao desativar o serviço. Detalhes: ' + (err.message || 'Falha de comunicação.'));
       }
     }
+  };
+
+  const handlePrintPrices = () => {
+    const dentist = dentists.find(d => d.id === selectedDentistId);
+    if (!dentist) return;
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Por favor, permita popups para gerar o PDF da tabela de preços.');
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Tabela de Preços - ${dentist.full_name}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #334155; padding: 40px; }
+          h1 { color: #0F766E; margin-bottom: 5px; font-size: 24px; }
+          p { color: #64748B; margin-top: 0; margin-bottom: 30px; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #E2E8F0; }
+          th { background-color: #F8FAFC; color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+          td { font-size: 13px; color: #334155; }
+          .price { font-weight: 700; color: #0F766E; text-align: right; }
+          .right { text-align: right; }
+          .type { font-size: 12px; color: #94A3B8; }
+        </style>
+      </head>
+      <body>
+        <h1>Tabela de Preços</h1>
+        <p>Valores exclusivos para Dr(a). ${dentist.full_name}</p>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Procedimento / Serviço</th>
+              <th>Tipo de Cobrança</th>
+              <th class="right">Valor (R$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${services.filter(s => s.is_active !== false).map(s => {
+              const cp = customPrices.find(p => p.dentist_id === selectedDentistId && p.service_id === s.id);
+              const finalPrice = cp ? cp.custom_value : s.default_value;
+              return \`
+                <tr>
+                  <td>\${s.name}</td>
+                  <td class="type">\${s.billing_type === 'per_element' ? 'Por Elemento' : 'Fixo'}</td>
+                  <td class="price">R$ \${finalPrice.toFixed(2)}</td>
+                </tr>
+              \`;
+            }).join('')}
+          </tbody>
+        </table>
+        
+        <script>
+          window.onload = () => {
+            document.title = "Tabela_Precos_${dentist.full_name.replace(/\\s+/g, '_')}";
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const handleEditServiceClick = (s: Service) => {
@@ -570,20 +641,30 @@ export const ServicesScreen: React.FC = () => {
               </p>
             </div>
             
-            {/* Dentist Select */}
-            <div className="w-full sm:w-72">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Dentista Cliente
-              </label>
-              <select
-                value={selectedDentistId}
-                onChange={(e) => setSelectedDentistId(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
+            {/* Dentist Select and Print */}
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3 sm:items-end">
+              <div className="w-full sm:w-72">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Dentista Cliente
+                </label>
+                <select
+                  value={selectedDentistId}
+                  onChange={(e) => setSelectedDentistId(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-[10px] bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
+                >
+                  {dentists.map(d => (
+                    <option key={d.id} value={d.id}>{d.full_name}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={handlePrintPrices}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-[10px] text-xs transition-all border border-slate-200 flex items-center justify-center gap-2 h-[38px]"
+                title="Gerar PDF da tabela de preços deste dentista"
               >
-                {dentists.map(d => (
-                  <option key={d.id} value={d.id}>{d.full_name}</option>
-                ))}
-              </select>
+                <Printer size={14} />
+                <span className="hidden sm:inline">Baixar PDF</span>
+              </button>
             </div>
           </div>
 
