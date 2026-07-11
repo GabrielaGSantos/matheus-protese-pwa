@@ -866,6 +866,7 @@ export const FinanceScreen: React.FC = () => {
                                 </th>
                                 <th className="p-3">ID do Caso</th>
                                 <th className="p-3">Paciente</th>
+                                <th className="p-3">Data Entrega</th>
                                 <th className="p-3">Status Clínico</th>
                                 <th className="p-3">Status Financeiro</th>
                                 <th className="p-3">Total</th>
@@ -877,7 +878,7 @@ export const FinanceScreen: React.FC = () => {
                             <tbody className="divide-y divide-[#E2E8F0]">
                                {pendingCases.length === 0 ? (
                                 <tr>
-                                  <td colSpan={8} className="p-4 text-center text-[#94A3B8] text-xs font-semibold">
+                                  <td colSpan={9} className="p-4 text-center text-[#94A3B8] text-xs font-semibold">
                                     {showAllOutstanding ? 'Todos os casos deste período já estão quitados!' : 'Todos os casos deste mês já estão quitados!'}
                                   </td>
                                 </tr>
@@ -904,6 +905,11 @@ export const FinanceScreen: React.FC = () => {
                                     </td>
                                     <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
                                     <td className="p-3 font-semibold text-slate-900">{c.patient_name}</td>
+                                    <td className="p-3 font-medium text-slate-600 whitespace-nowrap">
+                                      {c.final_delivery_date 
+                                        ? new Date(c.final_delivery_date).toLocaleDateString('pt-BR') 
+                                        : (c.requested_delivery_date ? new Date(c.requested_delivery_date).toLocaleDateString('pt-BR') : '-')}
+                                    </td>
                                     <td className="p-3">
                                       <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-bold text-[9px] uppercase tracking-wide text-slate-600">
                                         {c.status}
