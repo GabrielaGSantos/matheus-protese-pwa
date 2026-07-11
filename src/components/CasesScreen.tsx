@@ -373,7 +373,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       // Find if selected
       const isSelected = caseServicesSelected[s.id]?.selected;
       if (isSelected) {
-        const qty = caseServicesSelected[s.id]?.quantity || 1;
+        const qty = caseServicesSelected[s.id]?.quantity || 0;
         const customPriceObj = customPrices.find(cp => cp.dentist_id === selectedDentistId && cp.service_id === s.id);
         const serviceValue = customPriceObj ? customPriceObj.custom_value : s.default_value;
 
@@ -1434,7 +1434,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-[#E2E8F0]">
                         {services.filter(s => s.is_active !== false || caseServicesSelected[s.id]?.selected).map(s => {
                           const isSelected = caseServicesSelected[s.id]?.selected || false;
-                          const qty = caseServicesSelected[s.id]?.quantity || 1;
+                          const qty = caseServicesSelected[s.id]?.quantity || 0;
                           return (
                             <div key={s.id} className="flex flex-col gap-2 p-2.5 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all">
                               <div className="flex items-center justify-between">
