@@ -323,8 +323,10 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     // Populate selected services
     const servicesMap: Record<string, { selected: boolean; quantity: number }> = {};
     if (editingCase.selected_services) {
-      editingCase.selected_services.forEach(id => {
-        const qty = editingCase.services_quantities?.[id] || 0;
+      editingCase.selected_services.forEach(str => {
+        const parts = str.split(':');
+        const id = parts[0];
+        const qty = parts.length > 1 ? parseInt(parts[1], 10) : 0;
         servicesMap[id] = { selected: true, quantity: qty };
       });
     } else {
@@ -627,13 +629,12 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         drive_images_folder_id: editingCase?.drive_images_folder_id,
         drive_scan_folder_id: editingCase?.drive_scan_folder_id,
         drive_case_folder_url: editingCase?.drive_case_folder_url,
-        selected_services: Object.keys(caseServicesSelected).filter(id => caseServicesSelected[id]?.selected),
-        services_quantities: Object.keys(caseServicesSelected).reduce((acc, id) => {
-          if (caseServicesSelected[id]?.selected && caseServicesSelected[id]?.quantity > 0) {
-            acc[id] = caseServicesSelected[id].quantity;
-          }
-          return acc;
-        }, {} as Record<string, number>),
+        selected_services: Object.keys(caseServicesSelected)
+          .filter(id => caseServicesSelected[id]?.selected)
+          .map(id => {
+            const qty = caseServicesSelected[id].quantity;
+            return qty > 0 ? `${id}:${qty}` : id;
+          }),
         is_manual_price: isManualPrice,
         updated_at: new Date().toISOString()
       };

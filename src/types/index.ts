@@ -100,7 +100,6 @@ export interface Case {
   payment_receipt_url?: string;
   pix_key?: string;
   selected_services?: string[];
-  services_quantities?: Record<string, number>;
   is_manual_price?: boolean;
   updated_at: string;
 }

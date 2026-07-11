@@ -82,7 +82,10 @@ export const FinanceScreen: React.FC = () => {
       return matched ? matched.name : 'Outro';
     }
     return caseItem.selected_services
-      .map(id => services.find(s => s.id === id)?.name)
+      .map(str => {
+        const id = str.split(':')[0];
+        return services.find(s => s.id === id)?.name;
+      })
       .filter(Boolean)
       .join(', ');
   };
