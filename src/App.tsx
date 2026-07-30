@@ -8,6 +8,7 @@ import { DentistsScreen } from './components/DentistsScreen';
 import { ServicesScreen } from './components/ServicesScreen';
 import { FinanceScreen } from './components/FinanceScreen';
 import { AgendaScreen } from './components/AgendaScreen';
+import { ChartsScreen } from './components/ChartsScreen';
 import { DentistDashboard } from './components/DentistDashboard';
 import { LogsScreen } from './components/LogsScreen';
 import { SettingsScreen } from './components/SettingsScreen';
@@ -192,6 +193,8 @@ const AppContent: React.FC = () => {
           return <FinanceScreen />;
         case 'agenda':
           return <AgendaScreen onSelectCase={handleSelectCase} />;
+        case 'charts':
+          return <ChartsScreen />;
         case 'logs':
           return <LogsScreen />;
         case 'notes':

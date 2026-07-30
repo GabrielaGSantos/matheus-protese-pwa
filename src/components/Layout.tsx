@@ -17,7 +17,8 @@ import {
   KeyRound,
   Bell,
   Settings,
-  StickyNote
+  StickyNote,
+  BarChart2
 } from 'lucide-react';
 import { notificationService } from '../services/notifications';
 import type { AppNotification } from '../types';
@@ -111,6 +112,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentTab, setCurrent
     { id: 'services', label: 'Serviços', icon: Wrench },
     { id: 'finance', label: 'Financeiro & Cobrança', icon: DollarSign },
     { id: 'agenda', label: 'Agenda & Produção', icon: Calendar },
+    { id: 'charts', label: 'Gráficos & Análises', icon: BarChart2 },
     { id: 'notes', label: 'Bloco de Notas', icon: StickyNote },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ] : [
