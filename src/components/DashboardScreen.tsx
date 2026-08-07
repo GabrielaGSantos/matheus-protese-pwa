@@ -313,6 +313,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
                 <tr>
                   <th className="p-3">ID do Caso</th>
                   <th className="p-3">Paciente</th>
+                  <th className="p-3 text-center">Elementos</th>
                   <th className="p-3">Dentista Requisitante</th>
                   <th className="p-3">Prazo Solicitado</th>
                   <th className="p-3">Observações Clínicas</th>
@@ -330,6 +331,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
                     >
                       <td className="p-3 font-semibold text-slate-800 font-mono text-[11px]">{c.id}</td>
                       <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
+                      <td className="p-3 text-center font-bold text-slate-700">{c.teeth_selection?.teeth?.length || 0}</td>
                       <td className="p-3 text-slate-600 font-medium">{dentist?.full_name || 'Desconhecido'}</td>
                       <td className="p-3 text-slate-500">
                         {c.requested_delivery_date ? new Date(c.requested_delivery_date).toLocaleDateString('pt-BR') : 'A definir'}
@@ -451,6 +453,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
                 <tr>
                   <th className="p-3">ID</th>
                   <th className="p-3">Paciente</th>
+                  <th className="p-3 text-center">Elementos</th>
                   <th className="p-3">Dentista</th>
                   <th className="p-3 text-center">Tempo Est.</th>
                   <th className="p-3">Data Limite</th>
@@ -476,6 +479,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
                       >
                         <td className="p-3 font-semibold text-slate-800 font-mono text-[10px]">{c.id}</td>
                         <td className="p-3 font-bold text-slate-900">{c.patient_name}</td>
+                        <td className="p-3 text-center font-bold text-slate-700">{c.teeth_selection?.teeth?.length || 0}</td>
                         <td className="p-3 text-slate-600 font-medium">{dentist?.full_name}</td>
                         <td className="p-3 text-center text-slate-600 font-medium">
                           {formatEstimatedTime(c.estimated_hours)}
