@@ -2242,6 +2242,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                   <th className="p-3.5">ID do Caso</th>
                   <th className="p-3.5">Dentista</th>
                   <th className="p-3.5">Paciente</th>
+                  <th className="p-3.5 text-center">Elementos</th>
                   <th className="p-3.5">Status Clínico</th>
                   <th className="p-3.5">Status Financeiro</th>
                   <th className="p-3.5 text-center">Entrega Final</th>
@@ -2272,6 +2273,7 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                         <td className="p-3.5 font-semibold text-slate-800 font-mono text-[11px]">{c.case_number || c.id}</td>
                         <td className="p-3.5 text-slate-600 font-medium">{dentist?.full_name || 'Desconhecido'}</td>
                         <td className="p-3.5 font-bold text-[#0F172A]">{c.patient_name}</td>
+                        <td className="p-3.5 text-center font-bold text-slate-700">{c.teeth_selection?.teeth?.length || 0}</td>
                         <td className="p-3.5">{getStatusBadge(c.status)}</td>
                         <td className="p-3.5">
                           <div className="flex flex-col gap-1.5 items-start">
@@ -2363,7 +2365,11 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
                       </button>
                     </div>
  
-                    <div className="grid grid-cols-2 gap-2 text-xs py-3 border-t border-b border-[#E2E8F0]">
+                    <div className="grid grid-cols-3 gap-2 text-xs py-3 border-t border-b border-[#E2E8F0]">
+                      <div>
+                        <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Elementos</span>
+                        <span className="inline-block mt-0.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-extrabold">{c.teeth_selection?.teeth?.length || 0}</span>
+                      </div>
                       <div>
                         <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Status</span>
                         {getStatusBadge(c.status)}
