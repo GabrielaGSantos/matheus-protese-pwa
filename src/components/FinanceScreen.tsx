@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { notificationService } from '../services/notifications';
-import type { Case, Profile, Service } from '../types';
+import type { Case, Profile, Service, FinancialStatus } from '../types';
 import { 
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
-  TrendingUp, ShieldCheck, X, Download, CalendarRange 
+  TrendingUp, ShieldCheck, X, Download, CalendarRange, Tag 
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useRealtime } from '../hooks/useRealtime';
@@ -30,6 +30,12 @@ export const FinanceScreen: React.FC = () => {
   // Edit Payment modal state
   const [editingPaymentCase, setEditingPaymentCase] = useState<Case | null>(null);
   const [editPaymentValue, setEditPaymentValue] = useState('');
+
+  // Bulk financial status modal state
+  const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
+  const [selectedBulkStatus, setSelectedBulkStatus] = useState<FinancialStatus>('aguardando_pagamento');
+  const [casesForBulkStatus, setCasesForBulkStatus] = useState<Case[]>([]);
+  const [isUpdatingBulkStatus, setIsUpdatingBulkStatus] = useState(false);
 
   // Clipboard feedback state
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -198,6 +204,49 @@ export const FinanceScreen: React.FC = () => {
     } catch (err) {
       console.error(err);
       alert('Erro ao liberar valores em lote.');
+    }
+  };
+
+  const handleApplyBulkFinancialStatus = async () => {
+    if (casesForBulkStatus.length === 0) return;
+    setIsUpdatingBulkStatus(true);
+    try {
+      for (const c of casesForBulkStatus) {
+        let newPaid = c.paid_value;
+        let newRemaining = c.remaining_value;
+
+        if (selectedBulkStatus === 'pago') {
+          newPaid = c.total_value;
+          newRemaining = 0;
+        } else if (selectedBulkStatus === 'isento') {
+          newPaid = 0;
+          newRemaining = 0;
+        } else if (selectedBulkStatus === 'cobrar') {
+          newPaid = 0;
+          newRemaining = c.total_value;
+        } else if (selectedBulkStatus === 'aguardando_pagamento') {
+          newRemaining = Math.max(0, c.total_value - (c.paid_value || 0));
+        }
+
+        const updatedCase: Case = {
+          ...c,
+          financial_status: selectedBulkStatus,
+          paid_value: newPaid,
+          remaining_value: newRemaining,
+          updated_at: new Date().toISOString()
+        };
+        await api.cases.save(updatedCase, 'admin-1');
+      }
+      alert(`✅ Status financeiro alterado com sucesso para ${casesForBulkStatus.length} caso(s)!`);
+      setBulkStatusModalOpen(false);
+      setCasesForBulkStatus([]);
+      setSelectedFinanceCaseIds({});
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao alterar status financeiro em lote.');
+    } finally {
+      setIsUpdatingBulkStatus(false);
     }
   };
 
@@ -815,7 +864,7 @@ export const FinanceScreen: React.FC = () => {
                           </div>
 
                           {pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length > 0 && (
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => {
                                   const selectedCases = pendingCases.filter(c => selectedFinanceCaseIds[c.id]);
@@ -825,6 +874,18 @@ export const FinanceScreen: React.FC = () => {
                               >
                                 <ShieldCheck size={12} />
                                 Liberar em Lote ({pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length})
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const selectedCases = pendingCases.filter(c => selectedFinanceCaseIds[c.id]);
+                                  setCasesForBulkStatus(selectedCases);
+                                  setSelectedBulkStatus('aguardando_pagamento');
+                                  setBulkStatusModalOpen(true);
+                                }}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer animate-fade-in"
+                              >
+                                <Tag size={12} />
+                                Mudar Status ({pendingCases.filter(c => selectedFinanceCaseIds[c.id]).length})
                               </button>
                               <button
                                 onClick={() => {
@@ -1103,7 +1164,7 @@ export const FinanceScreen: React.FC = () => {
               <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative">
                 <button
                   onClick={() => setEditingPaymentCase(null)}
-                  className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all"
+                  className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -1142,18 +1203,107 @@ export const FinanceScreen: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingPaymentCase(null)}
-                      className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all"
+                      className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all cursor-pointer"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all"
+                      className="bg-[#0F766E] hover:bg-[#115E59] text-white font-semibold px-3.5 py-2 rounded-lg text-xs transition-all cursor-pointer"
                     >
                       Salvar Correção
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Financial Status Modal overlay */}
+          {bulkStatusModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-[0_4px_24px_rgba(15,23,42,0.08)] p-6 relative animate-fade-in">
+                <button
+                  onClick={() => {
+                    setBulkStatusModalOpen(false);
+                    setCasesForBulkStatus([]);
+                  }}
+                  className="absolute top-4 right-4 p-1.5 rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+
+                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <Tag size={16} className="text-amber-500" />
+                  Mudar Status Financeiro em Lote
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-4">
+                  Selecione o novo status financeiro para os <strong>{casesForBulkStatus.length} caso(s)</strong> selecionado(s):
+                </p>
+
+                <div className="space-y-2 mb-5">
+                  {[
+                    { id: 'cobrar', label: 'Cobrar', desc: 'Pendente de cobrança / emitir fatura', badge: 'bg-amber-100 text-amber-700' },
+                    { id: 'aguardando_pagamento', label: 'Aguardando Pagamento', desc: 'Cobrança enviada ao dentista parceiro', badge: 'bg-amber-100 text-amber-700' },
+                    { id: 'pago_parcial', label: 'Pago Parcial', desc: 'Pagamento parcial em aberto', badge: 'bg-sky-100 text-sky-700' },
+                    { id: 'pago', label: 'Pago', desc: 'Dar baixa total / quitar casos selecionados', badge: 'bg-emerald-100 text-emerald-700' },
+                    { id: 'isento', label: 'Isento', desc: 'Isentar casos de pagamento', badge: 'bg-slate-100 text-slate-700' },
+                    { id: 'cancelado', label: 'Cancelado', desc: 'Cancelar casos financeiramente', badge: 'bg-rose-100 text-rose-700' },
+                  ].map((opt) => {
+                    const isSelected = selectedBulkStatus === opt.id;
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => setSelectedBulkStatus(opt.id as FinancialStatus)}
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-[#0F766E] bg-[#0F766E]/5 ring-1 ring-[#0F766E]'
+                            : 'border-[#E2E8F0] bg-white hover:bg-slate-50/80 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="radio"
+                            name="bulkFinancialStatus"
+                            value={opt.id}
+                            checked={isSelected}
+                            onChange={() => setSelectedBulkStatus(opt.id as FinancialStatus)}
+                            className="w-4 h-4 text-[#0F766E] focus:ring-[#0F766E] border-slate-300 cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">{opt.label}</div>
+                            <div className="text-[10px] text-slate-500">{opt.desc}</div>
+                          </div>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${opt.badge}`}>
+                          {opt.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E2E8F0]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBulkStatusModalOpen(false);
+                      setCasesForBulkStatus([]);
+                    }}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-[#E2E8F0] hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isUpdatingBulkStatus}
+                    onClick={handleApplyBulkFinancialStatus}
+                    className="bg-[#0F766E] hover:bg-[#115E59] text-white font-bold px-4 py-2 rounded-lg text-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
+                  >
+                    <Check size={14} />
+                    {isUpdatingBulkStatus ? 'Atualizando...' : `Aplicar a ${casesForBulkStatus.length} caso(s)`}
+                  </button>
+                </div>
               </div>
             </div>
           )}
