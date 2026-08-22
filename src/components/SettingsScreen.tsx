@@ -416,6 +416,7 @@ export const SettingsScreen: React.FC = () => {
               financial_status: financialStatus,
               teeth_selection: { teeth: [], type: 'individual' },
               dentist_notes: String(row['Observações'] || row['dentist_notes'] || ''),
+              internal_notes: `Feito por: ${row['Feito por'] || 'N/A'}\nTipo: ${row['Tipo'] || 'N/A'}`,
               has_photo: false,
               has_file: false,
               estimated_hours: 0,

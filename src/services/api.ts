@@ -174,7 +174,7 @@ const ALLOWED_NOTE_KEYS = [
 const ALLOWED_CASE_KEYS = [
   'id', 'case_number', 'dentist_id', 'patient_name', 'created_at', 'requested_delivery_date',
   'final_delivery_date', 'status', 'financial_status', 'teeth_selection',
-  'dentist_notes', 'has_photo', 'has_file', 'google_drive_folder_id', 'google_drive_folder_url',
+  'dentist_notes', 'internal_notes', 'has_photo', 'has_file', 'google_drive_folder_id', 'google_drive_folder_url',
   'drive_status', 'drive_dentist_folder_id', 'drive_case_folder_id', 'drive_images_folder_id',
   'drive_scan_folder_id', 'drive_result_folder_id', 'drive_case_folder_url', 'drive_error_message',
   'estimated_hours', 'value_matheus', 'value_planning', 'value_paschoal', 'cost_allan_matheus',
@@ -771,6 +771,38 @@ export const api = {
       const { data, error } = await query;
 
       if (error) throw error;
+
+      // Fallback: If any cases have empty internal_notes, check if there are linked notes in internal_notes table
+      if (data && data.length > 0) {
+        try {
+          const casesWithoutNotes = data.filter(c => !c.internal_notes);
+          if (casesWithoutNotes.length > 0) {
+            const caseIds = casesWithoutNotes.map(c => c.id);
+            const { data: linkedNotes } = await supabase!
+              .from('internal_notes')
+              .select('case_id, content, note, created_at')
+              .in('case_id', caseIds)
+              .order('created_at', { ascending: false });
+
+            if (linkedNotes && linkedNotes.length > 0) {
+              const notesByCaseId = new Map<string, string>();
+              for (const n of linkedNotes) {
+                if (n.case_id && !notesByCaseId.has(n.case_id)) {
+                  notesByCaseId.set(n.case_id, n.content || n.note || '');
+                }
+              }
+              for (const c of data) {
+                if (!c.internal_notes && notesByCaseId.has(c.id)) {
+                  c.internal_notes = notesByCaseId.get(c.id);
+                }
+              }
+            }
+          }
+        } catch (noteErr) {
+          console.warn('Erro ao mesclar notas vinculadas:', noteErr);
+        }
+      }
+
       return data;
     },
 
@@ -813,6 +845,22 @@ export const api = {
         .eq('id', id)
         .single();
       if (error) return null;
+
+      if (data && !data.internal_notes) {
+        try {
+          const { data: linkedNotes } = await supabase!
+            .from('internal_notes')
+            .select('content, note')
+            .eq('case_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (linkedNotes && linkedNotes.length > 0) {
+            data.internal_notes = linkedNotes[0].content || linkedNotes[0].note || '';
+          }
+        } catch (noteErr) {
+          console.warn('Erro ao buscar nota vinculada para o caso:', noteErr);
+        }
+      }
 
       if (data && currentUser) {
         const isAllowed = currentUser.role === 'admin' || currentUser.role === 'secretary' || data.dentist_id === currentUser.id;
@@ -865,11 +913,24 @@ export const api = {
       // Record history
       recordActivity(isEdit ? 'edit' : 'create', data.id, JSON.parse(JSON.stringify(data)), null);
       
-      // Save internal notes dynamically if present
+      // Save/update internal notes dynamically if present
       if (notesContent && notesContent.trim() !== '') {
         try {
+          let existingNoteId = '';
+          if (caseItem.id) {
+            const { data: existingNotes } = await supabase!
+              .from('internal_notes')
+              .select('id')
+              .eq('case_id', caseItem.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (existingNotes && existingNotes.length > 0) {
+              existingNoteId = existingNotes[0].id;
+            }
+          }
+
           await api.notes.save({
-            id: '',
+            id: existingNoteId,
             case_id: caseItem.id,
             title: `Caso: ${caseItem.patient_name || caseItem.id}`,
             content: notesContent,

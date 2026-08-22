@@ -316,6 +316,13 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
     setTeethSelection(editingCase.teeth_selection);
     setDentistNotes(editingCase.dentist_notes || '');
     setInternalNotes(editingCase.internal_notes || '');
+    if (!editingCase.internal_notes && editingCase.id) {
+      api.cases.get(editingCase.id).then(freshCase => {
+        if (freshCase?.internal_notes) {
+          setInternalNotes(freshCase.internal_notes);
+        }
+      }).catch(err => console.warn('Erro ao carregar nota interna do caso:', err));
+    }
     setHasPhoto(editingCase.has_photo);
     setHasFile(editingCase.has_file);
     setPendingUploads([]);
