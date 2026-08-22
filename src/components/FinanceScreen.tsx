@@ -4,7 +4,7 @@ import { notificationService } from '../services/notifications';
 import type { Case, Profile, Service, FinancialStatus } from '../types';
 import { 
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
-  TrendingUp, ShieldCheck, X, Download, CalendarRange, Tag 
+  TrendingUp, ShieldCheck, X, Download, CalendarRange, Tag, Search 
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useRealtime } from '../hooks/useRealtime';
@@ -20,6 +20,10 @@ export const FinanceScreen: React.FC = () => {
   const [showAllOutstanding, setShowAllOutstanding] = useState(false);
   const [showUndeliveredCases, setShowUndeliveredCases] = useState(false);
   const [statusDentistFilter, setStatusDentistFilter] = useState('todos');
+
+  // Billing tab filter states
+  const [billingFinancialStatusFilter, setBillingFinancialStatusFilter] = useState<'todos_pendentes' | 'cobrar' | 'aguardando_pagamento' | 'pago_parcial' | 'pago' | 'isento' | 'todos'>('todos_pendentes');
+  const [billingDentistSearch, setBillingDentistSearch] = useState('');
 
   // Payment modal state
   const [payingCase, setPayingCase] = useState<Case | null>(null);
@@ -442,66 +446,108 @@ export const FinanceScreen: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Count cases per financial status for quick badges
+  const financialStatusCounts = useMemo(() => {
+    const relevantCases = cases.filter(c => {
+      if (c.status === 'cancelado') return false;
+      if (!showUndeliveredCases && c.status !== 'entregue') return false;
+      if (c.created_at.startsWith(selectedMonth)) return true;
+      if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.remaining_value > 0) return true;
+      return false;
+    });
+
+    return {
+      todos_pendentes: relevantCases.filter(c => c.financial_status !== 'pago' && c.financial_status !== 'isento').length,
+      cobrar: relevantCases.filter(c => c.financial_status === 'cobrar').length,
+      aguardando_pagamento: relevantCases.filter(c => c.financial_status === 'aguardando_pagamento').length,
+      pago_parcial: relevantCases.filter(c => c.financial_status === 'pago_parcial').length,
+      pago: relevantCases.filter(c => c.financial_status === 'pago').length,
+      isento: relevantCases.filter(c => c.financial_status === 'isento').length,
+      todos: relevantCases.length
+    };
+  }, [cases, selectedMonth, showAllOutstanding, showUndeliveredCases]);
+
   // Dentist remaining balance calculations
   const getDentistsWithBalances = () => {
-    return dentists.map(d => {
-      // filter cases of this dentist that belong to selected month and are active
-      const dentistCases = cases.filter(c => {
-        if (c.dentist_id !== d.id || c.status === 'cancelado') return false;
-        if (!showUndeliveredCases && c.status !== 'entregue') return false;
+    return dentists
+      .filter(d => {
+        if (!billingDentistSearch.trim()) return true;
+        const q = billingDentistSearch.toLowerCase();
+        return d.full_name.toLowerCase().includes(q);
+      })
+      .map(d => {
+        // filter cases of this dentist that belong to selected month and are active
+        const dentistCases = cases.filter(c => {
+          if (c.dentist_id !== d.id || c.status === 'cancelado') return false;
+          if (!showUndeliveredCases && c.status !== 'entregue') return false;
+          
+          // Include cases of the selected month
+          if (c.created_at.startsWith(selectedMonth)) return true;
+          
+          // Include outstanding cases from other months if enabled
+          if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.remaining_value > 0) {
+            return true;
+          }
+          
+          return false;
+        });
         
-        // Include cases of the selected month
-        if (c.created_at.startsWith(selectedMonth)) return true;
-        
-        // Include outstanding cases from other months if enabled
-        if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento' && c.remaining_value > 0) {
-          return true;
+        // Filter cases by the selected financial status
+        const filteredCases = dentistCases.filter(c => {
+          if (billingFinancialStatusFilter === 'todos_pendentes') {
+            return c.financial_status !== 'pago' && c.financial_status !== 'isento';
+          }
+          if (billingFinancialStatusFilter === 'todos') {
+            return true;
+          }
+          return c.financial_status === billingFinancialStatusFilter;
+        });
+
+        const totalPending = filteredCases.reduce((sum, c) => {
+          if (c.financial_status === 'pago' || c.financial_status === 'isento') return sum;
+          return sum + (c.remaining_value > 0 ? c.remaining_value : c.value_matheus);
+        }, 0);
+
+        const totalBilled = dentistCases.filter(c => c.created_at.startsWith(selectedMonth)).reduce((sum, c) => sum + c.total_value, 0);
+
+        // Calculate total credit discount for Dr. Andrey
+        let andreyDiscountCredit = 0;
+        let andreyPendingCredit = 0;
+        let andreyPendingCases: Case[] = [];
+        const isAndrey = d.full_name.toLowerCase().includes('andrey');
+        if (isAndrey) {
+          // Find all cases that have cost_andrey_discounted === true
+          const discountedCases = cases.filter(c => {
+            if (c.status === 'cancelado' || !c.cost_andrey_discounted) return false;
+            if (!showUndeliveredCases && c.status !== 'entregue') return false;
+            if (c.created_at.startsWith(selectedMonth)) return true;
+            if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
+            return false;
+          });
+          andreyDiscountCredit = discountedCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
+
+          andreyPendingCases = cases.filter(c => {
+            if (c.status === 'cancelado' || c.cost_andrey_discounted) return false;
+            if (!showUndeliveredCases && c.status !== 'entregue') return false;
+            if (c.created_at.startsWith(selectedMonth)) return true;
+            if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
+            return false;
+          });
+          andreyPendingCredit = andreyPendingCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
         }
-        
-        return false;
-      });
-      
-      const pendingCases = dentistCases.filter(c => c.financial_status !== 'pago' && c.financial_status !== 'isento');
-      const totalPending = pendingCases.reduce((sum, c) => sum + c.value_matheus, 0);
-      const totalBilled = dentistCases.filter(c => c.created_at.startsWith(selectedMonth)).reduce((sum, c) => sum + c.total_value, 0);
 
-      // Calculate total credit discount for Dr. Andrey
-      let andreyDiscountCredit = 0;
-      let andreyPendingCredit = 0;
-      let andreyPendingCases: Case[] = [];
-      const isAndrey = d.full_name.toLowerCase().includes('andrey');
-      if (isAndrey) {
-        // Find all cases that have cost_andrey_discounted === true
-        const discountedCases = cases.filter(c => {
-          if (c.status === 'cancelado' || !c.cost_andrey_discounted) return false;
-          if (!showUndeliveredCases && c.status !== 'entregue') return false;
-          if (c.created_at.startsWith(selectedMonth)) return true;
-          if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
-          return false;
-        });
-        andreyDiscountCredit = discountedCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
-
-        andreyPendingCases = cases.filter(c => {
-          if (c.status === 'cancelado' || c.cost_andrey_discounted) return false;
-          if (!showUndeliveredCases && c.status !== 'entregue') return false;
-          if (c.created_at.startsWith(selectedMonth)) return true;
-          if (showAllOutstanding && c.financial_status !== 'pago' && c.financial_status !== 'isento') return true;
-          return false;
-        });
-        andreyPendingCredit = andreyPendingCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
-      }
-
-      return {
-        dentist: d,
-        totalBilled,
-        totalPending: Math.max(0, totalPending - andreyDiscountCredit),
-        pendingCases,
-        allCases: dentistCases,
-        andreyDiscountCredit,
-        andreyPendingCredit,
-        andreyPendingCases
-      };
-    }).filter(x => x.allCases.length > 0 || x.andreyDiscountCredit > 0 || x.andreyPendingCredit > 0) // show Dr. Andrey even if he has no cases but has credit
+        return {
+          dentist: d,
+          totalBilled,
+          totalPending: Math.max(0, totalPending - andreyDiscountCredit),
+          pendingCases: filteredCases,
+          allCases: dentistCases,
+          andreyDiscountCredit,
+          andreyPendingCredit,
+          andreyPendingCases
+        };
+      })
+      .filter(x => x.pendingCases.length > 0 || x.andreyDiscountCredit > 0 || x.andreyPendingCredit > 0)
       .sort((a, b) => b.totalPending - a.totalPending);
   };
 
@@ -772,7 +818,146 @@ export const FinanceScreen: React.FC = () => {
       {activeTab === 'billing' ? (
         /* BILLING AND COBRANCAS TAB */
         <div className="space-y-4">
-          <h3 className="font-semibold text-sm text-slate-900">Dentistas com Casos Ativos no Mês</h3>
+          {/* Header Controls: Search and Status Select */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#E2E8F0] shadow-2xs">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm text-slate-900">Dentistas com Casos</h3>
+              <span className="px-2 py-0.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold">
+                {dentistsBalances.length} {dentistsBalances.length === 1 ? 'dentista' : 'dentistas'}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Search dentist */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-slate-400 pointer-events-none">
+                  <Search size={13} />
+                </span>
+                <input
+                  type="text"
+                  value={billingDentistSearch}
+                  onChange={(e) => setBillingDentistSearch(e.target.value)}
+                  placeholder="Buscar dentista..."
+                  className="pl-8 pr-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#0F766E] focus:bg-white transition-all w-40 sm:w-48"
+                />
+                {billingDentistSearch && (
+                  <button
+                    onClick={() => setBillingDentistSearch('')}
+                    className="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              {/* Financial Status Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">Status:</span>
+                <select
+                  value={billingFinancialStatusFilter}
+                  onChange={(e) => setBillingFinancialStatusFilter(e.target.value as any)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-bold text-slate-800 focus:outline-none focus:border-[#0F766E] focus:bg-white transition-all cursor-pointer"
+                >
+                  <option value="todos_pendentes">⚡ Todos em Aberto ({financialStatusCounts.todos_pendentes})</option>
+                  <option value="cobrar">🟡 A Cobrar ({financialStatusCounts.cobrar})</option>
+                  <option value="aguardando_pagamento">🟠 Aguardando Pagamento ({financialStatusCounts.aguardando_pagamento})</option>
+                  <option value="pago_parcial">🔵 Pago Parcial ({financialStatusCounts.pago_parcial})</option>
+                  <option value="pago">🟢 Pagos ({financialStatusCounts.pago})</option>
+                  <option value="isento">⚪ Isentos ({financialStatusCounts.isento})</option>
+                  <option value="todos">📋 Todos os Casos ({financialStatusCounts.todos})</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Filter Badges / Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button
+              onClick={() => setBillingFinancialStatusFilter('todos_pendentes')}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                billingFinancialStatusFilter === 'todos_pendentes'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-[#E2E8F0] hover:bg-slate-50'
+              }`}
+            >
+              <span>Todos em Aberto</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[9px] ${
+                billingFinancialStatusFilter === 'todos_pendentes' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'
+              }`}>
+                {financialStatusCounts.todos_pendentes}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setBillingFinancialStatusFilter('cobrar')}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                billingFinancialStatusFilter === 'cobrar'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <span>🟡 A Cobrar</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-white/80 text-amber-900 font-extrabold">
+                {financialStatusCounts.cobrar}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setBillingFinancialStatusFilter('aguardando_pagamento')}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                billingFinancialStatusFilter === 'aguardando_pagamento'
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-orange-50 text-orange-800 border border-orange-200 hover:bg-orange-100'
+              }`}
+            >
+              <span>🟠 Aguardando Pgto</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-white/80 text-orange-900 font-extrabold">
+                {financialStatusCounts.aguardando_pagamento}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setBillingFinancialStatusFilter('pago_parcial')}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                billingFinancialStatusFilter === 'pago_parcial'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100'
+              }`}
+            >
+              <span>🔵 Pago Parcial</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-white/80 text-sky-900 font-extrabold">
+                {financialStatusCounts.pago_parcial}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setBillingFinancialStatusFilter('pago')}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                billingFinancialStatusFilter === 'pago'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+              }`}
+            >
+              <span>🟢 Pagos</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-white/80 text-emerald-900 font-extrabold">
+                {financialStatusCounts.pago}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setBillingFinancialStatusFilter('todos')}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                billingFinancialStatusFilter === 'todos'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'bg-white text-slate-500 border border-[#E2E8F0] hover:bg-slate-50'
+              }`}
+            >
+              <span>Todos</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-slate-100 text-slate-600">
+                {financialStatusCounts.todos}
+              </span>
+            </button>
+          </div>
           
           <div className="space-y-3">
             {dentistsBalances.length === 0 ? (
@@ -940,7 +1125,9 @@ export const FinanceScreen: React.FC = () => {
                                {pendingCases.length === 0 ? (
                                 <tr>
                                   <td colSpan={9} className="p-4 text-center text-[#94A3B8] text-xs font-semibold">
-                                    {showAllOutstanding ? 'Todos os casos deste período já estão quitados!' : 'Todos os casos deste mês já estão quitados!'}
+                                    {billingFinancialStatusFilter !== 'todos_pendentes' && billingFinancialStatusFilter !== 'todos'
+                                      ? 'Nenhum caso encontrado com o status selecionado para este dentista.'
+                                      : (showAllOutstanding ? 'Todos os casos deste período já estão quitados!' : 'Todos os casos deste mês já estão quitados!')}
                                   </td>
                                 </tr>
                               ) : (
