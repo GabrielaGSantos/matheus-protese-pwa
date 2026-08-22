@@ -68,7 +68,7 @@ export const ServicesScreen: React.FC = () => {
   useEffect(() => {
     if (!selectedDentistId) return;
     const inputs: Record<string, string> = {};
-    services.forEach(s => {
+    services.filter(s => s.is_active !== false).forEach(s => {
       const cp = customPrices.find(p => p.dentist_id === selectedDentistId && p.service_id === s.id);
       inputs[s.id] = cp ? String(cp.custom_value) : '';
     });
@@ -682,7 +682,7 @@ export const ServicesScreen: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E2E8F0]">
-                    {services.map(s => {
+                    {services.filter(s => s.is_active !== false).map(s => {
                       const hasCustom = customPrices.some(p => p.dentist_id === selectedDentistId && p.service_id === s.id);
                       return (
                         <tr key={s.id} className="hover:bg-slate-50/70 transition-all">
