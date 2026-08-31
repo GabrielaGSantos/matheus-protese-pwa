@@ -174,7 +174,7 @@ const ALLOWED_NOTE_KEYS = [
 const ALLOWED_CASE_KEYS = [
   'id', 'case_number', 'dentist_id', 'patient_name', 'created_at', 'requested_delivery_date',
   'final_delivery_date', 'status', 'financial_status', 'teeth_selection',
-  'dentist_notes', 'internal_notes', 'has_photo', 'has_file', 'google_drive_folder_id', 'google_drive_folder_url',
+  'dentist_notes', 'has_photo', 'has_file', 'google_drive_folder_id', 'google_drive_folder_url',
   'drive_status', 'drive_dentist_folder_id', 'drive_case_folder_id', 'drive_images_folder_id',
   'drive_scan_folder_id', 'drive_result_folder_id', 'drive_case_folder_url', 'drive_error_message',
   'estimated_hours', 'value_matheus', 'value_planning', 'value_paschoal', 'cost_allan_matheus',
