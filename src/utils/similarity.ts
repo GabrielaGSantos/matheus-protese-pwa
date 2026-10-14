@@ -145,15 +145,42 @@ export function checkPatientSimilarity(name1: string, name2: string): Similarity
     const minWords = Math.min(words1.length, words2.length);
     const maxWords = Math.max(words1.length, words2.length);
 
-    // If all words of the shorter name are in the longer name (e.g. "Lucas Gabriel Pereira" and "Lucas Pereira")
-    if (matchedWordCount === minWords && minWords >= 2) {
-      return {
-        isMatch: true,
-        matchType: 'similar',
-        score: minWords / maxWords,
-        reason: 'Nome contido no cadastro existente'
-      };
+    // If all words of the shorter name are in the longer name (e.g. "Lucia" and "Lucia Maria", or "Lucas Gabriel Pereira" and "Lucas Pereira")
+    if (matchedWordCount === minWords && minWords >= 1) {
+      // For single-word, ensure the matched word is meaningful (>= 3 chars)
+      const shorterWords = words1.length <= words2.length ? words1 : words2;
+      const isMeaningful = shorterWords.every(w => w.length >= 3);
+      if (isMeaningful) {
+        return {
+          isMatch: true,
+          matchType: 'similar',
+          score: minWords / maxWords,
+          reason: minWords === 1 ? 'Primeiro/único nome contido no cadastro existente' : 'Nome contido no cadastro existente'
+        };
+      }
     }
+
+    // Direct containment of full normalized names if >= 3 characters (e.g. "lucia" in "lucia maria")
+    if (n1.length >= 3 && n2.length >= 3) {
+      if (n1.startsWith(n2 + ' ') || n1.endsWith(' ' + n2) || n1.includes(' ' + n2 + ' ')) {
+        return {
+          isMatch: true,
+          matchType: 'similar',
+          score: n2.length / n1.length,
+          reason: 'Nome contido no cadastro existente'
+        };
+      }
+      if (n2.startsWith(n1 + ' ') || n2.endsWith(' ' + n1) || n2.includes(' ' + n1 + ' ')) {
+        return {
+          isMatch: true,
+          matchType: 'similar',
+          score: n1.length / n2.length,
+          reason: 'Nome contido no cadastro existente'
+        };
+      }
+    }
+
+    // First and last names match (e.g. "Joao Pedro Silva" and "Joao Paulo Silva")
 
     // First and last names match (e.g. "Joao Pedro Silva" and "Joao Paulo Silva")
     const firstWordMatch = (words1[0] === words2[0]) || (Math.max(words1[0].length, words2[0].length) >= 4 && levenshteinDistance(words1[0], words2[0]) <= 1);

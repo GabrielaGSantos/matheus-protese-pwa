@@ -144,6 +144,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
     return year >= 2026 && !['finalizado', 'entregue', 'cancelado'].includes(c.status);
   }).length;
 
+  const deliveredCasesMonthCount = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    return year >= 2026 && 
+      c.created_at.startsWith(currentMonthStr) && 
+      c.status === 'entregue';
+  }).length;
+
   const finishedCasesCount = cases.filter(c => {
     const year = new Date(c.created_at).getFullYear();
     return year >= 2026 && 
@@ -380,16 +387,39 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
           )}
         </div>
 
-        {/* KPI: Casos em Execução */}
+        {/* KPI: Casos em Execução & Entregues no Mês */}
         <div className="glass-panel p-5 flex flex-col justify-between">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Casos em Execução</span>
-              <h3 className="text-xl font-bold text-slate-900">{activeCasesCount}</h3>
-              <p className="text-[10px] text-slate-400 font-medium mt-1">Fila operacional ativa</p>
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Casos em Execução</span>
+                <h3 className="text-xl font-bold text-slate-900">{activeCasesCount}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">Fila operacional ativa</p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+                <Briefcase size={16} />
+              </div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
-              <Briefcase size={16} />
+
+            {/* Sub-card: Casos Entregues no Mês */}
+            <div className="mt-3 pt-2.5 border-t border-slate-100">
+              <div className="bg-teal-50/70 border border-teal-100/90 rounded-lg p-2.5 flex items-center justify-between">
+                <div>
+                  <div className="text-[9px] font-bold text-teal-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                    Entregues no Mês
+                  </div>
+                  <div className="text-base font-bold text-teal-800 mt-0.5">
+                    {deliveredCasesMonthCount} {deliveredCasesMonthCount === 1 ? 'caso entregue' : 'casos entregues'}
+                  </div>
+                  <div className="text-[9px] text-teal-600/80 font-medium">
+                    Finalizados e despachados
+                  </div>
+                </div>
+                <div className="w-7 h-7 rounded-lg bg-teal-100/60 border border-teal-200/60 flex items-center justify-center text-teal-700 shrink-0">
+                  <CheckCircle size={14} />
+                </div>
+              </div>
             </div>
           </div>
         </div>

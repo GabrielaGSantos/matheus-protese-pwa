@@ -46,11 +46,15 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  // Sync default tab when user profile loads
+  // Sync default tab and URL query params when user profile loads
   useEffect(() => {
     if (user) {
       const params = new URLSearchParams(window.location.search);
-      if (window.location.pathname === '/settings' || (params.has('code') && params.get('state') === 'settings')) {
+      const caseIdParam = params.get('caseId');
+      
+      if (caseIdParam) {
+        handleSelectCase(caseIdParam);
+      } else if (window.location.pathname === '/settings' || (params.has('code') && params.get('state') === 'settings')) {
         setCurrentTab('settings');
       } else {
         setCurrentTab(isAdmin ? 'dashboard' : 'dentist-cases');
@@ -61,6 +65,10 @@ const AppContent: React.FC = () => {
   // Redireciona a seleção do caso baseado no status dele
   const handleSelectCase = async (caseId: string) => {
     setEditingCaseId(caseId);
+    if (!isAdmin) {
+      setCurrentTab('dentist-cases');
+      return;
+    }
     try {
       const casesList = await api.cases.list('admin', user?.id || 'admin-1');
       const found = casesList.find(c => c.id === caseId);
@@ -205,7 +213,14 @@ const AppContent: React.FC = () => {
           return <DashboardScreen onSelectCase={handleSelectCase} />;
       }
     } else {
-      return <DentistDashboard currentTab={currentTab} setCurrentTab={setCurrentTab} />;
+      return (
+        <DentistDashboard 
+          currentTab={currentTab} 
+          setCurrentTab={setCurrentTab} 
+          initialEditingCaseId={editingCaseId}
+          clearInitialEditingCaseId={() => setEditingCaseId(null)}
+        />
+      );
     }
   };
 

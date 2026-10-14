@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Calendar, Activity, Check, X, Layers, User, Hash } from 'lucide-react';
+import { AlertTriangle, Calendar, Activity, Check, X, Layers, User, Hash, ExternalLink, Info } from 'lucide-react';
 import type { Service, CustomStatus } from '../types';
 import { DEFAULT_CASE_STATUSES } from '../types';
 import {
@@ -47,6 +47,12 @@ export const DuplicatePatientModal: React.FC<DuplicatePatientModalProps> = ({
   };
 
   const hasIdentical = matches.some(m => m.matchType === 'identical');
+  const count = matches.length;
+
+  const handleOpenCaseInNewTab = (caseId: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?caseId=${encodeURIComponent(caseId)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   return createPortal(
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in">
@@ -103,10 +109,28 @@ export const DuplicatePatientModal: React.FC<DuplicatePatientModalProps> = ({
 
         {/* Content Body: List of matching cases */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 divide-y divide-slate-100">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Layers size={13} />
-            <span>Caso(s) encontrado(s) no sistema ({matches.length})</span>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers size={13} />
+              <span>{count > 1 ? `Múltiplos Casos Encontrados (${count})` : `Caso Encontrado no Sistema (${count})`}</span>
+            </div>
+            {count > 1 && (
+              <span className="text-[11px] font-semibold text-amber-800 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <AlertTriangle size={12} className="text-amber-600" />
+                Atenção: Há {count} casos semelhantes cadastrados
+              </span>
+            )}
           </div>
+
+          {count > 1 && (
+            <div className="bg-amber-500/10 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2.5">
+              <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Aviso de duplicidade múltipla: </span>
+                Foram identificados <strong>{count} casos</strong> deste mesmo dentista que coincidem com o nome digitado. Abra os casos abaixo em uma nova aba para analisar o histórico antes de prosseguir.
+              </div>
+            </div>
+          )}
 
           {matches.map((match, idx) => {
             const { caseItem, matchType, reason } = match;
@@ -206,6 +230,22 @@ export const DuplicatePatientModal: React.FC<DuplicatePatientModalProps> = ({
                     <span className="line-clamp-2">{caseItem.dentist_notes}</span>
                   </div>
                 )}
+
+                {/* Action: Open in new tab to analyze */}
+                <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-[11px] text-slate-500">
+                    Deseja inspecionar este caso anterior?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCaseInNewTab(caseItem.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all cursor-pointer shadow-2xs"
+                    title="Abre este caso em uma nova aba do navegador para análise"
+                  >
+                    <span>Ir para caso em nova aba</span>
+                    <ExternalLink size={13} />
+                  </button>
+                </div>
               </div>
             );
           })}

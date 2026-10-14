@@ -38,9 +38,16 @@ const isDriveFolderValid = (c: Case) => {
 interface DentistDashboardProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
+  initialEditingCaseId?: string | null;
+  clearInitialEditingCaseId?: () => void;
 }
 
-export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, setCurrentTab }) => {
+export const DentistDashboard: React.FC<DentistDashboardProps> = ({ 
+  currentTab, 
+  setCurrentTab,
+  initialEditingCaseId,
+  clearInitialEditingCaseId
+}) => {
   const { user, isAuxiliar, linkedDentistId } = useAuth();
   const activeDentistId = isAuxiliar ? linkedDentistId : user?.id;
   const notifSettings = notificationService.getSettings();
@@ -167,6 +174,18 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (initialEditingCaseId && cases.length > 0) {
+      const found = cases.find(c => c.id === initialEditingCaseId);
+      if (found) {
+        startEdit(found);
+      }
+      if (clearInitialEditingCaseId) {
+        clearInitialEditingCaseId();
+      }
+    }
+  }, [initialEditingCaseId, cases]);
 
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
