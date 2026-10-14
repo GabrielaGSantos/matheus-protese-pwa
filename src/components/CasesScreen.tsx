@@ -12,6 +12,8 @@ import {
 import { notificationService } from '../services/notifications';
 import { useRealtime } from '../hooks/useRealtime';
 import { DEFAULT_CASE_STATUSES, DEFAULT_FINANCIAL_STATUSES } from '../types';
+import { DuplicatePatientModal } from './DuplicatePatientModal';
+import { findDuplicateCases, type DuplicateMatch } from '../utils/similarity';
 const isDriveFolderValid = (c: Case) => {
   if (c.drive_status !== 'created' || !c.google_drive_folder_url) return false;
   const rootId = localStorage.getItem('google_drive_root_folder_id') || '1-Rpx_mQbBNRuLQZfj6f0A_TBao-aZHrN';
@@ -81,6 +83,8 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showPaymentConfirmPopup, setShowPaymentConfirmPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   // Case Form fields
   const [selectedDentistId, setSelectedDentistId] = useState('');
   const [patientName, setPatientName] = useState('');
@@ -577,6 +581,30 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
       return;
     }
 
+    const isNewCase = !editingCase?.id;
+    const isRenaming = editingCase && (
+      editingCase.patient_name.trim().toLowerCase() !== patientName.trim().toLowerCase() ||
+      editingCase.dentist_id !== selectedDentistId
+    );
+
+    if (isNewCase || isRenaming) {
+      const matches = findDuplicateCases(patientName, selectedDentistId, cases, editingCase?.id);
+      if (matches.length > 0) {
+        setDuplicateMatches(matches);
+        setShowDuplicateModal(true);
+        return;
+      }
+    }
+
+    await executeSave();
+  };
+
+  const handleConfirmDuplicateSave = async () => {
+    setShowDuplicateModal(false);
+    await executeSave();
+  };
+
+  const executeSave = async () => {
     setIsSaving(true);
     try {
       const calculated = calculateDerivedValues();
@@ -2192,6 +2220,19 @@ export const CasesScreen: React.FC<CasesScreenProps> = ({
         </div>,
         document.body
       )}
+
+      {/* Duplicate Patient Warning Modal */}
+      <DuplicatePatientModal
+        isOpen={showDuplicateModal}
+        inputPatientName={patientName}
+        dentistName={dentists.find(d => d.id === selectedDentistId)?.full_name || 'Dentista Selecionado'}
+        matches={duplicateMatches}
+        services={services}
+        caseStatuses={caseStatuses}
+        onConfirm={handleConfirmDuplicateSave}
+        onCancel={() => setShowDuplicateModal(false)}
+        isSubmitting={isSaving}
+      />
 
       {/* Main Cases Table (desktop) / Cards (mobile) */}
       {loading ? (

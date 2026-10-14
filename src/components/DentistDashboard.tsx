@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 import type { Case, Service, OdontogramSelection, CaseStatus } from '../types';
 import { DEFAULT_CASE_STATUSES } from '../types';
+import { DuplicatePatientModal } from './DuplicatePatientModal';
+import { findDuplicateCases, type DuplicateMatch } from '../utils/similarity';
 import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
 import { 
@@ -41,6 +43,7 @@ interface DentistDashboardProps {
 export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, setCurrentTab }) => {
   const { user, isAuxiliar, linkedDentistId } = useAuth();
   const activeDentistId = isAuxiliar ? linkedDentistId : user?.id;
+  const notifSettings = notificationService.getSettings();
   const [cases, setCases] = useState<Case[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [activeTab, setActiveTab] = useState<'my-cases' | 'new-case' | 'change-password'>(
@@ -92,6 +95,8 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
   // Editing state for Dentist
   const [editingCase, setEditingCase] = useState<Case | null>(null);
@@ -178,8 +183,33 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
       return;
     }
 
+    const fallbackDentistId = activeDentistId || '';
+    const isNewCase = !editingCase?.id;
+    const isRenaming = editingCase && (
+      editingCase.patient_name.trim().toLowerCase() !== patientName.trim().toLowerCase()
+    );
+
+    if (isNewCase || isRenaming) {
+      const matches = findDuplicateCases(patientName, fallbackDentistId, cases, editingCase?.id);
+      if (matches.length > 0) {
+        setDuplicateMatches(matches);
+        setShowDuplicateModal(true);
+        return;
+      }
+    }
+
+    await executeCreateCase();
+  };
+
+  const handleConfirmDuplicateSave = async () => {
+    setShowDuplicateModal(false);
+    await executeCreateCase();
+  };
+
+  const executeCreateCase = async () => {
     setSubmitting(true);
     try {
+      const selectedIds = Object.keys(selectedServices).filter(id => selectedServices[id]);
       const teethQty = teethSelection.teeth.length || 1;
       
       let computedTotalValue = 0;
@@ -1320,6 +1350,19 @@ export const DentistDashboard: React.FC<DentistDashboardProps> = ({ currentTab, 
         </div>,
         document.body
       )}
+
+      {/* Duplicate Patient Warning Modal */}
+      <DuplicatePatientModal
+        isOpen={showDuplicateModal}
+        inputPatientName={patientName}
+        dentistName={user?.full_name || 'Dentista'}
+        matches={duplicateMatches}
+        services={services}
+        caseStatuses={notifSettings.custom_case_statuses || DEFAULT_CASE_STATUSES}
+        onConfirm={handleConfirmDuplicateSave}
+        onCancel={() => setShowDuplicateModal(false)}
+        isSubmitting={submitting}
+      />
     </div>
   );
 };

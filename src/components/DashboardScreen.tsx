@@ -77,10 +77,62 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
       return sum + (c.value_matheus * ratio);
     }, 0);
 
+  const monthlyPendingDelivered = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status === 'entregue';
+    })
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
+
+  const monthlyPendingUndelivered = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'entregue' && c.status !== 'cancelado';
+    })
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
+
+  const monthlyPendingDeliveredCount = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+    return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status === 'entregue' && (c.value_matheus * ratio) > 0;
+  }).length;
+
+  const monthlyPendingUndeliveredCount = cases.filter(c => {
+    const year = new Date(c.created_at).getFullYear();
+    const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+    return year >= 2026 && c.created_at.startsWith(currentMonthStr) && c.status !== 'entregue' && c.status !== 'cancelado' && (c.value_matheus * ratio) > 0;
+  }).length;
+
   const otherMonthsPending = cases
     .filter(c => {
       const year = new Date(c.created_at).getFullYear();
       return year >= 2026 && !c.created_at.startsWith(currentMonthStr) && c.status !== 'cancelado';
+    })
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
+
+  const otherMonthsPendingDelivered = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && !c.created_at.startsWith(currentMonthStr) && c.status === 'entregue';
+    })
+    .reduce((sum, c) => {
+      const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
+      return sum + (c.value_matheus * ratio);
+    }, 0);
+
+  const otherMonthsPendingUndelivered = cases
+    .filter(c => {
+      const year = new Date(c.created_at).getFullYear();
+      return year >= 2026 && !c.created_at.startsWith(currentMonthStr) && c.status !== 'entregue' && c.status !== 'cancelado';
     })
     .reduce((sum, c) => {
       const ratio = c.total_value > 0 ? c.remaining_value / c.total_value : 1;
@@ -229,61 +281,109 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* KPI: Rendimento Bruto Mensal */}
-        <div className="glass-panel p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Mensal</span>
-            <h3 className="text-xl font-bold text-slate-900">{formatCurrency(monthlyGrossBilled)}</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">
-              Faturamento bruto de {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E]">
-            <DollarSign size={16} />
+        <div className="glass-panel p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Mensal</span>
+              <h3 className="text-xl font-bold text-slate-900">{formatCurrency(monthlyGrossBilled)}</h3>
+              <p className="text-[10px] text-slate-400 font-medium mt-1">
+                Faturamento bruto de {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E] shrink-0">
+              <DollarSign size={16} />
+            </div>
           </div>
         </div>
 
         {/* KPI: Recebido no Mês */}
-        <div className="glass-panel p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Recebido no Mês</span>
-            <h3 className="text-xl font-bold text-emerald-600">{formatCurrency(monthlyReceived)}</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">
-              Total pago este mês
-            </p>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-            <CheckCircle size={16} />
+        <div className="glass-panel p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Recebido no Mês</span>
+              <h3 className="text-xl font-bold text-emerald-600">{formatCurrency(monthlyReceived)}</h3>
+              <p className="text-[10px] text-slate-400 font-medium mt-1">
+                Total pago este mês
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+              <CheckCircle size={16} />
+            </div>
           </div>
         </div>
 
         {/* KPI: Falta Receber */}
-        <div className="glass-panel p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Falta Receber (Mês)</span>
-            <h3 className="text-xl font-bold text-amber-600">{formatCurrency(monthlyPending)}</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">
-              Saldo pendente deste mês
-            </p>
-            {otherMonthsPending > 0 && (
-              <p className="text-[9px] text-rose-500 font-bold mt-1.5 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded w-fit">
-                ⚠️ Outros meses pendentes: {formatCurrency(otherMonthsPending)}
-              </p>
-            )}
+        <div className="glass-panel p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Falta Receber (Mês)</span>
+                <h3 className="text-xl font-bold text-amber-600">{formatCurrency(monthlyPending)}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Saldo pendente deste mês
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                <Clock size={16} />
+              </div>
+            </div>
+
+            {/* Separação Entregues vs Não Entregues */}
+            <div className="mt-3 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2">
+              <div className="bg-emerald-50/70 border border-emerald-100/90 rounded-lg p-2 transition-all hover:bg-emerald-50">
+                <div className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Entregues
+                </div>
+                <div className="font-bold text-emerald-800 text-xs mt-0.5">
+                  {formatCurrency(monthlyPendingDelivered)}
+                </div>
+                <div className="text-[9px] text-emerald-600/80 font-medium mt-0.5">
+                  {monthlyPendingDeliveredCount} {monthlyPendingDeliveredCount === 1 ? 'caso' : 'casos'}
+                </div>
+              </div>
+
+              <div className="bg-amber-50/70 border border-amber-100/90 rounded-lg p-2 transition-all hover:bg-amber-50">
+                <div className="text-[9px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Não Entregues
+                </div>
+                <div className="font-bold text-amber-800 text-xs mt-0.5">
+                  {formatCurrency(monthlyPendingUndelivered)}
+                </div>
+                <div className="text-[9px] text-amber-600/80 font-medium mt-0.5">
+                  {monthlyPendingUndeliveredCount} {monthlyPendingUndeliveredCount === 1 ? 'caso' : 'casos'}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-            <Clock size={16} />
-          </div>
+
+          {otherMonthsPending > 0 && (
+            <div className="mt-2.5 text-[9px] text-rose-500 font-bold bg-rose-50 border border-rose-100 p-1.5 rounded-lg flex flex-col gap-0.5">
+              <div className="flex items-center justify-between">
+                <span>⚠️ Outros meses pendentes:</span>
+                <span>{formatCurrency(otherMonthsPending)}</span>
+              </div>
+              <div className="text-[8.5px] font-medium text-rose-600/80 flex items-center gap-1.5">
+                <span>Entregues: {formatCurrency(otherMonthsPendingDelivered)}</span>
+                <span>•</span>
+                <span>Não entregues: {formatCurrency(otherMonthsPendingUndelivered)}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* KPI: Casos em Execução */}
-        <div className="glass-panel p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Casos em Execução</span>
-            <h3 className="text-xl font-bold text-slate-900">{activeCasesCount}</h3>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">Fila operacional ativa</p>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600">
-            <Briefcase size={16} />
+        <div className="glass-panel p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Casos em Execução</span>
+              <h3 className="text-xl font-bold text-slate-900">{activeCasesCount}</h3>
+              <p className="text-[10px] text-slate-400 font-medium mt-1">Fila operacional ativa</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+              <Briefcase size={16} />
+            </div>
           </div>
         </div>
 
