@@ -277,37 +277,44 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onSelectCase }
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Grid - 3 cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        {/* KPI: Rendimento Bruto Mensal */}
+        {/* KPI: Rendimento Mensal & Recebido no Mês */}
         <div className="glass-panel p-5 flex flex-col justify-between">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Mensal</span>
-              <h3 className="text-xl font-bold text-slate-900">{formatCurrency(monthlyGrossBilled)}</h3>
-              <p className="text-[10px] text-slate-400 font-medium mt-1">
-                Faturamento bruto de {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
-              </p>
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rendimento Mensal</span>
+                <h3 className="text-xl font-bold text-slate-900">{formatCurrency(monthlyGrossBilled)}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Faturamento bruto de {new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E] shrink-0">
+                <DollarSign size={16} />
+              </div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#0F766E] shrink-0">
-              <DollarSign size={16} />
-            </div>
-          </div>
-        </div>
 
-        {/* KPI: Recebido no Mês */}
-        <div className="glass-panel p-5 flex flex-col justify-between">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Recebido no Mês</span>
-              <h3 className="text-xl font-bold text-emerald-600">{formatCurrency(monthlyReceived)}</h3>
-              <p className="text-[10px] text-slate-400 font-medium mt-1">
-                Total pago este mês
-              </p>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-              <CheckCircle size={16} />
+            {/* Sub-card: Recebido no Mês */}
+            <div className="mt-3 pt-2.5 border-t border-slate-100">
+              <div className="bg-emerald-50/70 border border-emerald-100/90 rounded-lg p-2.5 flex items-center justify-between">
+                <div>
+                  <div className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Recebido no Mês
+                  </div>
+                  <div className="text-base font-bold text-emerald-700 mt-0.5">
+                    {formatCurrency(monthlyReceived)}
+                  </div>
+                  <div className="text-[9px] text-emerald-600/80 font-medium">
+                    Total pago este mês
+                  </div>
+                </div>
+                <div className="w-7 h-7 rounded-lg bg-emerald-100/60 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shrink-0">
+                  <CheckCircle size={14} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
