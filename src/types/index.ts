@@ -38,6 +38,17 @@ export interface DentistCustomPrice {
   created_at: string;
 }
 
+export interface DentistCredit {
+  id: string;
+  dentist_id: string;
+  amount: number;
+  description: string;
+  payment_method?: string;
+  receipt_url?: string;
+  created_by?: string;
+  created_at: string;
+}
+
 export type CaseStatus = string;
 
 export type FinancialStatus = string;

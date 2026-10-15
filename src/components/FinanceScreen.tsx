@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { notificationService } from '../services/notifications';
-import type { Case, Profile, Service, FinancialStatus } from '../types';
+import type { Case, Profile, Service, FinancialStatus, DentistCredit } from '../types';
 import { 
   ChevronDown, ChevronUp, Copy, Check, MessageSquare, 
-  TrendingUp, ShieldCheck, X, Download, CalendarRange, Tag, Search 
+  TrendingUp, ShieldCheck, X, Download, CalendarRange, Tag, Search,
+  Wallet, Plus, Trash2
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useRealtime } from '../hooks/useRealtime';
@@ -13,8 +14,9 @@ export const FinanceScreen: React.FC = () => {
   const [cases, setCases] = useState<Case[]>([]);
   const [dentists, setDentists] = useState<Profile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [credits, setCredits] = useState<DentistCredit[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'billing' | 'reports' | 'monthly_status' | 'andrey_costs'>('billing');
+  const [activeTab, setActiveTab] = useState<'billing' | 'reports' | 'monthly_status' | 'andrey_costs' | 'credits'>('billing');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [expandedDentistId, setExpandedDentistId] = useState<string | null>(null);
   const [showAllOutstanding, setShowAllOutstanding] = useState(false);
@@ -65,6 +67,15 @@ export const FinanceScreen: React.FC = () => {
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
   });
 
+  // Credit Tab State
+  const [isAddCreditModalOpen, setIsAddCreditModalOpen] = useState(false);
+  const [creditDentistId, setCreditDentistId] = useState('');
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditDescription, setCreditDescription] = useState('');
+  const [creditPaymentMethod, setCreditPaymentMethod] = useState('pix');
+  const [creditReceiptUrl, setCreditReceiptUrl] = useState('');
+  const [creditFilterDentistId, setCreditFilterDentistId] = useState('todos');
+
   useRealtime('cases', () => {
     fetchData();
   });
@@ -78,9 +89,16 @@ export const FinanceScreen: React.FC = () => {
       const c = await api.cases.list('admin', 'admin-1');
       const p = await api.profiles.list();
       const s = await api.services.list();
+      let cr: DentistCredit[] = [];
+      try {
+        cr = await api.credits.list();
+      } catch (err) {
+        console.warn('Erro ao listar créditos:', err);
+      }
       setCases(c);
       setDentists(p.filter(x => x.role === 'dentist'));
       setServices(s);
+      setCredits(cr);
     } catch (err) {
       console.error(err);
     }
@@ -350,7 +368,7 @@ export const FinanceScreen: React.FC = () => {
   };
 
   // Generate WhatsApp Message
-  const getWhatsAppText = (dentist: Profile, pendingCases: Case[], andreyDiscountCredit: number = 0) => {
+  const getWhatsAppText = (dentist: Profile, pendingCases: Case[], andreyDiscountCredit: number = 0, dentistAdvanceCredit: number = 0) => {
     let totalOpen = 0;
     let totalMatheus = 0;
     let totalPlanning = 0;
@@ -409,9 +427,17 @@ export const FinanceScreen: React.FC = () => {
     const pixPaschoal = globalSettings.pix_paschoal || '';
 
     let totalOpenText = '';
-    if (andreyDiscountCredit > 0) {
-      const finalOpen = Math.max(0, totalOpen - andreyDiscountCredit);
-      totalOpenText = `Subtotal em aberto: R$ ${totalOpen.toFixed(2)}\nDesconto de Créditos (Repasse Andrey): -R$ ${andreyDiscountCredit.toFixed(2)}\nTotal com Desconto: *R$ ${finalOpen.toFixed(2)}*`;
+    const totalDiscounts = andreyDiscountCredit + dentistAdvanceCredit;
+    if (totalDiscounts > 0) {
+      const finalOpen = Math.max(0, totalOpen - totalDiscounts);
+      let discLines = '';
+      if (dentistAdvanceCredit > 0) {
+        discLines += `\nCrédito / Adiantamento disponível: -R$ ${dentistAdvanceCredit.toFixed(2)}`;
+      }
+      if (andreyDiscountCredit > 0) {
+        discLines += `\nDesconto de Repasse Andrey: -R$ ${andreyDiscountCredit.toFixed(2)}`;
+      }
+      totalOpenText = `Subtotal em aberto: R$ ${totalOpen.toFixed(2)}${discLines}\nTotal Líquido a Pagar: *R$ ${finalOpen.toFixed(2)}*`;
     } else {
       totalOpenText = `Total em aberto: *R$ ${totalOpen.toFixed(2)}*`;
     }
@@ -536,18 +562,27 @@ export const FinanceScreen: React.FC = () => {
           andreyPendingCredit = andreyPendingCases.reduce((sum, c) => sum + (c.cost_andrey || 0), 0);
         }
 
+        // Calculate available advance credits for this dentist
+        const dentistCredits = credits.filter(cr => cr.dentist_id === d.id);
+        const dentistAdvanceCredit = dentistCredits.reduce((sum, cr) => sum + (Number(cr.amount) || 0), 0);
+
+        const totalDeductions = andreyDiscountCredit + dentistAdvanceCredit;
+
         return {
           dentist: d,
           totalBilled,
-          totalPending: Math.max(0, totalPending - andreyDiscountCredit),
+          totalPending: Math.max(0, totalPending - totalDeductions),
+          rawPending: totalPending,
           pendingCases: filteredCases,
           allCases: dentistCases,
           andreyDiscountCredit,
           andreyPendingCredit,
-          andreyPendingCases
+          andreyPendingCases,
+          dentistAdvanceCredit,
+          dentistCredits
         };
       })
-      .filter(x => x.pendingCases.length > 0 || x.andreyDiscountCredit > 0 || x.andreyPendingCredit > 0)
+      .filter(x => x.pendingCases.length > 0 || x.andreyDiscountCredit > 0 || x.andreyPendingCredit > 0 || x.dentistAdvanceCredit > 0)
       .sort((a, b) => b.totalPending - a.totalPending);
   };
 
@@ -813,6 +848,24 @@ export const FinanceScreen: React.FC = () => {
         >
           Repasse Dr. Andrey
         </button>
+        <button
+          onClick={() => setActiveTab('credits')}
+          className={`pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'credits'
+              ? 'border-[#0F766E] text-[#0F766E]'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Wallet size={13} className={activeTab === 'credits' ? 'text-[#0F766E]' : 'text-slate-400'} />
+          <span>Créditos de Dentistas</span>
+          {credits.length > 0 && (
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              activeTab === 'credits' ? 'bg-[#0F766E]/15 text-[#0F766E]' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {credits.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {activeTab === 'billing' ? (
@@ -965,10 +1018,10 @@ export const FinanceScreen: React.FC = () => {
                 Nenhum faturamento registrado para a competência selecionada.
               </div>
             ) : (
-              dentistsBalances.map(({ dentist, totalBilled, totalPending, pendingCases, andreyDiscountCredit, andreyPendingCredit, andreyPendingCases }) => {
+              dentistsBalances.map(({ dentist, totalBilled, totalPending, rawPending, pendingCases, andreyDiscountCredit, andreyPendingCredit, andreyPendingCases, dentistAdvanceCredit }) => {
                 const isExpanded = expandedDentistId === dentist.id;
                 const selectedCasesForDentist = isExpanded ? pendingCases.filter(c => selectedFinanceCaseIds[c.id]) : pendingCases;
-                const whatsappText = getWhatsAppText(dentist, selectedCasesForDentist, andreyDiscountCredit);
+                const whatsappText = getWhatsAppText(dentist, selectedCasesForDentist, andreyDiscountCredit, dentistAdvanceCredit);
                 
                 return (
                   <div key={dentist.id} className="glass-panel overflow-hidden transition-all">
@@ -979,10 +1032,23 @@ export const FinanceScreen: React.FC = () => {
                       className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-all"
                     >
                       <div className="space-y-0.5">
-                        <h4 className="font-semibold text-sm text-slate-900">{dentist.full_name}</h4>
-                        <span className="text-[11px] text-slate-500 font-medium">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-semibold text-sm text-slate-900">{dentist.full_name}</h4>
+                          {dentistAdvanceCredit > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 shadow-2xs">
+                              <Wallet size={11} className="text-emerald-600" />
+                              Crédito disponível: R$ {dentistAdvanceCredit.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-medium block">
                           Total faturado no mês: R$ {totalBilled.toFixed(2)}
                         </span>
+                        {dentistAdvanceCredit > 0 && (
+                          <span className="text-[11px] text-emerald-600 font-semibold block">
+                            Adiantamento abatido no fechamento: -R$ {Math.min(dentistAdvanceCredit, rawPending).toFixed(2)}
+                          </span>
+                        )}
                         {andreyDiscountCredit > 0 && (
                           <span className="text-[11px] text-emerald-600 font-semibold block">
                             Créditos de Repasse Andrey (Já descontados): -R$ {andreyDiscountCredit.toFixed(2)}
@@ -1980,7 +2046,334 @@ export const FinanceScreen: React.FC = () => {
             );
           })()}
         </div>
+      ) : activeTab === 'credits' ? (
+        /* CREDITS / ADIANTAMENTOS TAB */
+        <div className="space-y-6 animate-fade-in">
+          {/* Header & Action Button */}
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div>
+              <h3 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                <Wallet className="text-[#0F766E]" size={16} />
+                <span>Créditos & Adiantamentos de Dentistas</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Registre pagamentos antecipados e créditos de clientes para que sejam abatidos automaticamente nos fechamentos mensais.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreditDentistId(dentists[0]?.id || '');
+                  setCreditAmount('');
+                  setCreditDescription('');
+                  setCreditPaymentMethod('pix');
+                  setCreditReceiptUrl('');
+                  setIsAddCreditModalOpen(true);
+                }}
+                className="bg-[#0F766E] hover:bg-[#115E59] text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Adicionar Crédito</span>
+              </button>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          {(() => {
+            const filteredCredits = credits.filter(c => {
+              if (creditFilterDentistId === 'todos') return true;
+              return c.dentist_id === creditFilterDentistId;
+            });
+            const totalCreditAmount = filteredCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+            const totalDentistsWithCredits = new Set(credits.map(c => c.dentist_id)).size;
+
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="glass-panel p-4 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Total de Créditos Ativos</span>
+                    <h3 className="text-xl font-bold text-emerald-600">R$ {totalCreditAmount.toFixed(2)}</h3>
+                    <span className="text-[10px] text-slate-400 block">Soma de adiantamentos disponíveis</span>
+                  </div>
+                  <div className="glass-panel p-4 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Dentistas com Saldo</span>
+                    <h3 className="text-xl font-bold text-slate-900">{totalDentistsWithCredits}</h3>
+                    <span className="text-[10px] text-slate-400 block">Clientes com créditos registrados</span>
+                  </div>
+                  <div className="glass-panel p-4 space-y-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Lançamentos</span>
+                    <h3 className="text-xl font-bold text-slate-900">{filteredCredits.length}</h3>
+                    <span className="text-[10px] text-slate-400 block">Total de registros de adiantamento</span>
+                  </div>
+                </div>
+
+                {/* Filter bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#E2E8F0]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">Filtrar por Dentista:</span>
+                    <select
+                      value={creditFilterDentistId}
+                      onChange={(e) => setCreditFilterDentistId(e.target.value)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#0F766E]"
+                    >
+                      <option value="todos">Todos os Dentistas</option>
+                      {dentists.map(d => (
+                        <option key={d.id} value={d.id}>{d.full_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    Exibindo {filteredCredits.length} registro(s)
+                  </span>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white shadow-2xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-[#E2E8F0] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <tr>
+                        <th className="p-3.5">Data</th>
+                        <th className="p-3.5">Dentista</th>
+                        <th className="p-3.5">Descrição / Motivo</th>
+                        <th className="p-3.5">Forma</th>
+                        <th className="p-3.5 text-right">Valor do Crédito</th>
+                        <th className="p-3.5 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E2E8F0]">
+                      {filteredCredits.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-400 text-xs">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Wallet size={24} className="text-slate-300" />
+                              <span>Nenhum crédito ou adiantamento registrado para este filtro.</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCredits.map(c => {
+                          const dentist = dentists.find(d => d.id === c.dentist_id);
+                          return (
+                            <tr key={c.id} className="hover:bg-slate-50/70 transition-all">
+                              <td className="p-3.5 text-slate-500 whitespace-nowrap">
+                                {new Date(c.created_at).toLocaleDateString('pt-BR')}
+                              </td>
+                              <td className="p-3.5 font-bold text-slate-900 whitespace-nowrap">
+                                {dentist?.full_name || 'Dentista não identificado'}
+                              </td>
+                              <td className="p-3.5 text-slate-700 font-medium">
+                                <div>{c.description}</div>
+                                {c.receipt_url && (
+                                  <a 
+                                    href={c.receipt_url} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="text-[10px] text-[#0F766E] hover:underline flex items-center gap-1 mt-0.5"
+                                  >
+                                    Ver comprovante
+                                  </a>
+                                )}
+                              </td>
+                              <td className="p-3.5 whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                                  {c.payment_method || 'PIX'}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-right font-extrabold text-sm text-emerald-600 whitespace-nowrap">
+                                R$ {(Number(c.amount) || 0).toFixed(2)}
+                              </td>
+                              <td className="p-3.5 text-center whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (window.confirm(`Excluir o crédito de R$ ${(Number(c.amount) || 0).toFixed(2)} para ${dentist?.full_name}?`)) {
+                                      try {
+                                        await api.credits.delete(c.id);
+                                        await fetchData();
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert('Erro ao excluir crédito.');
+                                      }
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                                  title="Excluir Crédito"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
+        </div>
       ) : null}
+
+      {/* Add Credit Modal */}
+      {isAddCreditModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-[#E2E8F0] rounded-2xl shadow-2xl p-6 relative animate-scale-in">
+            <button
+              onClick={() => setIsAddCreditModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <Wallet size={18} />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Novo Crédito / Adiantamento</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              Adicione o valor pago antecipadamente pelo dentista. Esse saldo será abatido do valor a pagar nos fechamentos de cobrança.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const amt = parseFloat(creditAmount.replace(',', '.'));
+                if (isNaN(amt) || amt <= 0) {
+                  alert('Por favor, informe um valor válido maior que zero.');
+                  return;
+                }
+                if (!creditDentistId) {
+                  alert('Selecione o dentista.');
+                  return;
+                }
+
+                try {
+                  await api.credits.save({
+                    dentist_id: creditDentistId,
+                    amount: amt,
+                    description: creditDescription.trim() || 'Adiantamento em conta',
+                    payment_method: creditPaymentMethod,
+                    receipt_url: creditReceiptUrl.trim() || undefined
+                  });
+                  await fetchData();
+                  setIsAddCreditModalOpen(false);
+                  setCreditAmount('');
+                  setCreditDescription('');
+                  setCreditReceiptUrl('');
+                } catch (err) {
+                  console.error(err);
+                  alert('Erro ao salvar crédito do dentista.');
+                }
+              }}
+              className="space-y-4"
+            >
+              {/* Dentist select */}
+              <div>
+                <label className="block text-[11px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
+                  Dentista / Cliente
+                </label>
+                <select
+                  required
+                  value={creditDentistId}
+                  onChange={(e) => setCreditDentistId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E2E8F0] text-slate-900 text-xs font-semibold focus:outline-none focus:border-[#0F766E] transition-all"
+                >
+                  {dentists.map(d => (
+                    <option key={d.id} value={d.id}>{d.full_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="block text-[11px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
+                  Valor do Crédito (R$)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-white border border-[#E2E8F0] text-slate-900 text-sm font-bold focus:outline-none focus:border-[#0F766E] transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-[11px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
+                  Descrição / Motivo
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={creditDescription}
+                  onChange={(e) => setCreditDescription(e.target.value)}
+                  placeholder="Ex: Adiantamento PIX, Crédito de retrabalho..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-[11px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
+                  Forma de Pagamento
+                </label>
+                <select
+                  value={creditPaymentMethod}
+                  onChange={(e) => setCreditPaymentMethod(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E2E8F0] text-slate-900 text-xs font-semibold focus:outline-none focus:border-[#0F766E] transition-all"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="transferencia">Transferência Bancária</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="cartao">Cartão</option>
+                  <option value="outro">Outro / Ajuste Interno</option>
+                </select>
+              </div>
+
+              {/* Receipt URL (Optional) */}
+              <div>
+                <label className="block text-[11px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">
+                  Link do Comprovante (Opcional)
+                </label>
+                <input
+                  type="url"
+                  value={creditReceiptUrl}
+                  onChange={(e) => setCreditReceiptUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E2E8F0] text-slate-900 text-xs font-medium focus:outline-none focus:border-[#0F766E] transition-all"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2.5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCreditModalOpen(false)}
+                  className="px-4 py-2.5 bg-white border border-[#E2E8F0] text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#0F766E] hover:bg-[#115E59] text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-[#0F766E]/20 cursor-pointer"
+                >
+                  Confirmar Crédito
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Repasse Avulso Modal */}
       {isAvulsoModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">

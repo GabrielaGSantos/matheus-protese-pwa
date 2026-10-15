@@ -3,6 +3,7 @@ import type {
   Profile, 
   Service, 
   DentistCustomPrice, 
+  DentistCredit,
   Case, 
   CalendarEvent, 
   CaseHistory,
@@ -35,6 +36,7 @@ const MOCK_STORAGE_KEYS = {
   PROFILES: 'matheus_protese_profiles',
   SERVICES: 'matheus_protese_services',
   CUSTOM_PRICES: 'matheus_protese_custom_prices',
+  DENTIST_CREDITS: 'matheus_protese_dentist_credits',
   CASES: 'matheus_protese_cases',
   CASE_SERVICES: 'matheus_protese_case_services',
   CALENDAR_EVENTS: 'matheus_protese_calendar_events',
@@ -746,6 +748,109 @@ export const api = {
         if (error) throw error;
         return data;
       }
+    }
+  },
+
+  // =======================================================================
+  // CRÉDITOS / ADIANTAMENTOS DE DENTISTAS
+  // =======================================================================
+  credits: {
+    async list(dentistId?: string): Promise<DentistCredit[]> {
+      if (useMockData) {
+        const allCredits = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+        if (dentistId) {
+          return allCredits.filter(c => c.dentist_id === dentistId);
+        }
+        return allCredits;
+      }
+      try {
+        let query = supabase!
+          .from('dentist_credits')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (dentistId) {
+          query = query.eq('dentist_id', dentistId);
+        }
+        const { data, error } = await query;
+        if (error) {
+          console.warn('Erro ao carregar créditos do Supabase, usando fallback local:', error);
+          const allCredits = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+          return dentistId ? allCredits.filter(c => c.dentist_id === dentistId) : allCredits;
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('Fallback local para créditos:', err);
+        const allCredits = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+        return dentistId ? allCredits.filter(c => c.dentist_id === dentistId) : allCredits;
+      }
+    },
+
+    async save(credit: Omit<DentistCredit, 'id' | 'created_at'> & { id?: string; created_at?: string }): Promise<DentistCredit> {
+      const fullCredit: DentistCredit = {
+        id: credit.id || genUUID(),
+        dentist_id: credit.dentist_id,
+        amount: Number(credit.amount) || 0,
+        description: credit.description || 'Adiantamento / Crédito',
+        payment_method: credit.payment_method || 'pix',
+        receipt_url: credit.receipt_url || undefined,
+        created_by: credit.created_by || 'admin-1',
+        created_at: credit.created_at || new Date().toISOString()
+      };
+
+      if (useMockData) {
+        const all = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+        const idx = all.findIndex(c => c.id === fullCredit.id);
+        if (idx >= 0) {
+          all[idx] = fullCredit;
+        } else {
+          all.unshift(fullCredit);
+        }
+        saveMockData(MOCK_STORAGE_KEYS.DENTIST_CREDITS, all);
+        return fullCredit;
+      }
+
+      try {
+        const { data, error } = await supabase!
+          .from('dentist_credits')
+          .upsert(fullCredit)
+          .select()
+          .single();
+        if (error) throw error;
+        // Salva cópia local para consistência
+        const all = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+        const idx = all.findIndex(c => c.id === fullCredit.id);
+        if (idx >= 0) all[idx] = data; else all.unshift(data);
+        saveMockData(MOCK_STORAGE_KEYS.DENTIST_CREDITS, all);
+        return data;
+      } catch (err) {
+        console.warn('Supabase erro ao salvar crédito, salvando localmente:', err);
+        const all = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+        const idx = all.findIndex(c => c.id === fullCredit.id);
+        if (idx >= 0) all[idx] = fullCredit; else all.unshift(fullCredit);
+        saveMockData(MOCK_STORAGE_KEYS.DENTIST_CREDITS, all);
+        return fullCredit;
+      }
+    },
+
+    async delete(id: string): Promise<void> {
+      if (useMockData) {
+        const all = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+        const filtered = all.filter(c => c.id !== id);
+        saveMockData(MOCK_STORAGE_KEYS.DENTIST_CREDITS, filtered);
+        return;
+      }
+      try {
+        const { error } = await supabase!
+          .from('dentist_credits')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Erro ao deletar no Supabase, deletando local:', err);
+      }
+      const all = getMockData<DentistCredit>(MOCK_STORAGE_KEYS.DENTIST_CREDITS);
+      const filtered = all.filter(c => c.id !== id);
+      saveMockData(MOCK_STORAGE_KEYS.DENTIST_CREDITS, filtered);
     }
   },
 
